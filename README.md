@@ -1,286 +1,412 @@
-# 模型指纹监控 · DSH 插件
+# DSH 模型指纹监控
 
-在 DSH 运行时持续读取历史会话日志，为每条助手响应生成一个**不依赖模型名称**的指纹，用协议形状和历史行为来回答：
+在 DSH 里观察每个模型路由的**协议形状**和**行为特征**，回答：
 
-- 这个声称的模型，和它过去的指纹一致吗？
-- 有没有两个不同的名称共用同一个指纹（别名、网关重命名、同一上游）？
-- 某个路由是不是悄悄换了 adapter、wire API、响应 ID 形状或工具调用格式？
-- 本次的 tokenizer/流式行为是否显著偏离历史基线？
+- 这个声称模型，和它过去的表现一致吗？
+- 同一个名称后面有没有换过协议、adapter 或网关？
+- 两个不同路由是不是行为相近？
+- 某个第三方模型与官方基线的行为相似度是多少？
+- 最近的行为是否出现了持续漂移？
 
-它不是“信任名称”的展示，而是把名称降级为一个**属性**，把实际可观测的协议与行为作为证据。
+> 指纹是证据，不是模型身份证明。黑盒 API 无法被“证明”为某个具体模型；请结合账单、接口文档、人工抽检和人工标签使用。
 
-> 黑盒 API 无法被证明为某个具体模型。这个插件给出的是**证据强度和变化检测**，不是密码学身份，也不是“某模型概率”。请结合账单、接口文档、人工抽检和人工标签使用。
+---
 
-## 兼容性
+## 快速开始
 
-已在 `@deepseek-ai/dsh 0.2.2-rc.3`（Windows Desktop / Web）验证：
+### 方式 A：从 npm 安装
 
-- Host：`webServer`、`tools`、`sessions`、`llm` 注入与路由正常；
-- Client：`shell.overlay`、`conversation.composer.dock` 插槽正常加载；
-- 安全：`ctx.webServer.getOrigin()` 可用，Origin/Host allowlist 生效；
-- 逐轮卡片、官方相似度面板、固定探针与查询 API 正常。
+包发布后：
 
-`0.2.2-rc.1` 到 `0.2.2-rc.3` 的 upgrade guide 中与本插件相关的是 macOS 自定义 overlay 的窗口拖拽区域；Windows/Web 不受影响，逐轮卡片当前不覆盖可拖拽标题栏。
+```powershell
+dsh plugin --profile desktop add dsh-plugin-model-fingerprint
+```
 
-## 安装
+如果 `dsh` 不在 PATH，请使用 DSH 安装目录里的 CLI。
 
-从 GitHub 克隆后安装：
+### 方式 B：从本地目录安装
 
 ```powershell
 git clone https://github.com/Darkhe55/dsh-plugin-models-fingerprint.git
-dsh plugin --profile desktop add "<克隆目录>"
+dsh plugin --profile desktop add "C:\path\to\dsh-plugin-models-fingerprint"
 ```
 
-也可以使用 DSH 的插件市场 / `plugin_manager install_bundle`，目标指向本目录。
+也可以使用 DSH 的 **Plugins → Add plugin**，或 `plugin_manager install_bundle`，目标指向这个目录。
 
-安装后刷新一次 Web 页面。插件会把监控入口嵌进 DSH 本身：
+### 方式 C：开发调试
 
-- **输入框上方 dock**：
-  - `逐轮指纹 开/关`：控制对话消息**左侧的逐轮指纹标注**，不会打开新界面。
-  - `面板`：单独打开逐轮检测浮层，用于查看完整历史和多轮对比。
-- **左侧逐轮标注**：每一轮对话的左侧显示一个小卡片，显示 `FP-xxxx`、`与上一轮一致/变化/多指纹` 和声称模型。点击卡片打开完整面板。
-- **左下角徽标**：显示最近一次响应的模型、指纹和证据提示数量；点击可看快捷摘要，并可打开内嵌面板。
-- **兜底 URL**：`http://127.0.0.1:5538/model-fingerprint`（端口以实际 DSH URL 为准），面板本身也可以独立打开。
-- **模型工具**：`model_fingerprint`。
+```powershell
+npm install
+npm run build
+npm test
+npm run check
+```
 
-## 使用
+然后按方式 B 安装本地目录。
 
-### 左侧逐轮指纹
+安装或更新后：
 
-默认关闭。打开输入框上方 dock 的 `逐轮指纹` 开关后显示；开关只控制左侧标注，不打开面板。
+1. 完全退出并重开 DSH；
+2. 刷新 Web 页面；
+3. 插件会出现在输入框上方的 dock。
 
-- 每轮对话左侧一张卡片，位置对应这一轮消息在页面中的垂直范围。
-- 卡片显示：
-  - `第 N 轮`
-  - `FP-xxxx`
-  - `一致 / 变化 / 多指纹 / 代际 / 基线`
-  - 该轮主要声称模型
-- 卡片只做轻量定位，不再绘制贯穿范围线；窗口较窄、左侧空间不足时退化为紧凑标记。
-- 卡片层只覆盖对话视口区域，并裁切在顶部栏和输入区之间，避免遮挡全局 UI。
-- 卡片存在性与区域解耦：中间卡片按轮次消息的可见部分居中，可同时存在多张；顶部/底部是固定槽位，只在轮次完全离开视口后进入。
-- 中间卡片按消息位置排序，不按 turns 数组顺序；长消息只使用当前可见片段的中心，不按整条消息长度取中间。
-- 即使 DSH 只挂载了当前视口内的少量 `data-chat-turn` 节点，顶部/底部槽位仍会用相邻轮次补足上下文。
-- 当前会话跟随可见 composer 的 `sessionId`，并定期校正，避免切换会话后仍读取旧会话的轮次。
-- 顶部/底部上下文卡片使用低透明度、缩小、灰度、弱阴影样式，和中间正式卡片区分。
-- 卡片跨区移动使用同一 DOM 节点和弹簧位移动画，不重建卡片，避免消失后再次出现。
-- 开启后如果还没解析到逐轮数据，左下角会先显示 `逐轮指纹：已开启，等待会话…`；有数据后替换为卡片。
-- 点击卡片打开完整面板。
+---
 
-### 逐轮检测面板
+## 30 秒上手
 
-点击输入框上方 dock 的 `面板` 按钮，或点击左侧卡片，打开 DSH 内嵌浮层：
+1. 打开输入框上方的 **在会话消息旁显示指纹情况**；
+2. 左侧会出现每轮对话的卡片；
+3. 点击卡片，或点击 dock 的 **面板**；
+4. 在面板里查看逐轮检测、指纹族、模型等价性和官方相似度；
+5. 需要官方基线时，到 **官方相似度** 页配置 provider/model。
 
-- **每一轮一张卡**：按会话的 turn 分组，不把一次用户请求里的多个工具步骤混在一起。
-- **每轮独立判定**：`首轮基线` / `与上一轮一致` / `与上一轮指纹不同` / `本轮内出现多个指纹` / `协议记录代际变化`。
-- **轮次对比**：显示本轮输出 token、文本字符、工具调用、首 token，以及相对上一轮的 tok/字、字/块、推理占比、首 token 延迟变化。
-- **步骤明细**：展开后能看到该轮每个模型 step 的序号、指纹、API/adapter、输出 token 和声称模型。
-- **会话切换**：顶部下拉框选择历史会话，查看它所有轮次。
+开关打开或关闭时，会触发一次历史补算并存盘。
 
-其他页签：
+---
 
-- **最近一次模型响应**：声称模型、指纹、协议、工具 ID、行为统计、证据强度。
-- **证据提示**：高/中/低优先级的变化、别名、标签不符、行为偏离。
-- **指纹族**：每个协议指纹的历史样本、声称名称、行为摘要；可写人工标签。
-- **声称模型**：同一名称下出现过哪些指纹。
-- **历史会话**：每个会话的模型、指纹、样本数和最近时间。
-- **方法与边界**：说明什么能推断、什么不能。
+## 界面说明
 
-### 模型等价性
+### 输入框上方 dock
 
-面板里的“模型等价性”页签用于回答两个问题：
+- **在会话消息旁显示指纹情况**：控制左侧逐轮卡片，不打开面板；
+- **面板**：打开完整逐轮检测浮层。
 
-- 不同供应商/不同名称，行为是否像同一个模型；
-- 同一个声称名称，跨供应商是否其实不同。
+### 左侧逐轮卡片
 
-它使用**供应商无关的行为画像**，不把 API、adapter、response ID 放进比较：
+每轮一张卡片，显示：
 
-- `tokensPerChar`（按英文/中文/代码等分别看）
-- 工具参数 JSON 空格/紧凑风格
-- reasoning 占比
-- 流式分块粒度
-- CJK/ASCII/标点/emoji/换行比例
-- Markdown/代码围栏密度
+```text
+第 N 轮
+FP-xxxx
+一致 / 变化 / 多指纹 / 代际 / 基线
+主要声称模型
+```
 
-每个路由先计算自身重复运行的中位差（`selfDistance`），再用这个基线校准跨路由距离：
+- 中间卡片跟随消息的可见区域；
+- 顶部/底部卡片使用固定槽位；
+- 窄窗口退化为紧凑标记；
+- 点击卡片打开面板。
 
-- `same-behavior`：行为距离接近自身基线；
-- `different-behavior`：显著高于自身基线；
-- `inconclusive`：样本不足或距离处于灰区。
+### 面板页签
 
-面板同时显示：
+| 页签 | 用途 |
+|---|---|
+| 逐轮检测 | 每轮指纹、协议、行为变化和步骤明细 |
+| 指纹族 | 每个协议指纹的样本、名称、标签 |
+| 模型等价性 | 不同路由的行为距离和同名模型对比 |
+| 官方相似度 | 第三方路由与官方基线的行为相似度 |
+| 声称模型 | 一个名称下出现过哪些指纹 |
+| 历史会话 | 每个会话的模型、指纹和样本数 |
+| 方法与边界 | 能推断什么、不能推断什么 |
 
-- 同名跨供应商的路由组；
-- 每对路由的距离、相对距离、特征覆盖率、样本数；
-- 是否协议同族、是否同供应商；
-- 是否使用了固定探针。
+---
 
-### 固定探针（可选，会产生 token）
+## 官方相似度
 
-被动历史受任务差异影响，固定探针更强。探针在面板底部手动运行，**不会自动执行**：
+用于回答：
+
+> 这个第三方路由的输出行为，与指定官方模型的行为基线有多接近？
+
+### 配置官方基线
+
+打开 **官方相似度**：
+
+1. 填写官方 `provider`；
+2. 填写官方 `model`；
+3. 可选标签和最少样本数；
+4. 点击 **保存官方基线**。
+
+基线需要足够历史样本才会进入 `ready`。每个官方 API 应建立自己的基线，不要把两个网关当成同一个基线。
+
+### 读取结果
+
+面板显示：
+
+- **行为相似度**；
+- 是否已校准；
+- 判定：`likely-same-behavior` / `ambiguous` / `likely-different-behavior`；
+- 距离；
+- 质量代理：`stable` / `watch` / `degrading` / `insufficient`；
+- AUC、分离度、正负样本数；
+- 主要特征贡献。
+
+解释：
+
+- 高分只表示**行为分布更接近官方基线**；
+- 低分表示行为分布不同，不等于模型被替换；
+- 未校准时只显示分数，不显示可比较的百分比；
+- 内容特征（CJK、Markdown、换行等）权重很低，避免把任务差异误判成模型差异；
+- 质量代理不是语义质量评分。
+
+---
+
+## 自动补算与存盘
+
+插件会从 DSH 会话日志补回状态中缺失的轮次观测。
+
+触发时机：
+
+- DSH 启动并完成初次扫描后；
+- 打开或关闭左侧指纹开关时；
+- 手动调用 API 或工具时。
+
+补算流程：
+
+```text
+发现会话文件
+→ 重新解析当前文件
+→ 去重后补回缺失观测
+→ 更新 Turn Index
+→ 写入 state.json.zst
+```
+
+手动触发：
+
+```text
+POST /model-fingerprint/api/backfill
+```
+
+需要 token；也可以通过模型工具：
+
+```text
+model_fingerprint action=backfill
+```
+
+已删除的日志文件无法从磁盘补回；状态中已有的历史观测会保留。
+
+---
+
+## 固定探针（可选，会产生 token）
+
+被动历史会受任务结构影响。需要更强证据时，在 **模型等价性** 页底部运行固定探针。
 
 - 6 个固定 prompt：baseline、英文、中文、代码、emoji、工具调用；
-- `repeats` 可选 1–3 次；
-- 每次最多很小的输出 token；
-- 运行前需要二次确认；
-- 结果缓存，查看等价性不会重复调用。
+- 可选重复 1–3 次；
+- 每次输出 token 很小；
+- 运行前需要确认；
+- 探针会真实调用供应商模型，产生费用；
+- 固定探针结果优先于跨任务被动历史。
 
-探针会真实调用供应商模型，**产生 input/output token 费用**；不需要时保持不运行即可。
+---
 
-### 人工标签
+## 模型工具
 
-在“指纹族”里点“写标签”，填入你已确认的实际模型（例如 `deepseek-v4-pro`）。
-
-标签建立后：
-
-- 同一指纹下的名称如果与标签不一致，会产生 `label-mismatch` 提示。
-- 后续可以把它当作该指纹的“已知身份基线”，而不是继续相信路由名称。
-- 备注字段适合记录账单、供应商控制台、抽检结论等外部证据。
-
-标签只保存在本地状态文件中。
-
-### 模型工具
-
-在对话中让 agent 调用 `model_fingerprint`：
+工具名：`model_fingerprint`
 
 | action | 作用 |
-| --- | --- |
-| `status` | 最近响应 + 统计 + 提示 |
-| `session` | 指定会话（`sessionId`）的指纹摘要 |
+|---|---|
+| `status` | 最近响应、统计、证据提示 |
+| `session` | 指定会话的指纹摘要 |
 | `fingerprints` | 按样本数列出指纹族 |
-| `equivalence` | 跨路由行为距离与同名模型对比 |
-| `probe` | 运行固定探针（必须 `confirm: true`，会消耗 token） |
-| `label` | 写入/删除人工标签（`fingerprintId`, `label`, `note`） |
-| `scan` | 重新发现会话文件（不删除历史） |
+| `equivalence` | 跨路由行为距离 |
+| `probe` | 运行固定探针，必须 `confirm: true`，消耗 token |
+| `label` | 写入/删除人工标签 |
+| `scan` | 重新发现会话文件 |
+| `backfill` | 补算缺失轮次并落盘 |
 
 示例：
 
 ```text
-帮我看看最近一次实际调用和名称是否一致
+帮我看看最近一次实际调用和声称名称是否一致
 → model_fingerprint { action: "status" }
 
 这个会话里出现过哪些指纹？
 → model_fingerprint { action: "session", sessionId: "session-..." }
+
+把缺失的历史轮次补回来
+→ model_fingerprint { action: "backfill" }
 ```
 
-## 指纹是怎么算的
+---
 
-每条 `assistant/message` 生成一条观测。指纹只使用以下字段，**不包含 provider/model 名称，也不包含提示词或回复正文**：
+## 判定与边界
 
-### 协议层（进入指纹哈希）
+常见判定：
 
-| 字段 | 例子 | 说明 |
-| --- | --- | --- |
-| wire API | `openai-completions`, `anthropic-messages`, `deepseek-messages@1` | 实际协议 |
-| adapter | `pi-ai@2` | 适配器与版本 |
-| wire provider | `opencode-go` | replay 元数据中的实际上游路由 |
-| response ID 形状 | `chatcmpl:hex:41`, `hex:32`, `resp:hex:58` | 只存形状：前缀/字母表/长度 |
-| replay 形态 | `blocks`, `response`, `none` | 是否有可回放元数据 |
+| 判定 | 含义 |
+|---|---|
+| `consistent` | 指纹与历史一致 |
+| `unverified` | 样本太少 |
+| `changed` | 同 API/adapter 下响应 ID 形状变化 |
+| `generation` | adapter 或 wire API 变化 |
+| `mixed` | 同一路由存在多个指纹 |
+| `alias` | 同一指纹出现多个名称 |
+| `label-mismatch` | 名称与人工标签不一致 |
+| `behavior-drift` | 行为指标偏离历史基线 |
+| `behavior-change-point` | 时间序列出现持续变化点 |
 
-### 行为层（用于基线、漂移与展示）
+置信度是证据强度，最高 90%，不是模型身份概率。
 
-- 输出 token / 可见字符比（tokenizer 特征）
-- 流式分块粒度（字符/块）
-- 工具参数 JSON 的空格/紧凑风格、Unicode 转义比例
-- 推理内容占比
-- CJK/ASCII/标点/emoji/换行比例，Markdown/代码围栏密度
-- 首 token 延迟、分块间隔、每秒字符/token
-- 工具调用 ID 形状、usage 字段集合、stop reason（展示用，不单独拆分指纹）
-- 可选的 `systemFingerprint`、`serviceTier`、响应字段集合、logprobs 是否存在（只做辅助证据，不进协议哈希）
-
-把**任务相关**的结构（是否调用工具、文本/推理块序列、stop reason）排除在指纹哈希之外，避免“这次没调用工具”就被误判成换了模型。
-
-## 判定与提示
-
-- `consistent`：本次指纹与历史一致，名称也在历史共识内。
-- `unverified`：该指纹少于 3 条样本，暂不下结论。
-- `changed`：同一 adapter/API 下，响应 ID 形状变了。
-- `generation`：adapter 或 wire API 变了；可能是适配器/DSH 升级，不直接等于模型切换。
-- `mixed`：该路由长期存在多个指纹。
-- `alias`：同一指纹出现多个声称名称。
-- `label-mismatch`：声称名称与人工标签不一致。
-- `behavior-drift`：tokenizer/JSON 风格等行为显著偏离基线。
-- `behavior-change-point`：某个路由在时间序列上出现持续行为变化点（信息级提示，通常为任务结构变化，需要结合协议指纹判断）。
-
-置信度是证据强度（样本数、路由一致性、名称共识、行为偏离综合），最高 90%，不是模型身份概率。
-
-## 自动补算
-
-- 启动发现完成后，后台会重读当前会话文件，补回状态中缺失的轮次观测；
-- 打开或关闭“在会话消息旁显示指纹情况”时，也会触发一次补算并等待存盘；
-- 补算到的观测重新进入 Turn Index，并触发状态存盘；
-- 不补算已删除的源文件；
-- 手动触发：
-  - `POST /model-fingerprint/api/backfill`（需要 token）
-  - 模型工具 `model_fingerprint` 的 `backfill` action
-- 返回扫描文件数、补充观测数和当前扫描状态。
+---
 
 ## 数据与隐私
 
-- 状态文件：`%USERPROFILE%\.dsh\model-fingerprint\state.json.zst`（或 `$DSH_HOME/model-fingerprint/state.json.zst`）。
-- 只保存协议形状、指标、哈希、会话 ID、时间；不保存正文。
-- 固定探针会额外保存固定 prompt 的观测和小段结果指标（prompt 本身是内置常量，不含用户内容）。
-- 状态文件使用 Zstandard 压缩，写入去抖、串行、原子替换。
-- 历史日志只读；不会修改 `~/.dsh/sessions`。
-- 面板与 API 仅绑定本机 DSH Web 服务；写标签/运行探针需要页面内一次性 token。
-- 想重置：停止 DSH 后删除 `model-fingerprint` 目录即可。
+- 状态文件：`%USERPROFILE%\.dsh\model-fingerprint\state.json.zst`，或 `$DSH_HOME/model-fingerprint/state.json.zst`；
+- 只保存协议形状、指标、哈希、会话 ID、时间；
+- 不保存提示词或回复正文；
+- 固定探针只保存内置 prompt 的结果指标；
+- 历史日志只读，不修改 `~/.dsh/sessions`；
+- 面板与 API 仅绑定本机 DSH Web 服务；
+- 修改状态、运行探针、补算需要 token；
+- 重置：停止 DSH 后删除 `model-fingerprint` 目录。
+
+---
 
 ## 性能
 
-- 启动后后台扫描，按文件大小/修改时间增量处理；追加日志只解析新帧。
-- 单文件解析串行，避免和正在运行的 agent 抢 CPU/IO。
-- 每个会话最多保留 240 条观测，全局最多 12,000 条；超出按时间淘汰。
-- 报告按 scanner 版本 + 标签 + limit 缓存，面板轮询不会反复重算。
-- 左侧卡片在滚动时使用 `requestAnimationFrame` + `translate3d` 直接更新位置，不触发 React 重渲染。
-- 卡片进入/离开使用 opacity + scale 的弹性过渡；上下卡片被挤开时使用独立的 `translate` 动画，不干扰滚动定位。
-- 紧凑/展开模式使用宽度、内边距和圆角的弹性过渡。
-- 对话流容器使用 `ResizeObserver`，移除了会随流式输出频繁触发的全局 MutationObserver。
-- 状态写入去抖并原子替换。
+- 启动后台扫描，按文件大小/修改时间增量处理；
+- 追加日志只解析新帧；
+- 补算单独串行执行，不并发重扫；
+- 客户端窗口上限 2000 轮，卡片 DOM 上限 9；
+- 100,000 轮 turn index 分页约 20ms；
+- 100,000 条观测构造单会话轮次约 168ms；
+- 报告按 scanner 版本、标签和 limit 缓存。
+
+---
+
+## 兼容性
+
+已在：
+
+```text
+@deepseek-ai/dsh 0.2.2-rc.3
+Windows Desktop / Web
+```
+
+验证：
+
+- Host：`webServer`、`tools`、`sessions`、`llm`；
+- Client：`shell.overlay`、`conversation.composer.dock`；
+- `ctx.webServer.getOrigin()`；
+- 逐轮卡片、官方相似度面板、固定探针、查询 API。
+
+`0.2.2-rc.1` → `0.2.2-rc.3` 的升级指南中与本插件相关的是 macOS overlay 的窗口拖拽区域；Windows/Web 不受影响。
+
+`engines.dsh`：
+
+```text
+>=0.2.2-rc.1 <0.3.0
+```
+
+---
+
+## 发布到 npm
+
+> 当前仓库尚未登录 npm；下面是要执行的发布流程。
+
+### 1. 检查包内容
+
+```powershell
+npm pack --dry-run
+```
+
+确认包含：
+
+```text
+index.js
+client.js
+lib/
+public/
+cordis.patch.yml
+README.md
+package.json
+```
+
+### 2. 登录
+
+```powershell
+npm login
+npm whoami
+```
+
+### 3. 版本
+
+首次发布：
+
+```text
+0.1.0
+```
+
+后续修复：
+
+```powershell
+npm version patch
+```
+
+### 4. 发布
+
+```powershell
+npm publish --access public
+```
+
+### 5. 验证
+
+```powershell
+npm view dsh-plugin-model-fingerprint version
+```
+
+### 6. 用户安装
+
+```powershell
+dsh plugin --profile desktop add dsh-plugin-model-fingerprint
+```
+
+发布前需确认包名未被占用。若使用 scoped 包名，命令相应改为 `@scope/name`。
+
+---
 
 ## 开发
 
 ```powershell
 npm test
 npm run check
+npm run build
 ```
 
 测试覆盖：
 
-- 指纹与声称名称解耦
-- wire API 变化产生新指纹
-- 任务相关工具形状不拆分指纹
-- 拼接 zstd 帧的增量扫描
-- live 事件与历史扫描去重
-- 压缩状态文件的读写往返与标签/探针持久化
-- 报告中的路由变化/别名/标签提示
-- 行为变化点检测
-- 供应商无关行为距离与同名模型分组
-- 固定探针的 mock LLM 调用、tokenizer 增量与重复上限
-- 插件路由、工具、标签写入、探针执行的端到端冒烟
+- 指纹与声称名称解耦；
+- wire API 变化产生新指纹；
+- zstd 追加帧增量扫描；
+- live 事件去重；
+- 状态文件读写与标签/探针持久化；
+- 路由变化、别名、标签提示；
+- 行为变化点；
+- 行为距离和同名模型分组；
+- 固定探针；
+- 插件路由、工具、标签、探针、补算端到端；
+- 客户端几何与用户气泡排除。
 
-## 已知限制
-
-- 会话日志格式变化（v3/v4 或未来版本）可能让部分字段缺失；缺失时会退化为“未知协议”，不会崩溃。
-- 不同 DSH 版本、适配器升级或网关升级都会改变协议指纹；这类变化会标为 `generation`，需要人工区分。
-- 同一 API 外壳下，不同实际模型可能共享相同指纹；此时行为统计和人工标签是主要区分手段。
-- 没有内置的“模型参考数据库”，因为黑盒指纹无法可靠映射到官方模型名；标签由用户确认后才有意义。
-- 被动行为等价性受任务结构影响，只能作为候选证据；跨供应商结论应优先使用固定探针。
-- 固定探针需要供应商支持对应模型/工具调用；失败会返回错误，不会自动重试。
-- logprobs 只有在适配器/会话日志实际提供时才可用；目前主要记录是否存在，不保存完整分布。
-- 只监控 DSH 自己的 sessions 目录；外部代理/其他客户端的请求不在范围内。
-- 如果 DSH 运行在远程 Web 模式，面板读取的是运行 DSH 这台机器上的会话日志。
+---
 
 ## 文件结构
 
 ```text
-index.js                 host 插件入口：路由、工具、live 订阅、探针 API
-client.js                client 插件入口：输入框 dock 开关 + 左侧逐轮标注 + 内嵌面板
-lib/core.mjs             zstd 帧扫描、观测提取、指纹哈希、行为统计、探针观测
-lib/scan.mjs             历史文件发现、增量扫描、live 游标、限额
-lib/summary.mjs          指纹族/路由/会话聚合、逐轮分组、判定、提示、变化点
-lib/equivalence.mjs      供应商无关行为画像、距离、同名模型分组
-lib/probe.mjs            固定探针套件与手动执行
-lib/store.mjs            本地状态加载、去抖原子写入、标签、探针缓存
-public/dashboard.html    逐轮检测 / 指纹族 / 模型等价性面板
-public/widget.js         左侧逐轮标注 + 左下角徽标 + 输入框 dock 兜底开关
-test/                    core / scan / summary / equivalence / probe / store / plugin 测试
+index.js                 Host 入口：路由、工具、live 订阅、探针、补算
+client.js                构建后的 Client 入口
+client/                  Client 源码模块
+scripts/build-client.mjs Client 构建脚本
+lib/core.mjs             观测提取、指纹哈希、行为统计
+lib/scan.mjs             文件发现、增量扫描、live、补算
+lib/summary.mjs          指纹族/路由/会话/逐轮/提示
+lib/equivalence.mjs      行为画像与距离
+lib/similarity.mjs      官方基线、校准、行为相似度、漂移代理
+lib/probe.mjs            固定探针
+lib/store.mjs            zstd 状态读写
+public/dashboard.html    面板
+public/widget.js         兜底开关
+test/                    单元与端到端测试
 ```
+
+---
+
+## 已知限制
+
+- 会话日志格式变化可能导致字段缺失；
+- DSH/适配器/网关升级会改变协议指纹，可能标记为 `generation`；
+- 同一 API 外壳下不同模型可能共享指纹；
+- 被动行为受任务影响，跨供应商结论优先使用固定探针；
+- 行为相似度不是模型身份概率；
+- 质量代理不是语义质量评分；
+- 只监控本机 DSH sessions 目录；
+- 远程 Web 模式读取的是运行 DSH 的机器上的日志。
