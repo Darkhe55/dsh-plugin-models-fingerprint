@@ -243,6 +243,7 @@
       <button class="tab on" data-tab="turns" type="button">逐轮检测</button>
       <button class="tab" data-tab="fingerprints" type="button">指纹族</button>
       <button class="tab" data-tab="equivalence" type="button">模型等价性</button>
+      <button class="tab" data-tab="official" type="button">官方相似度</button>
       <button class="tab" data-tab="routes" type="button">声称模型</button>
       <button class="tab" data-tab="sessions" type="button">历史会话</button>
       <button class="tab" data-tab="method" type="button">方法与边界</button>
@@ -292,6 +293,31 @@
         </div>
         <div class="faint small" id="probe-note">将调用 6 个固定 prompt；每次最多 64 output tokens。运行前会二次确认。</div>
       </div>
+    </div>
+    <div id="panel-official" hidden>
+      <div class="toolbar">
+        <div class="muted small">官方行为基线 · 只有通过本地校准才显示概率 · 不是模型身份证明</div>
+        <span class="faint small" id="official-stats"></span>
+      </div>
+      <div class="card-b" id="official-config">
+        <div class="probe-title">官方模型配置</div>
+        <div class="probe-row">
+          <input class="search" id="official-provider" placeholder="provider" />
+          <input class="search" id="official-model" placeholder="model" />
+          <input class="search" id="official-label" placeholder="标签（可选）" />
+          <input class="search" id="official-min" placeholder="最少样本 20" />
+          <button class="refresh" id="official-add" type="button">保存官方基线</button>
+        </div>
+        <div class="faint small" id="official-list">尚未配置官方模型。</div>
+      </div>
+      <div class="toolbar">
+        <div class="split">
+          <span class="faint small">待判断路由</span>
+          <select id="official-route" class="select"></select>
+        </div>
+        <button class="refresh" id="official-check" type="button">判断相似度</button>
+      </div>
+      <div class="card-b" id="official-result"><div class="empty">选择路由后判断。</div></div>
     </div>
     <div id="panel-sessions" hidden>
       <div class="table-wrap"><table>
@@ -348,6 +374,8 @@ const state = {
   loading: false,
   turns: null,
   turnsLoading: false,
+  official: null,
+  officialResult: null,
   turnSessionId: params.get('session') || null,
   equivalence: null,
   eqLoading: false,
@@ -720,6 +748,104 @@ async function runProbe() {
   }
 }
 
+async function loadOfficial() {
+  try {
+    const res = await fetch('/model-fingerprint/api/official-models', { cache: 'no-store' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+    state.official = body;
+    renderOfficial();
+  } catch (error) {
+    $('official-stats').textContent = '读取官方基线失败：' + (error && error.message ? error.message : String(error));
+  }
+}
+
+function renderOfficial() {
+  const body = state.official || { models: [], baselines: [] };
+  const models = body.models || [];
+  const baselines = body.baselines || [];
+  $('official-stats').textContent = `${models.length} 个官方模型 · ${baselines.filter((item) => item.ready).length} 个基线就绪`;
+  $('official-list').innerHTML = models.length
+    ? models.map((model) => {
+        const baseline = baselines.find((item) => item.key === model.key);
+        return `<div class="faint small" style="margin-top:4px">${esc(model.label)} <span class="mono">${esc(model.key)}</span> · ${baseline ? (baseline.ready ? '基线就绪 ' + fmtNum(baseline.samples) + ' 样本' : '样本不足 ' + fmtNum(baseline.samples || 0) + '/' + fmtNum(baseline.minSamples || model.minSamples)) : '尚无基线'}</div>`;
+      }).join('')
+    : '尚未配置官方模型。';
+}
+
+function populateOfficialRoutes(data) {
+  const routes = (data && data.routes) || [];
+  const select = $('official-route');
+  const previous = select.value;
+  select.innerHTML = routes.map((route) => `<option value="${esc(route.provider + '/' + route.model)}">${esc(route.provider + ' / ' + route.model)} · ${fmtNum(route.observations)} 样本</option>`).join('') || '<option value="">暂无路由</option>';
+  if (previous && [...select.options].some((option) => option.value === previous)) select.value = previous;
+}
+
+async function saveOfficial() {
+  const provider = $('official-provider').value.trim();
+  const model = $('official-model').value.trim();
+  if (!provider || !model) {
+    $('official-result').innerHTML = '<div class="empty">provider 和 model 必填。</div>';
+    return;
+  }
+  const label = $('official-label').value.trim();
+  const minSamples = Number($('official-min').value) || 20;
+  const current = (state.official && state.official.models || []).map((item) => ({ provider: item.provider, model: item.model, label: item.label, minSamples: item.minSamples }));
+  const next = current.filter((item) => !(item.provider === provider && item.model === model));
+  next.push({ provider, model, label, minSamples });
+  const res = await fetch('/model-fingerprint/api/official-models', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-mf-token': TOKEN },
+    body: JSON.stringify({ models: next }),
+  });
+  const body = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    $('official-result').innerHTML = `<div class="empty">保存失败：${esc(body.error || ('HTTP ' + res.status))}</div>`;
+    return;
+  }
+  $('official-provider').value = '';
+  $('official-model').value = '';
+  $('official-label').value = '';
+  await loadOfficial();
+  await runSimilarity();
+}
+
+async function runSimilarity() {
+  const route = $('official-route').value;
+  if (!route) {
+    $('official-result').innerHTML = '<div class="empty">没有可判断的路由。</div>';
+    return;
+  }
+  const [provider, ...rest] = route.split('/');
+  const model = rest.join('/');
+  $('official-result').innerHTML = '<div class="empty">正在计算…</div>';
+  try {
+    const res = await fetch(`/model-fingerprint/api/similarity?provider=${encodeURIComponent(provider)}&model=${encodeURIComponent(model)}`, { cache: 'no-store' });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+    state.officialResult = body;
+    const best = body.best || {};
+    const probability = body.calibrated && body.probability != null ? fmtPct(body.probability) : '未校准';
+    const verdict = best.verdict || body.verdict || 'no-data';
+    const tone = body.calibrated ? (body.probability >= 0.8 ? 'good' : body.probability <= 0.2 ? 'bad' : 'warn') : 'warn';
+    const degradation = best.degradation || {};
+    $('official-result').innerHTML = `
+      <div class="eq-grid">
+        <div class="eq-card"><div class="k">与官方行为相似</div><div class="v">${probability}</div></div>
+        <div class="eq-card"><div class="k">判定</div><div class="v">${esc(verdict)}</div></div>
+        <div class="eq-card"><div class="k">距离</div><div class="v">${best.comparison && best.comparison.distance != null ? best.comparison.distance : '—'}</div></div>
+        <div class="eq-card"><div class="k">质量代理</div><div class="v">${esc(degradation.level || 'insufficient')}</div></div>
+      </div>
+      <div class="faint small">候选 ${esc(provider)} / ${esc(model)} · 样本 ${fmtNum(body.samples)} · ${body.calibrated ? '已用本地同源/异源样本校准' : '未校准：样本不足或分布不可分，不显示概率'} · ${esc(best.reason || '')}</div>
+      <div class="eq-section"><h3>证据</h3>${(best.comparison && best.comparison.contributions || []).slice(0, 5).map((item) => `<div class="faint small">${esc(item.key)} z=${item.z} · 权重 ${item.weight}</div>`).join('') || '<div class="empty">无可比特征</div>'}</div>
+      <div class="faint small">质量代理只反映行为偏移，不代表语义质量或模型身份。</div>
+    `;
+    if (tone === 'bad') $('official-result').classList.add('is-bad'); else $('official-result').classList.remove('is-bad');
+  } catch (error) {
+    $('official-result').innerHTML = `<div class="empty">判断失败：${esc(error && error.message ? error.message : String(error))}</div>`;
+  }
+}
+
 function render(data) {
   state.data = data;
   $('error').hidden = true;
@@ -731,6 +857,7 @@ function render(data) {
   renderRoutes(data);
   renderSessions(data);
   populateTurnSessions(data);
+  populateOfficialRoutes(data);
   if (state.tab === 'turns' && !state.turns) loadTurns();
 }
 
@@ -774,7 +901,7 @@ async function saveLabel(id) {
 }
 
 function activateTab(tab) {
-  const names = ['turns', 'fingerprints', 'equivalence', 'routes', 'sessions', 'method'];
+  const names = ['turns', 'fingerprints', 'equivalence', 'official', 'routes', 'sessions', 'method'];
   if (!names.includes(tab)) tab = 'turns';
   state.tab = tab;
   for (const item of document.querySelectorAll('.tab')) item.classList.toggle('on', item.dataset.tab === tab);
@@ -784,6 +911,7 @@ function activateTab(tab) {
     if (!state.turns) loadTurns();
   }
   if (tab === 'equivalence' && !state.equivalence) loadEquivalence();
+  if (tab === 'official') loadOfficial();
 }
 
 $('tabs').addEventListener('click', (event) => {
@@ -797,6 +925,8 @@ $('turn-session').addEventListener('change', (event) => {
   loadTurns(true);
 });
 $('probe-run').addEventListener('click', runProbe);
+$('official-add').addEventListener('click', saveOfficial);
+$('official-check').addEventListener('click', runSimilarity);
 $('search').addEventListener('input', (event) => {
   state.query = event.target.value || '';
   if (state.data) renderFingerprints(state.data);
