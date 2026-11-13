@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-66'
+    const CLIENT_BUILD = '2026-11-13-67'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -796,6 +796,17 @@ window.__ModuleLoader__.load({
           window.removeEventListener('dsh-mf-preload', preload)
         }
       }, [])
+
+      React.useEffect(() => {
+        if (!on) return undefined
+        // Opening the switch must not show a stale cached card. Refresh the
+        // latest page, then pull one older page once the new revision lands.
+        refreshRef.current?.()
+        const timer = window.setTimeout(() => {
+          loadOlderRef.current?.()
+        }, 420)
+        return () => window.clearTimeout(timer)
+      }, [on])
 
       React.useEffect(() => {
         if (!on) {
