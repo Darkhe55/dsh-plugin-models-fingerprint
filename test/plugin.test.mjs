@@ -80,7 +80,7 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
     webServer: {
       register(route) { routes.set(route.path, route.handler); return () => {} },
       tapIndex(fn) { indexTap = fn; return () => {} },
-      getOrigin() { return 'http://127.0.0.1:7373' },
+      getOrigin() { return 'http://127.0.0.1:5538' },
     },
   }
   apply(ctx)
@@ -94,8 +94,8 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.ok(routes.has('/model-fingerprint/api/official-models'))
   assert.ok(routes.has('/model-fingerprint/api/similarity'))
   const injectedIndex = indexTap('<html><body></body></html>')
-  assert.match(injectedIndex, /__dshModelFingerprintApiBase="http:\/\/127\.0\.0\.1:7373"/)
-  assert.match(injectedIndex, /src="http:\/\/127\.0\.0\.1:7373\/model-fingerprint\/widget\.js"/)
+  assert.match(injectedIndex, /__dshModelFingerprintApiBase="http:\/\/127\.0\.0\.1:5538"/)
+  assert.match(injectedIndex, /src="http:\/\/127\.0\.0\.1:5538\/model-fingerprint\/widget\.js"/)
 
   const toolResult = await registeredTool.execute({ action: 'status' }, {})
   assert.match(toolResult.text, /模型指纹监控/)
@@ -159,6 +159,41 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
       headers: { host: '127.0.0.1:5538' },
     }, res)).catch(reject)
   })
+  const requestRaw = (pathName, { method = 'GET', headers = {}, body = '' } = {}) => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(pathName + ' timed out')), 5000)
+    const res = {
+      status: 0,
+      headersSent: false,
+      setHeader() {},
+      writeHead(status) { this.status = status; this.headersSent = true },
+      end(value) { clearTimeout(timer); resolve({ status: this.status, body: String(value) }) },
+    }
+    Promise.resolve(routes.get('/model-fingerprint' + pathName)({
+      method,
+      url: '/model-fingerprint' + pathName,
+      headers: { host: '127.0.0.1:5538', ...headers },
+      async *[Symbol.asyncIterator]() { if (body) yield Buffer.from(body) },
+    }, res)).catch(reject)
+  })
+  const root = await requestRaw('')
+  const token = (root.body.match(/const TOKEN = "([^"]+)"/) || [])[1]
+  assert.ok(token, 'dashboard token is available')
+
+  const normalOrigin = await requestRaw('/api/status', { headers: { origin: 'http://127.0.0.1:5538' } })
+  assert.equal(normalOrigin.status, 200)
+  const otherPort = await requestRaw('/api/status', { headers: { origin: 'http://127.0.0.1:5539' } })
+  assert.equal(otherPort.status, 403)
+  const evil = await requestRaw('/api/status', { headers: { host: 'evil.example:5538', origin: 'http://evil.example:5538' } })
+  assert.equal(evil.status, 403)
+  const nullOrigin = await requestRaw('/api/status', { headers: { origin: 'null' } })
+  assert.equal(nullOrigin.status, 403)
+  const missingOrigin = await requestRaw('/api/status')
+  assert.equal(missingOrigin.status, 200)
+  const noToken = await requestRaw('/api/label', { method: 'POST', headers: { origin: 'http://127.0.0.1:5538', 'content-type': 'application/json' }, body: JSON.stringify({ fingerprintId: 'fp_x', label: 'x' }) })
+  assert.equal(noToken.status, 403)
+  const hugeBody = await requestRaw('/api/client-debug', { method: 'POST', headers: { origin: 'http://127.0.0.1:5538', 'content-type': 'application/json' }, body: JSON.stringify({ pad: 'x'.repeat(40 * 1024) }) })
+  assert.equal(hugeBody.status, 413)
+
   const indexBody = await requestRoute('/api/session-index', '?id=session-live&limit=1')
   assert.equal(indexBody.turns.length, 1)
   assert.equal(indexBody.turns[0].turn, 1)
@@ -177,7 +212,7 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
     const req = {
       method: 'POST',
       url: '/model-fingerprint/api/official-models',
-      headers: { host: '127.0.0.1:5538', 'content-type': 'application/json' },
+      headers: { host: '127.0.0.1:5538', 'content-type': 'application/json', 'x-mf-token': token },
       async *[Symbol.asyncIterator]() { yield Buffer.from(payload) },
     }
     const res = {

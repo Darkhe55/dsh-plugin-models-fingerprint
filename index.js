@@ -5,7 +5,7 @@
  * exposes a local dashboard + a `model_fingerprint` tool. The fingerprint is
  * protocol/behavior evidence, not a trusted copy of the model name.
  */
-import { randomBytes } from 'node:crypto'
+import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -46,25 +46,96 @@ const text = (res, status, body, type = 'text/plain; charset=utf-8') => {
   res.end(body)
 }
 
+const APP_ORIGIN = 'dsh-app://app'
+const LOOPBACK_HOSTS = new Set(['127.0.0.1', 'localhost', '[::1]', '::1'])
+let allowedOrigins = new Set([APP_ORIGIN])
+let allowedHosts = new Set()
+let allowedPort = null
+
+function normalizeOrigin(value) {
+  const text = String(value || '').trim().replace(/\/+$/, '')
+  if (!text) return ''
+  if (text === APP_ORIGIN) return APP_ORIGIN
+  try {
+    const parsed = new URL(text)
+    return parsed.origin
+  } catch {
+    return ''
+  }
+}
+
+function hostParts(value) {
+  const text = String(value || '').trim()
+  const match = text.match(/^(\[[0-9a-fA-F:]+\]|[^:]+)(?::(\d+))?$/)
+  if (!match) return null
+  const hostname = match[1].toLowerCase()
+  const port = match[2] ? Number(match[2]) : null
+  return { hostname, port }
+}
+
+function configureSecurity(webServer) {
+  let origin = ''
+  try {
+    if (webServer && typeof webServer.getOrigin === 'function') origin = normalizeOrigin(webServer.getOrigin())
+  } catch { /* unavailable */ }
+  if (!origin) origin = normalizeOrigin(process.env.DSH_WEB_ORIGIN)
+  if (!origin) return
+  let parsed
+  try { parsed = new URL(origin) } catch { return }
+  const port = parsed.port || (parsed.protocol === 'https:' ? '443' : '80')
+  allowedPort = Number(port)
+  allowedOrigins = new Set([APP_ORIGIN, origin])
+  for (const host of LOOPBACK_HOSTS) {
+    if (host === '::1') continue
+    allowedOrigins.add(parsed.protocol + '//' + host + (port === '80' || port === '443' ? '' : ':' + port))
+    allowedHosts.add(host + ':' + port)
+  }
+  allowedHosts.add('[::1]:' + port)
+}
+
+function hostAllowed(req) {
+  const parts = hostParts(req && req.headers && req.headers.host)
+  if (!parts || !LOOPBACK_HOSTS.has(parts.hostname)) return false
+  if (!allowedPort) return true
+  return parts.port === allowedPort
+}
+
 function originAllowed(req) {
+  if (!hostAllowed(req)) return false
   const origin = req.headers && (req.headers.origin || req.headers.Origin)
   if (!origin) return true
-  if (origin === 'dsh-app://app' || origin === 'null') return true
+  if (String(origin).toLowerCase() === 'null') return false
+  const normalized = normalizeOrigin(origin)
+  return Boolean(normalized && allowedOrigins.has(normalized))
+}
+
+function tokenAllowed(req) {
+  const given = String((req.headers && (req.headers['x-mf-token'] || req.headers['X-MF-Token'])) || '')
+  if (!given || given.length !== TOKEN.length) return false
   try {
-    const parsed = new URL(String(origin))
-    const host = String((req.headers && req.headers.host) || '')
-    return parsed.host === host
+    return timingSafeEqual(Buffer.from(given), Buffer.from(TOKEN))
   } catch {
     return false
   }
+}
+
+function mutationAllowed(req, res) {
+  if (!originAllowed(req)) {
+    json(res, 403, { error: 'origin not allowed' })
+    return false
+  }
+  if (!tokenAllowed(req)) {
+    json(res, 403, { error: 'bad token' })
+    return false
+  }
+  return true
 }
 
 function corsHeaders(req) {
   const origin = req.headers && (req.headers.origin || req.headers.Origin)
   if (!origin || !originAllowed(req)) return null
   return {
-    'access-control-allow-origin': origin === 'dsh-app://app' ? 'dsh-app://app' : origin,
-    'access-control-allow-methods': 'GET, POST, OPTIONS',
+    'access-control-allow-origin': normalizeOrigin(origin) === APP_ORIGIN ? APP_ORIGIN : normalizeOrigin(origin),    'access-control-allow-methods': 'GET, POST, OPTIONS',
     'access-control-allow-headers': 'content-type, x-mf-token',
     'access-control-max-age': '600',
     vary: 'origin',
@@ -76,7 +147,11 @@ async function readJson(req, limit = 32 * 1024) {
   const chunks = []
   for await (const chunk of req) {
     size += chunk.length
-    if (size > limit) throw new Error('request body too large')
+    if (size > limit) {
+      const error = new Error('request body too large')
+      error.statusCode = 413
+      throw error
+    }
     chunks.push(chunk)
   }
   if (!chunks.length) return {}
@@ -207,6 +282,7 @@ function sessionText(report, scanner, sessionId) {
 }
 
 export function apply(ctx) {
+  configureSecurity(ctx.webServer)
   const disposers = []
   let disposed = false
   let scanner
@@ -221,9 +297,7 @@ export function apply(ctx) {
     const labels = store ? store.labels() : {}
     const key = scanner.version + '|' + JSON.stringify(labels) + '|' + limit
     if (reportCache.has(key)) {
-      const cached = reportCache.get(key)
-      cached.generatedAt = Date.now()
-      return cached
+      return { ...reportCache.get(key), generatedAt: Date.now() }
     }
     const report = buildReport(scanner, labels, { limit })
     reportCache.set(key, report)
@@ -351,7 +425,7 @@ export function apply(ctx) {
           return
         }
         Promise.resolve(handler(req, res)).catch((error) => {
-          if (!res.headersSent) json(res, 500, { error: error && error.message ? error.message : String(error) })
+          if (!res.headersSent) json(res, error && error.statusCode ? error.statusCode : 500, { error: error && error.message ? error.message : String(error) })
         })
       },
     }))
@@ -371,6 +445,7 @@ export function apply(ctx) {
   route('/api/client-command', async (req, res) => {
     if (req.method === 'GET' || req.method === 'HEAD') return json(res, 200, { command: clientCommand })
     if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST only' })
+    if (!mutationAllowed(req, res)) return
     const body = await readJson(req)
     if (!body || typeof body.railOn !== 'boolean') return json(res, 400, { error: 'railOn boolean required' })
     clientCommand = { id: Date.now(), railOn: body.railOn }
@@ -422,11 +497,12 @@ export function apply(ctx) {
     const sessionId = url.searchParams.get('id') || (report.latest && report.latest.observation && report.latest.observation.sessionId)
     if (!sessionId) return json(res, 404, { error: 'no session id' })
     const session = (report.sessions || []).find((item) => item.id === sessionId) || null
-    const rows = [...scanner.observations.values()]
-      .filter((observation) => observation.sessionId === sessionId)
+    const sessionRows = scanner.observationsForSession(sessionId)
+    const rows = sessionRows
+      .slice()
       .sort((left, right) => right.time - left.time)
       .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 300))
-    const turns = buildTurns([...scanner.observations.values()], sessionId)
+    const turns = buildTurns(sessionRows, sessionId)
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
     const before = Number(url.searchParams.get('before'))
     const filtered = Number.isFinite(before) && before > 0
@@ -453,8 +529,8 @@ export function apply(ctx) {
     const sessionId = url.searchParams.get('id') || (report.latest && report.latest.observation && report.latest.observation.sessionId)
     if (!sessionId) return json(res, 404, { error: 'no session id' })
     let index = normalizeTurnIndex(scanner.turnIndex)
-    if (!index[sessionId]) {
-      index = turnIndexFromObservations([...scanner.observations.values()].filter((row) => row.sessionId === sessionId))
+    if (!index[sessionId] || !Object.keys(index[sessionId]).length) {
+      index = turnIndexFromObservations(scanner.observationsForSession(sessionId))
     }
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
     const before = Number(url.searchParams.get('before'))
@@ -479,7 +555,7 @@ export function apply(ctx) {
     const sessionId = url.searchParams.get('id')
     const turn = Number(url.searchParams.get('turn'))
     if (!sessionId || !Number.isFinite(turn)) return json(res, 400, { error: 'id and turn required' })
-    const turns = buildTurns([...scanner.observations.values()], sessionId)
+    const turns = buildTurns(scanner.observationsForSession(sessionId), sessionId)
     const found = turns.find((item) => Number(item.turn) === turn) || null
     if (found) return json(res, 200, { sessionId, revision: scanner.version, turn: found })
     const index = normalizeTurnIndex(scanner.turnIndex)
@@ -516,6 +592,7 @@ export function apply(ctx) {
       })
     }
     if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST only' })
+    if (!mutationAllowed(req, res)) return
     const body = await readJson(req)
     const models = normalizeOfficialModels(body && body.models)
     store.setOfficialModels(models)
@@ -585,11 +662,13 @@ export function apply(ctx) {
     const sessionId = url.searchParams.get('id') || (report.latest && report.latest.observation && report.latest.observation.sessionId)
     if (!sessionId) return json(res, 404, { error: 'no session id' })
     const session = (report.sessions || []).find((item) => item.id === sessionId)
-    const rows = [...scanner.observations.values()]
-      .filter((observation) => observation.sessionId === sessionId)
+    const sessionRows = scanner.observationsForSession(sessionId)
+    const rows = sessionRows
+      .slice()
       .sort((left, right) => right.time - left.time)
       .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 100))
-    const turns = buildTurns([...scanner.observations.values()], sessionId)
+    const turns = buildTurns(sessionRows, sessionId)
+      .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 100))
     return json(res, 200, { session: session || null, observations: rows, turns })
   })
   route('/api/equivalence', async (req, res) => {
@@ -605,8 +684,7 @@ export function apply(ctx) {
   })
   route('/api/probe', async (req, res) => {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
-    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
-    if (req.headers['x-mf-token'] !== TOKEN) return json(res, 403, { error: 'bad token' })
+    if (!mutationAllowed(req, res)) return
     const body = await readJson(req)
     if (body.confirm !== true) return json(res, 400, { error: 'confirm=true is required; probes consume provider tokens' })
     const result = await executeProbe({ provider: body.provider, model: body.model, repeats: body.repeats })
@@ -622,8 +700,7 @@ export function apply(ctx) {
   })
   route('/api/label', async (req, res) => {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
-    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
-    if (req.headers['x-mf-token'] !== TOKEN) return json(res, 403, { error: 'bad token' })
+    if (!mutationAllowed(req, res)) return
     await init()
     const body = await readJson(req)
     const result = store.setLabel(body.fingerprintId, body.label, body.note)
@@ -632,8 +709,7 @@ export function apply(ctx) {
   })
   route('/api/scan', async (req, res) => {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
-    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
-    if (req.headers['x-mf-token'] !== TOKEN) return json(res, 403, { error: 'bad token' })
+    if (!mutationAllowed(req, res)) return
     await init()
     await scanner.discover()
     return json(res, 200, { ok: true, scan: scanner.status() })
