@@ -43,3 +43,34 @@ test('client window keeps a bounded focused subset of ten thousand turns', async
   assert.ok(kept.some((row) => row.turn === 5001))
   assert.ok(kept.every((row) => Math.abs(row.turn - 5000) <= 1000))
 })
+
+test('official similarity scoring stays bounded for a thousand observations', async () => {
+  const { buildOfficialProfile, scoreSimilarity } = await import('../lib/similarity.mjs')
+  const make = (index, provider, model) => ({
+    id: 's:' + index,
+    provider,
+    model,
+    time: index,
+    fingerprint: 'fp_a',
+    behavior: {
+      tokensPerChar: 0.2 + (index % 3) * 0.001,
+      charsPerChunk: 4,
+      reasoningRatio: 0.1,
+      jsonSpacing: 0.5,
+      cjkRatio: 0.1,
+      asciiRatio: 0.8,
+      punctuationRatio: 0.05,
+      markdownPerK: 2,
+      escapedUnicode: 0,
+      newlineRatio: 0.02,
+    },
+  })
+  const rows = Array.from({ length: 1000 }, (_, index) => make(index, 'official', 'm'))
+  const started = Date.now()
+  const baseline = buildOfficialProfile(rows, { provider: 'official', model: 'm', minSamples: 20 })
+  const score = scoreSimilarity(rows.slice(-50), baseline, null)
+  const elapsed = Date.now() - started
+  assert.equal(baseline.ready, true)
+  assert.ok(score.score >= 0 && score.score <= 1)
+  assert.ok(elapsed < 2000, 'similarity budget exceeded: ' + elapsed + 'ms')
+})
