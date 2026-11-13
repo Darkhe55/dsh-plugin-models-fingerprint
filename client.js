@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-50'
+    const CLIENT_BUILD = '2026-11-13-51'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1573,7 +1573,7 @@ window.__ModuleLoader__.load({
             : h('div', { style: { marginTop: 4, fontSize: 11, color: 'var(--dsw-alias-label-tertiary, #667085)' } }, '还没有可用的轮次数据'),
           h('div', { style: { height: 1, margin: '8px 0', background: 'var(--dsw-alias-border-l1, rgba(20,30,45,.10))' } }),
           h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 } },
-            h('span', { style: { fontSize: 11, color: 'var(--dsw-alias-label-secondary, #475467)' } }, '逐轮指纹'),
+            h('span', { style: { fontSize: 11, color: 'var(--dsw-alias-label-secondary, #475467)', lineHeight: 1.45 } }, '在会话消息旁显示指纹情况'),
             h('button', {
               type: 'button',
               style: { ...styles.toggle, padding: '2px 4px' },
