@@ -3,6 +3,57 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
+    class SlotAnimator {
+      constructor({ eased, reduced, cardWidth }) {
+        this.eased = eased
+        this.reduced = reduced
+        this.cardWidth = cardWidth
+      }
+      duration(role, scale = 1) {
+        const base = role === 'squeeze' ? 380 : role === 'incoming' ? 260 : 340
+        return Math.max(100, Math.round(base * (this.reduced ? 0.45 : scale)))
+      }
+      cancel(node, ids = ['mf-shift', 'mf-enter', 'mf-eject']) {
+        if (!node || typeof node.getAnimations !== 'function') return
+        for (const animation of node.getAnimations()) {
+          if (ids.includes(animation.id)) animation.cancel()
+        }
+      }
+      shift(node, { left, fromTop, fromScale, toTop, toScale, role, motionScale }) {
+        if (!node || typeof node.animate !== 'function') return
+        this.cancel(node, ['mf-shift'])
+        node.animate(
+          [
+            { transform: 'translate3d(' + left + 'px,' + fromTop + 'px,0) scale(' + fromScale + ')' },
+            { transform: 'translate3d(' + left + 'px,' + toTop + 'px,0) scale(' + toScale + ')' },
+          ],
+          { duration: this.duration(role, motionScale), easing: this.eased, id: 'mf-shift' },
+        )
+      }
+      enter(node, { left, fromTop, fromScale, toTop, toScale, toOpacity = 1, delay, motionScale }) {
+        if (!node || typeof node.animate !== 'function') return
+        this.cancel(node, ['mf-enter'])
+        node.animate(
+          [
+            { transform: 'translate3d(' + left + 'px,' + fromTop + 'px,0) scale(' + fromScale + ')', opacity: 0 },
+            { transform: 'translate3d(' + left + 'px,' + toTop + 'px,0) scale(' + toScale + ')', opacity: toOpacity },
+          ],
+          { duration: this.duration('incoming', motionScale), easing: this.eased, delay, fill: 'backwards', id: 'mf-enter' },
+        )
+      }
+      eject(node, { fromTransform, fromOpacity, toTransform, motionScale }) {
+        if (!node || typeof node.animate !== 'function') return false
+        this.cancel(node, ['mf-eject'])
+        node.animate(
+          [
+            { transform: fromTransform, opacity: fromOpacity },
+            { transform: toTransform, opacity: 0 },
+          ],
+          { duration: this.duration('ejecting', motionScale), easing: this.eased, fill: 'forwards', id: 'mf-eject' },
+        )
+        return true
+      }
+    }
     class TurnGeometry {
       static box(nodes) {
         let top = Infinity
@@ -109,7 +160,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-71'
+    const CLIENT_BUILD = '2026-11-13-72'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1101,6 +1152,7 @@ window.__ModuleLoader__.load({
         const motionEase = reducedMotion ? 'ease-out' : 'cubic-bezier(.22,1.4,.36,1)'
         const spring = motionEase
         const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 280ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms cubic-bezier(.22,1,.36,1), padding 320ms cubic-bezier(.22,1,.36,1), border-radius 320ms cubic-bezier(.22,1,.36,1)'
+        const animator = new SlotAnimator({ eased: spring, reduced: reducedMotion, cardWidth: 176 })
 
         const update = (needsRebuild) => {
           if (needsRebuild || !geometry.current.ready) rebuild()
@@ -1268,7 +1320,6 @@ window.__ModuleLoader__.load({
           const scrolling = performance.now() - lastScrollAt < 90
           const activeVelocity = scrolling ? Math.abs(scrollVelocity) : 0
           const motionScale = reducedMotion ? 0.45 : activeVelocity > 6 ? 0.42 : activeVelocity > 2 ? 0.7 : 1
-          const animationDuration = (base) => Math.max(120, Math.round(base * motionScale))
           let layoutChanged = lastActiveIds.size !== targets.size
           if (!layoutChanged) {
             for (const id of targets.keys()) {
@@ -1375,18 +1426,17 @@ window.__ModuleLoader__.load({
                 }
               }
             }
-            if (animateTransform && typeof node.animate === 'function') {
+            if (animateTransform) {
               try {
-                for (const animation of node.getAnimations()) {
-                  if (animation.id === 'mf-shift') animation.cancel()
-                }
-                node.animate(
-                  [
-                    { transform: 'translate3d(' + geo.left + 'px,' + fromTop + 'px,0) scale(' + previousScale + ')' },
-                    { transform: 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')' },
-                  ],
-                  { duration: animationDuration(role === 'squeeze' ? 380 : 340), easing: spring, id: 'mf-shift' },
-                )
+                animator.shift(node, {
+                  left: geo.left,
+                  fromTop,
+                  fromScale: previousScale,
+                  toTop: target.top,
+                  toScale: targetScale,
+                  role,
+                  motionScale,
+                })
               } catch { /* older engine: settle immediately */ }
             }
             if (role === 'incoming') {
@@ -1397,13 +1447,16 @@ window.__ModuleLoader__.load({
               const fromY = reentryRect ? reentryRect.top : initialFade ? target.top : target.top + (target.zone === 'top' ? -6 : 6)
               const fromScale = reentryRect ? targetScale : initialFade ? targetScale : targetScale * 0.96
               try {
-                node.animate(
-                  [
-                    { transform: 'translate3d(' + geo.left + 'px,' + fromY + 'px,0) scale(' + fromScale + ')', opacity: 0 },
-                    { transform: 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')', opacity: targetOpacity },
-                  ],
-                  { duration: animationDuration(260), easing: spring, delay, fill: 'backwards', id: 'mf-enter' },
-                )
+                animator.enter(node, {
+                  left: geo.left,
+                  fromTop: fromY,
+                  fromScale,
+                  toTop: target.top,
+                  toScale: targetScale,
+                  toOpacity: targetOpacity,
+                  delay,
+                  motionScale,
+                })
               } catch {
                 node.style.opacity = targetOpacity
               }
@@ -1431,16 +1484,13 @@ window.__ModuleLoader__.load({
               node.style.transition = 'none'
               node.style.pointerEvents = 'none'
               try {
-                for (const animation of node.getAnimations()) {
-                  if (animation.id === 'mf-eject') animation.cancel()
-                }
-                node.animate(
-                  [
-                    { transform: fromTransform, opacity: fromOpacity },
-                    { transform: toTransform, opacity: 0 },
-                  ],
-                  { duration: animationDuration(340), easing: spring, fill: 'forwards', id: 'mf-eject' },
-                )
+                const animated = animator.eject(node, {
+                  fromTransform,
+                  fromOpacity,
+                  toTransform,
+                  motionScale,
+                })
+                if (!animated) throw new Error('animate unavailable')
               } catch {
                 node.style.opacity = '0'
                 node.style.transform = toTransform
