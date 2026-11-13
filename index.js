@@ -634,27 +634,40 @@ export function apply(ctx) {
     const models = officialModelsNow()
     if (!models.length) return json(res, 409, { error: 'no official model configured', hint: 'POST /api/official-models' })
     const observations = allObservationsNow()
-    const rows = observations.filter((row) => row.provider === provider && row.model === model && row.behavior)
+    const probes = store.probes().filter((row) => row && row.behavior)
+    const probeRows = probes.filter((row) => row.provider === provider && row.model === model)
+    const passiveRows = observations.filter((row) => row.provider === provider && row.model === model && row.behavior)
     const results = []
     for (const official of models) {
-      const baseline = store.officialBaseline(official.key) || buildOfficialProfile(observations, official, { minSamples: official.minSamples })
-      const calibration = store.calibrationFor(official.key) || buildCalibration(observations, official)
+      const officialProbes = probes.filter((row) => row.provider === official.provider && row.model === official.model)
+      const useProbes = probeRows.length >= 2 && officialProbes.length >= 2
+      const rows = useProbes ? probeRows : passiveRows
+      const baseline = useProbes
+        ? buildOfficialProfile(officialProbes, official, { minSamples: 2 })
+        : (store.officialBaseline(official.key) || buildOfficialProfile(observations, official, { minSamples: official.minSamples }))
+      const calibration = useProbes ? null : (store.calibrationFor(official.key) || buildCalibration(observations, official))
       const score = scoreSimilarity(rows, baseline, calibration)
       results.push({
         officialKey: official.key,
         officialLabel: official.label,
+        source: useProbes ? 'fixed-probe' : 'passive',
+        probeSamples: probeRows.length,
         ...score,
         degradation: analyzeDegradation(rows, baseline),
       })
     }
-    results.sort((left, right) => (right.probability ?? right.score ?? -1) - (left.probability ?? left.score ?? -1))
+    results.sort((left, right) => (right.similarity ?? right.score ?? -1) - (left.similarity ?? left.score ?? -1))
     return json(res, 200, {
       provider,
       model,
-      samples: rows.length,
+      samples: results[0] && results[0].source === 'fixed-probe' ? probeRows.length : passiveRows.length,
+      passiveSamples: passiveRows.length,
+      probeSamples: probeRows.length,
+      source: results[0] ? results[0].source : 'passive',
       officialModels: models.length,
       calibrated: Boolean(results[0] && results[0].calibrated),
-      probability: results[0] ? results[0].probability : null,
+      behaviorSimilarity: results[0] ? results[0].similarity : null,
+      calibratedScore: results[0] ? results[0].calibratedScore : null,
       score: results[0] ? results[0].score : null,
       verdict: results[0] ? results[0].verdict : 'no-data',
       best: results[0] || null,

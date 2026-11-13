@@ -825,18 +825,18 @@ async function runSimilarity() {
     if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
     state.officialResult = body;
     const best = body.best || {};
-    const probability = body.calibrated && body.probability != null ? fmtPct(body.probability) : '未校准';
+    const behaviorSimilarity = body.calibrated && body.behaviorSimilarity != null ? fmtPct(body.behaviorSimilarity) : '未校准';
     const verdict = best.verdict || body.verdict || 'no-data';
-    const tone = body.calibrated ? (body.probability >= 0.8 ? 'good' : body.probability <= 0.2 ? 'bad' : 'warn') : 'warn';
+    const tone = body.calibrated ? (body.behaviorSimilarity >= 0.8 ? 'good' : body.behaviorSimilarity <= 0.2 ? 'bad' : 'warn') : 'warn';
     const degradation = best.degradation || {};
     $('official-result').innerHTML = `
       <div class="eq-grid">
-        <div class="eq-card"><div class="k">与官方行为相似</div><div class="v">${probability}</div></div>
+        <div class="eq-card"><div class="k">行为相似度（非身份概率）</div><div class="v">${behaviorSimilarity}</div></div>
         <div class="eq-card"><div class="k">判定</div><div class="v">${esc(verdict)}</div></div>
         <div class="eq-card"><div class="k">距离</div><div class="v">${best.comparison && best.comparison.distance != null ? best.comparison.distance : '—'}</div></div>
         <div class="eq-card"><div class="k">质量代理</div><div class="v">${esc(degradation.level || 'insufficient')}</div></div>
       </div>
-      <div class="faint small">候选 ${esc(provider)} / ${esc(model)} · 样本 ${fmtNum(body.samples)} · ${body.calibrated ? '已用本地同源/异源样本校准' : '未校准：样本不足或分布不可分，不显示概率'} · ${esc(best.reason || '')}</div>
+      <div class="faint small">候选 ${esc(provider)} / ${esc(model)} · 样本 ${fmtNum(body.samples)} · 来源 ${esc(body.source || 'passive')} · ${body.calibrated ? '已用本地同源/异源样本校准' : '未校准：样本不足或分布不可分，不显示行为相似度'} · ${esc(best.reason || '')}</div>
       <div class="eq-section"><h3>证据</h3>${(best.comparison && best.comparison.contributions || []).slice(0, 5).map((item) => `<div class="faint small">${esc(item.key)} z=${item.z} · 权重 ${item.weight}</div>`).join('') || '<div class="empty">无可比特征</div>'}</div>
       <div class="faint small">质量代理只反映行为偏移，不代表语义质量或模型身份。</div>
     `;
