@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-56'
+    const CLIENT_BUILD = '2026-11-13-57'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1021,10 +1021,12 @@ window.__ModuleLoader__.load({
             }
           }
           const placeholderNeeded = middle.length === 0 && !topTurn && !bottomTurn && turns.length > 0
+          const cardH = compact ? 24 : 58
           const topY = geo.clipTop + 8
-          const bottomY = geo.clipBottom - 45
-          const laneTop = topTurn ? topY + 46 : geo.clipTop + 8
-          const laneBottom = bottomTurn ? bottomY - 8 : geo.clipBottom - 8
+          const bottomY = geo.clipBottom - cardH - 4
+          const laneTop = topTurn ? topY + cardH + 6 : geo.clipTop + 8
+          const laneBottom = bottomTurn ? bottomY - 6 : geo.clipBottom - 8
+          const laneMax = Math.max(laneTop, laneBottom - cardH)
           const targets = new Map()
           let lastBottom = laneTop
           for (const entry of middle) {
@@ -1032,8 +1034,8 @@ window.__ModuleLoader__.load({
             const visibleBottom = Number.isFinite(entry.anchorBottom) ? entry.anchorBottom : Math.min(entry.bottom, geo.clipBottom - 4)
             if (visibleBottom <= visibleTop) continue
             const center = (visibleTop + visibleBottom) / 2
-            let y = Math.min(Math.max(center - 22, laneTop), Math.max(laneTop, laneBottom - 45))
-            y = Math.min(Math.max(y, lastBottom + 4), Math.max(laneTop, laneBottom - 45))
+            let y = Math.min(Math.max(center - cardH / 2, laneTop), laneMax)
+            y = Math.min(Math.max(y, lastBottom + 4), laneMax)
             const target = { top: y, zone: 'middle', turn: entry.turn, synthetic: Boolean(entry.synthetic), lastKnown: Boolean(entry.lastKnown) }
             if (!entry.synthetic) {
               target.rangeTop = visibleTop
@@ -1041,7 +1043,7 @@ window.__ModuleLoader__.load({
               target.segments = entry.segments || []
             }
             targets.set(entry.turn.id, target)
-            lastBottom = y + 45
+            lastBottom = y + cardH + 4
           }
           if (placeholderNeeded) {
             const center = (geo.clipTop + geo.clipBottom) / 2
