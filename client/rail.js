@@ -333,7 +333,8 @@
           const turnNodes = new Map()
           const renderedTurns = []
           const domRows = []
-          for (const [value, nodes] of domNodeMap) {
+          for (const [value, rawNodes] of domNodeMap) {
+            const nodes = TurnGeometry.responseNodes(rawNodes)
             let top = Infinity
             let bottom = -Infinity
             for (const node of nodes) {
@@ -346,7 +347,7 @@
           }
           for (const turn of turns) {
             const key = String(Number(turn.turn) + offset)
-            const nodes = domNodeMap.get(key) || []
+            const nodes = TurnGeometry.responseNodes(domNodeMap.get(key) || [])
             turnNodes.set(key, nodes)
             if (nodes.length) renderedTurns.push({ turn, nodes })
           }

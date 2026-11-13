@@ -1,0 +1,44 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { promises as fs } from 'node:fs'
+
+test('turn geometry excludes user bubbles when an assistant node is present', async () => {
+  const source = await fs.readFile(new URL('../client/geometry.js', import.meta.url), 'utf8')
+  const TurnGeometry = new Function(source + '\nreturn TurnGeometry')()
+  const rect = (top, height) => ({ top, bottom: top + height, height, left: 0, right: 100, width: 100 })
+  const user = {
+    className: 'user',
+    getAttribute: (name) => name === 'data-chat-flow-kind' ? 'user' : null,
+    matches: () => false,
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    getClientRects: () => [1],
+    getBoundingClientRect: () => rect(100, 40),
+    contains: () => false,
+  }
+  const assistant = {
+    className: 'msg',
+    getAttribute: (name) => name === 'data-chat-flow-kind' ? 'assistant' : null,
+    matches: () => false,
+    querySelectorAll: () => [],
+    querySelector: () => null,
+    getClientRects: () => [1],
+    getBoundingClientRect: () => rect(150, 30),
+    contains: () => false,
+  }
+  const wrapper = {
+    className: 'turn',
+    getAttribute: () => null,
+    matches: () => false,
+    querySelectorAll: () => [assistant],
+    querySelector: (selector) => selector.includes('user') ? user : null,
+    getClientRects: () => [1],
+    getBoundingClientRect: () => rect(100, 90),
+    contains: (node) => node === user || node === assistant,
+  }
+  const nodes = TurnGeometry.responseNodes([wrapper, user])
+  assert.deepEqual(nodes, [assistant])
+  const measured = TurnGeometry.measure([wrapper, user], 0, 500)
+  assert.equal(measured.top, 150)
+  assert.equal(measured.bottom, 180)
+})
