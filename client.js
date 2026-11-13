@@ -3,6 +3,49 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
+    class TurnGeometry {
+      static box(nodes) {
+        let top = Infinity
+        let bottom = -Infinity
+        for (const node of nodes || []) {
+          if (!node || !node.getClientRects().length) continue
+          const box = node.getBoundingClientRect()
+          if (!box.height) continue
+          top = Math.min(top, box.top)
+          bottom = Math.max(bottom, box.bottom)
+        }
+        return Number.isFinite(top) && Number.isFinite(bottom) ? { top, bottom } : null
+      }
+      static measure(nodes, clipTop, clipBottom) {
+        const union = TurnGeometry.box(nodes)
+        if (!union) return null
+        const visibleNodes = []
+        for (const node of nodes || []) {
+          if (!node.getClientRects().length) continue
+          const box = node.getBoundingClientRect()
+          if (!box.height) continue
+          const visibleTop = Math.max(box.top, clipTop + 4)
+          const visibleBottom = Math.min(box.bottom, clipBottom - 4)
+          const area = Math.max(0, visibleBottom - visibleTop)
+          if (area <= 0) continue
+          const kind = node.getAttribute('data-chat-flow-kind') || ''
+          visibleNodes.push({ visibleTop, visibleBottom, area, preferred: kind === 'assistant' || kind === 'assistant-step' || kind === 'message' })
+        }
+        const preferred = visibleNodes.filter((entry) => entry.preferred)
+        const anchor = (preferred.length ? preferred : visibleNodes).sort((left, right) => right.area - left.area)[0] || null
+        const segments = (preferred.length ? preferred : visibleNodes)
+          .slice()
+          .sort((left, right) => left.visibleTop - right.visibleTop)
+          .slice(0, 3)
+          .map((entry) => ({ top: entry.visibleTop, bottom: entry.visibleBottom }))
+        return { ...union, visibleNodes, anchor, segments }
+      }
+      static classify(entry, clipTop, clipBottom, previousZone) {
+        const aboveRaw = previousZone === 'top' ? entry.bottom < clipTop + 8 : entry.bottom < clipTop - 2
+        const belowRaw = previousZone === 'bottom' ? entry.top > clipBottom - 8 : entry.top > clipBottom + 2
+        return { aboveRaw, belowRaw }
+      }
+    }
     class TurnWindowStore {
       constructor(maxWindow = 2000) {
         this.maxWindow = Math.max(200, Number(maxWindow) || 2000)
@@ -66,7 +109,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-70'
+    const CLIENT_BUILD = '2026-11-13-71'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1072,33 +1115,11 @@ window.__ModuleLoader__.load({
           for (const item of geo.renderedTurns) {
             const turn = item.turn
             const nodes = item.nodes
-            let top = Infinity
-            let bottom = -Infinity
-            const visibleNodes = []
-            for (const node of nodes) {
-              if (!node.getClientRects().length) continue
-              const box = node.getBoundingClientRect()
-              if (!box.height) continue
-              top = Math.min(top, box.top)
-              bottom = Math.max(bottom, box.bottom)
-              const visibleTop = Math.max(box.top, geo.clipTop + 4)
-              const visibleBottom = Math.min(box.bottom, geo.clipBottom - 4)
-              const area = Math.max(0, visibleBottom - visibleTop)
-              if (area <= 0) continue
-              const kind = node.getAttribute('data-chat-flow-kind') || ''
-              visibleNodes.push({ visibleTop, visibleBottom, area, preferred: kind === 'assistant' || kind === 'assistant-step' || kind === 'message' })
-            }
-            if (!Number.isFinite(top) || !Number.isFinite(bottom)) continue
-            const preferredNodes = visibleNodes.filter((entry) => entry.preferred)
-            const anchor = (preferredNodes.length ? preferredNodes : visibleNodes).sort((left, right) => right.area - left.area)[0] || null
-            const segments = (preferredNodes.length ? preferredNodes : visibleNodes)
-              .slice()
-              .sort((left, right) => left.visibleTop - right.visibleTop)
-              .slice(0, 3)
-              .map((entry) => ({ top: entry.visibleTop, bottom: entry.visibleBottom }))
+            const geometryBox = TurnGeometry.measure(nodes, geo.clipTop, geo.clipBottom)
+            if (!geometryBox) continue
+            const { top, bottom, anchor, segments } = geometryBox
             const previousZone = positions.current.get(turn.id)?.zone
-            const aboveRaw = previousZone === 'top' ? bottom < geo.clipTop + 8 : bottom < geo.clipTop - 2
-            const belowRaw = previousZone === 'bottom' ? top > geo.clipBottom - 8 : top > geo.clipBottom + 2
+            const { aboveRaw, belowRaw } = TurnGeometry.classify(geometryBox, geo.clipTop, geo.clipBottom, previousZone)
             const contactDir = aboveRaw ? 'top' : belowRaw ? 'bottom' : top <= geo.clipTop + 18 ? 'top' : bottom >= geo.clipBottom - 18 ? 'bottom' : null
             let hold = holdMap.get(turn.id)
             if (contactDir) {
