@@ -262,7 +262,7 @@ export function apply(ctx) {
       roots.push(...await discoverProfileRoots(DSH_HOME))
       scanner = new SessionScanner({
         roots: [...new Set(roots)],
-        state: { files: state.files, observations: state.observations },
+        state: { files: state.files, observations: state.observations, turnIndex: state.turnIndex },
         onChange: () => store.scheduleSave(scanner),
         logger: ctx.logger,
       })

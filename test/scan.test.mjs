@@ -88,5 +88,7 @@ test('SessionScanner deduplicates live and historical observations', async () =>
   assert.equal(scanner.observations.size, 1, 'same session/seq is deduplicated')
   scanner.addObservation({ ...observation, id: 'session-test-1:99', seq: 99, time: 9999 })
   assert.equal(scanner.observations.size, 2)
+  const serialized = scanner.serialize()
+  assert.equal(serialized.turnIndex['session-test-1']['1'].steps, 2, 'turn index aggregates without dropping old turns')
   scanner.stop()
 })
