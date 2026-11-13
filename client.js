@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-54'
+    const CLIENT_BUILD = '2026-11-13-56'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1070,24 +1070,21 @@ window.__ModuleLoader__.load({
           for (const [id, target] of targets) {
             const previous = positions.current.get(id)
             const node = cardRefs.current.get(id)
-            positions.current.set(id, { left: geo.left, top: target.top, visible: true, zone: target.zone })
+            const targetScale = target.zone === 'middle' ? 1 : 0.88
+            positions.current.set(id, { left: geo.left, top: target.top, visible: true, zone: target.zone, scale: targetScale })
             if (!node) continue
             const zoneChanged = Boolean(previous && previous.zone && previous.zone !== target.zone)
             const moved = Boolean(previous && Math.abs(previous.top - target.top) > 2)
-            const useShift = Boolean(previous && previous.visible && moved && (zoneChanged || !scrolling || layoutChanged) && typeof node.animate === 'function')
+            const previousScale = previous && Number.isFinite(previous.scale) ? previous.scale : targetScale
+            const scaleChanged = Math.abs(previousScale - targetScale) > 0.01
+            const animateTransform = Boolean(previous && previous.visible && (moved || scaleChanged) && (zoneChanged || !scrolling || layoutChanged))
             node.style.zIndex = target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2'
             const targetOpacity = target.zone === 'middle' ? '1' : '0.5'
-            // Do not use the standalone `scale` property on absolutely
-            // translated cards: it scales their translate coordinates toward
-            // the viewport origin, so a bottom card appears around mid-screen.
-            const targetScale = '1'
             const context = target.zone !== 'middle'
-            // WAAPI shifts own the horizontal/vertical movement. Keeping CSS
-            // transform transition on the same node double-animates the move and
-            // makes a middle -> bottom card travel up before it settles down.
-            node.style.transition = transitionFor(!scrolling && !useShift)
+            node.style.transition = transitionFor(false)
             node.style.pointerEvents = 'auto'
-            node.style.transform = 'translate3d(' + geo.left + 'px,' + target.top + 'px,0)'
+            node.style.scale = '1'
+            node.style.transform = 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')'
             node.style.filter = context ? 'grayscale(.45) saturate(.65)' : 'none'
             node.style.boxShadow = context ? '0 1px 4px rgba(16,24,40,.06)' : '0 4px 12px rgba(16,24,40,.10)'
             node.style.borderColor = context ? 'rgba(20,30,45,.08)' : 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))'
@@ -1123,31 +1120,29 @@ window.__ModuleLoader__.load({
                 }
               }
             }
-            if (useShift) {
-              let shift = previous.top - target.top
-              if (target.zone === 'bottom' && shift > 0) shift = -Math.min(48, Math.abs(shift))
+            if (animateTransform && typeof node.animate === 'function') {
               try {
                 for (const animation of node.getAnimations()) {
                   if (animation.id === 'mf-shift') animation.cancel()
                 }
                 node.animate(
-                  [{ translate: '0 ' + shift + 'px' }, { translate: '0 0px' }],
-                  { duration: 460, easing: spring, id: 'mf-shift' },
+                  [
+                    { transform: 'translate3d(' + geo.left + 'px,' + previous.top + 'px,0) scale(' + previousScale + ')' },
+                    { transform: 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')' },
+                  ],
+                  { duration: 380, easing: spring, id: 'mf-shift' },
                 )
               } catch { /* older engine: settle immediately */ }
             }
             if (!previous || !previous.visible) {
               node.style.opacity = '0'
-              node.style.scale = '1'
               window.requestAnimationFrame(() => {
                 const current = positions.current.get(id)
                 if (!current || !current.visible || !node.isConnected) return
                 node.style.opacity = targetOpacity
-                node.style.scale = targetScale
               })
             } else {
               node.style.opacity = targetOpacity
-              node.style.scale = targetScale
             }
           }
           for (const [id, node] of cardRefs.current) {
@@ -1257,8 +1252,8 @@ window.__ModuleLoader__.load({
       }, [on, turns, sessionId])
 
       if (!on) return null
-      const clipPath = clip.bottom > clip.top
-        ? 'inset(' + Math.round(clip.top) + 'px 0 ' + Math.max(0, Math.round(window.innerHeight - clip.bottom)) + 'px 0)'
+      const clipPath = clip.top > 0
+        ? 'inset(' + Math.round(clip.top) + 'px 0 0 0)'
         : undefined
       const children = turns.map((turn) => {
         const color = railColors[turn.verdict] || railColors.first
