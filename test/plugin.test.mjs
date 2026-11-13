@@ -96,6 +96,7 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.ok(routes.has('/model-fingerprint/api/backfill'))
   const injectedIndex = indexTap('<html><body></body></html>')
   assert.match(injectedIndex, /__dshModelFingerprintApiBase="http:\/\/127\.0\.0\.1:5538"/)
+  assert.match(injectedIndex, /__dshModelFingerprintToken="[a-f0-9]+"/)
   assert.match(injectedIndex, /src="http:\/\/127\.0\.0\.1:5538\/model-fingerprint\/widget\.js"/)
 
   const toolResult = await registeredTool.execute({ action: 'status' }, {})

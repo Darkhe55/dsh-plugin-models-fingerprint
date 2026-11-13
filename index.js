@@ -826,11 +826,16 @@ export function apply(ctx) {
     try { origin = ctx.webServer.getOrigin() } catch { /* listen not ready */ }
     const base = origin ? origin.replace(/\/+$/, '') : ''
     const widgetSource = (base || '') + '/model-fingerprint/widget.js'
-    if (htmlSource.includes(widgetSource)) return htmlSource
+    const tokenTag = `<script>window.__dshModelFingerprintToken=${JSON.stringify(currentToken())}</script>`
+    let source = String(htmlSource || '')
+    if (!source.includes('__dshModelFingerprintToken=')) {
+      source = source.includes('</head>') ? source.replace('</head>', tokenTag + '</head>') : tokenTag + source
+    }
+    if (source.includes(widgetSource)) return source
     const baseTag = base ? `<script>window.__dshModelFingerprintApiBase=${JSON.stringify(base)}</script>` : ''
     const tag = baseTag + `<script defer src="${widgetSource}"></script>`
-    if (htmlSource.includes('</body>')) return htmlSource.replace('</body>', tag + '</body>')
-    return htmlSource + tag
+    if (source.includes('</body>')) return source.replace('</body>', tag + '</body>')
+    return source + tag
   }))
 
   // Periodic save catches a quiet log whose debounce was interrupted.
