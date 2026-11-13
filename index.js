@@ -366,6 +366,9 @@ export function apply(ctx) {
         onChange: () => store.scheduleSave(scanner),
         logger: ctx.logger,
       })
+      scanner.onBackfill = async () => {
+        await store.flush(scanner)
+      }
       scanner.start()
       if (disposed) {
         scanner.stop()
@@ -734,6 +737,15 @@ export function apply(ctx) {
     await store.flush(scanner)
     return json(res, 200, { ok: true, label: result })
   })
+  route('/api/backfill', async (req, res) => {
+    if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
+    if (!mutationAllowed(req, res)) return
+    await init()
+    await scanner.waitIdle()
+    const summary = await scanner.backfillMissing({ force: true })
+    await store.flush(scanner)
+    return json(res, 200, { ok: true, backfill: summary, scan: scanner.status() })
+  })
   route('/api/scan', async (req, res) => {
     if (req.method !== 'POST') return json(res, 405, { error: 'POST only' })
     if (!mutationAllowed(req, res)) return
@@ -745,11 +757,11 @@ export function apply(ctx) {
   const tool = {
     name: 'model_fingerprint',
     description:
-      'Inspect the local evidence-based model fingerprint monitor for DSH sessions. Use it when the user asks which model was actually called, whether a claimed model name matches history, or whether two routes behave like the same model. Fingerprints come from protocol shape and behavior statistics, never from trusting the model name. Actions: status (summary), session (one session), fingerprints (list), equivalence (cross-route behavior comparison), probe (opt-in fixed probes; consumes provider tokens and requires confirm=true), label (set a human-confirmed actual model label), scan (refresh discovery).',
+      'Inspect the local evidence-based model fingerprint monitor for DSH sessions. Use it when the user asks which model was actually called, whether a claimed model name matches history, or whether two routes behave like the same model. Fingerprints come from protocol shape and behavior statistics, never from trusting the model name. Actions: status (summary), session (one session), fingerprints (list), equivalence (cross-route behavior comparison), probe (opt-in fixed probes; consumes provider tokens and requires confirm=true), label (set a human-confirmed actual model label), scan (refresh discovery), backfill (reparse logs for missing turns and persist).',
     parameters: {
       type: 'object',
       properties: {
-        action: { type: 'string', enum: ['status', 'session', 'fingerprints', 'equivalence', 'probe', 'label', 'scan'], description: 'Operation to run. Default status.' },
+        action: { type: 'string', enum: ['status', 'session', 'fingerprints', 'equivalence', 'probe', 'label', 'scan', 'backfill'], description: 'Operation to run. Default status. backfill reparses session logs for missing turn observations and persists them.' },
         provider: { type: 'string', description: 'Provider route for action=probe; defaults to the latest observation route.' },
         model: { type: 'string', description: 'Model id for action=probe; defaults to the latest observation model.' },
         repeats: { type: 'number', description: 'Probe repeats 1-3 for action=probe (default 1).' },
@@ -797,6 +809,12 @@ export function apply(ctx) {
       if (action === 'scan') {
         await scanner.discover()
         return { text: '已触发会话发现。\n' + scanLine(reportNow(20)) }
+      }
+      if (action === 'backfill') {
+        await scanner.waitIdle()
+        const summary = await scanner.backfillMissing({ force: true })
+        await store.flush(scanner)
+        return { text: `补算完成：扫描 ${summary.scanned} 个文件，补充 ${summary.added} 条轮次观测。` }
       }
       throw new Error('unknown action: ' + action)
     },

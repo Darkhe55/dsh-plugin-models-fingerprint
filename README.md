@@ -203,6 +203,16 @@ dsh plugin --profile desktop add "<克隆目录>"
 
 置信度是证据强度（样本数、路由一致性、名称共识、行为偏离综合），最高 90%，不是模型身份概率。
 
+## 自动补算
+
+- 启动发现完成后，后台会重读当前会话文件，补回状态中缺失的轮次观测；
+- 补算到的观测重新进入 Turn Index，并触发状态存盘；
+- 不补算已删除的源文件；
+- 手动触发：
+  - `POST /model-fingerprint/api/backfill`（需要 token）
+  - 模型工具 `model_fingerprint` 的 `backfill` action
+- 返回扫描文件数、补充观测数和当前扫描状态。
+
 ## 数据与隐私
 
 - 状态文件：`%USERPROFILE%\.dsh\model-fingerprint\state.json.zst`（或 `$DSH_HOME/model-fingerprint/state.json.zst`）。

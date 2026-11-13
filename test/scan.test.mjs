@@ -137,3 +137,24 @@ test('discovery drops deleted file cursors and rescans a recreated path from zer
   assert.equal(scanner.observations.size, 1)
   scanner.stop()
 })
+
+test('backfill reparses a log and restores observations missing from in-memory state', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'mf-backfill-'))
+  const sessionDir = path.join(dir, 'workspace', 'session-backfill')
+  await fs.mkdir(sessionDir, { recursive: true })
+  const file = path.join(sessionDir, 'session.v4.jsonl.zstd')
+  const body = [sessionLine(), contextLine(), stepLine(3, 1200, 1), assistantLine(4, 1300, 1)].join('\n') + '\n'
+  await fs.writeFile(file, zstdCompressSync(Buffer.from(body)))
+  const scanner = new SessionScanner({ roots: [dir] })
+  await scanner.discover()
+  await scanner.waitIdle()
+  const observation = [...scanner.observations.values()][0]
+  scanner.observations.delete(observation.id)
+  scanner.unindexObservation(observation)
+  assert.equal(scanner.observations.size, 0)
+  const summary = await scanner.backfillMissing({ force: true })
+  assert.equal(summary.added, 1)
+  assert.equal(scanner.observations.size, 1)
+  assert.equal(scanner.status().backfill.added, 1)
+  scanner.stop()
+})
