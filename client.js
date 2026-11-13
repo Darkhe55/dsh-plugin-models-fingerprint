@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-67'
+    const CLIENT_BUILD = '2026-11-13-68'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -785,17 +785,6 @@ window.__ModuleLoader__.load({
           if (timer) clearInterval(timer)
         }
       }, [sessionId])
-
-      React.useEffect(() => {
-        const refresh = () => refreshRef.current?.()
-        const preload = () => loadOlderRef.current?.()
-        window.addEventListener('dsh-mf-refresh', refresh)
-        window.addEventListener('dsh-mf-preload', preload)
-        return () => {
-          window.removeEventListener('dsh-mf-refresh', refresh)
-          window.removeEventListener('dsh-mf-preload', preload)
-        }
-      }, [])
 
       React.useEffect(() => {
         if (!on) return undefined
@@ -1837,18 +1826,6 @@ window.__ModuleLoader__.load({
               h('span', { style: styles.track(visible) }, h('span', { style: styles.knob(visible) })),
             ),
           ),
-          visible ? h('div', { style: { display: 'flex', gap: 6, marginTop: 8 } },
-            h('button', {
-              type: 'button',
-              style: { ...styles.panelButton, flex: 1, padding: '5px 6px', textAlign: 'center' },
-              onClick: () => window.dispatchEvent(new CustomEvent('dsh-mf-refresh')),
-            }, '刷新'),
-            h('button', {
-              type: 'button',
-              style: { ...styles.panelButton, flex: 1, padding: '5px 6px', textAlign: 'center' },
-              onClick: () => window.dispatchEvent(new CustomEvent('dsh-mf-preload')),
-            }, '预加载'),
-          ) : null,
           h('button', {
             type: 'button',
             style: { ...styles.panelButton, width: '100%', marginTop: 9, padding: '6px 8px', textAlign: 'center' },
