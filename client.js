@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-53'
+    const CLIENT_BUILD = '2026-11-13-54'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1562,7 +1562,9 @@ window.__ModuleLoader__.load({
             padding: 10,
             borderRadius: 12,
             border: '1px solid var(--dsw-alias-border-l1, rgba(20,30,45,.14))',
-            background: 'var(--dsw-specific-menu, #fff)',
+            background: 'var(--dsw-alias-bg-layer-2, #fff)',
+            backdropFilter: 'blur(10px)',
+            WebkitBackdropFilter: 'blur(10px)',
             boxShadow: '0 12px 32px rgba(16,24,40,.18)',
             color: 'var(--dsw-alias-label-primary, #1b1f24)',
             zIndex: 30,
