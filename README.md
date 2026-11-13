@@ -11,6 +11,17 @@
 
 > 黑盒 API 无法被证明为某个具体模型。这个插件给出的是**证据强度和变化检测**，不是密码学身份，也不是“某模型概率”。请结合账单、接口文档、人工抽检和人工标签使用。
 
+## 兼容性
+
+已在 `@deepseek-ai/dsh 0.2.2-rc.3`（Windows Desktop / Web）验证：
+
+- Host：`webServer`、`tools`、`sessions`、`llm` 注入与路由正常；
+- Client：`shell.overlay`、`conversation.composer.dock` 插槽正常加载；
+- 安全：`ctx.webServer.getOrigin()` 可用，Origin/Host allowlist 生效；
+- 逐轮卡片、官方相似度面板、固定探针与查询 API 正常。
+
+`0.2.2-rc.1` 到 `0.2.2-rc.3` 的 upgrade guide 中与本插件相关的是 macOS 自定义 overlay 的窗口拖拽区域；Windows/Web 不受影响，逐轮卡片当前不覆盖可拖拽标题栏。
+
 ## 安装
 
 从 GitHub 克隆后安装：
