@@ -244,6 +244,9 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.match(probeResult.text, /固定探针完成/)
   const equivalence = await registeredTool.execute({ action: 'equivalence' }, {})
   assert.match(equivalence.text, /探针观测 6/)
+  const probeSimilarity = await requestRoute('/api/similarity', '?provider=provider-a&model=claimed-a')
+  assert.equal(probeSimilarity.source, 'fixed-probe')
+  assert.ok(probeSimilarity.probeSamples >= 2)
 
   for (const dispose of effects) dispose()
 })
