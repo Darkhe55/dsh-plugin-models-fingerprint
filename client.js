@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-49'
+    const CLIENT_BUILD = '2026-11-13-50'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1074,6 +1074,7 @@ window.__ModuleLoader__.load({
             if (!node) continue
             const zoneChanged = Boolean(previous && previous.zone && previous.zone !== target.zone)
             const moved = Boolean(previous && Math.abs(previous.top - target.top) > 2)
+            node.style.zIndex = target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2'
             const targetOpacity = target.zone === 'middle' ? '1' : '0.5'
             const targetScale = target.zone === 'middle' ? '1' : '0.88'
             const context = target.zone !== 'middle'
@@ -1116,7 +1117,8 @@ window.__ModuleLoader__.load({
               }
             }
             if (previous && previous.visible && moved && (zoneChanged || !scrolling || layoutChanged) && typeof node.animate === 'function') {
-              const shift = previous.top - target.top
+              let shift = previous.top - target.top
+              if (target.zone === 'bottom' && shift > 0) shift = -Math.min(48, Math.abs(shift))
               try {
                 for (const animation of node.getAnimations()) {
                   if (animation.id === 'mf-shift') animation.cancel()
@@ -1164,6 +1166,12 @@ window.__ModuleLoader__.load({
             flowTurns: geo.flowTurns,
             turns: turns.length,
             cards: targets.size,
+            cardTargets: [...targets.entries()].map(([id, target]) => ({
+              id,
+              turn: target.turn ? target.turn.turn : null,
+              zone: target.zone,
+              top: Math.round(target.top),
+            })),
             middleCards: middle.length,
             placeholder: placeholderNeeded,
             lastKnownTurn: lastKnownCard.current ? lastKnownCard.current.turn : null,
