@@ -22,7 +22,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-43'
+    const CLIENT_BUILD = '2026-11-13-44'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1147,6 +1147,13 @@ window.__ModuleLoader__.load({
             clipTop: Math.round(geo.clipTop),
             clipBottom: Math.round(geo.clipBottom),
             composerTop: Number.isFinite(geo.composerTop) ? Math.round(geo.composerTop) : null,
+            composerZ: (() => {
+              try {
+                const seat = document.querySelector('[data-composer-seat]')
+                return seat ? window.getComputedStyle(seat).zIndex : null
+              } catch { return null }
+            })(),
+            canvasOpen,
             viewport: window.innerWidth,
           }
         }
