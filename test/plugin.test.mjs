@@ -172,6 +172,27 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   const similarityBody = await requestRoute('/api/similarity', '?provider=provider-a&model=claimed-a')
   assert.equal(similarityBody.error, 'no official model configured')
 
+  const officialPost = await new Promise((resolve, reject) => {
+    const payload = JSON.stringify({ models: [{ provider: 'provider-a', model: 'claimed-a', minSamples: 3 }] })
+    const req = {
+      method: 'POST',
+      url: '/model-fingerprint/api/official-models',
+      headers: { host: '127.0.0.1:5538', 'content-type': 'application/json' },
+      async *[Symbol.asyncIterator]() { yield Buffer.from(payload) },
+    }
+    const res = {
+      headersSent: false,
+      writeHead() { this.headersSent = true },
+      end(body) { resolve(JSON.parse(String(body))) },
+    }
+    Promise.resolve(routes.get('/model-fingerprint/api/official-models')(req, res)).catch(reject)
+  })
+  assert.equal(officialPost.ok, true)
+  assert.equal(officialPost.models[0].key, 'provider-a/claimed-a')
+  const similarityAfter = await requestRoute('/api/similarity', '?provider=provider-a&model=claimed-a')
+  assert.equal(similarityAfter.provider, 'provider-a')
+  assert.equal(similarityAfter.calibrated, false)
+
   const fingerprintId = jsonBody.latest.fingerprint.id
   const labelResult = await registeredTool.execute({ action: 'label', fingerprintId, label: 'actual-model', note: 'test' }, {})
   assert.match(labelResult.text, /actual-model/)
