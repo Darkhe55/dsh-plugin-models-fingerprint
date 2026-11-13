@@ -37,9 +37,9 @@
     }
   },
   "scripts": {
-    "test": "node test/core.test.mjs && node test/scan.test.mjs && node test/summary.test.mjs && node test/session-view.test.mjs && node test/turn-index.test.mjs && node test/high-load.test.mjs && node test/equivalence.test.mjs && node test/probe.test.mjs && node test/store.test.mjs && node test/plugin.test.mjs",
+    "test": "node test/core.test.mjs && node test/scan.test.mjs && node test/summary.test.mjs && node test/session-view.test.mjs && node test/turn-index.test.mjs && node test/high-load.test.mjs && node test/similarity.test.mjs && node test/equivalence.test.mjs && node test/probe.test.mjs && node test/store.test.mjs && node test/plugin.test.mjs",
     "build": "node scripts/build-client.mjs",
-    "check": "node --check index.js && node --check client.js && node --check public/widget.js && node --check lib/turn-index.mjs"
+    "check": "node --check index.js && node --check client.js && node --check public/widget.js && node --check lib/turn-index.mjs && node --check lib/similarity.mjs"
   },
   "files": [
     "index.js",
