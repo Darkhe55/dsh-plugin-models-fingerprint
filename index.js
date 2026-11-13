@@ -375,6 +375,7 @@ export function apply(ctx) {
       canvasOpen: body.canvasOpen === true,
       sessionViewRevision: Number(body.sessionViewRevision) || 0,
       sessionViewStatus: typeof body.sessionViewStatus === 'string' ? body.sessionViewStatus : null,
+      latestTurn: body.latestTurn && typeof body.latestTurn === 'object' ? body.latestTurn : null,
       canvasProbe: Array.isArray(body.canvasProbe) ? body.canvasProbe.slice(0, 6) : [],
       widget: body.widget === true,
       nativeToggle: body.nativeToggle === true,
