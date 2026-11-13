@@ -3,6 +3,48 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
+    class TurnWindowStore {
+      constructor(maxWindow = 2000) {
+        this.maxWindow = Math.max(200, Number(maxWindow) || 2000)
+        this.rows = new Map()
+        this.hasMore = false
+      }
+      reset() {
+        this.rows.clear()
+        this.hasMore = false
+      }
+      merge(incoming) {
+        for (const turn of incoming || []) {
+          if (!turn || turn.id === undefined) continue
+          this.rows.set(turn.id, turn)
+        }
+        return this.turns()
+      }
+      turns() {
+        return [...this.rows.values()].sort((left, right) => Number(right.turn) - Number(left.turn))
+      }
+      get size() {
+        return this.rows.size
+      }
+      oldest() {
+        return this.turns()[this.size - 1] || null
+      }
+      pruneAround(focusTurn) {
+        if (this.rows.size <= this.maxWindow) return false
+        const focus = Number(focusTurn)
+        const rows = this.turns()
+        rows.sort((left, right) => {
+          const leftDistance = Number.isFinite(focus) ? Math.abs(Number(left.turn) - focus) : 0
+          const rightDistance = Number.isFinite(focus) ? Math.abs(Number(right.turn) - focus) : 0
+          return leftDistance - rightDistance
+        })
+        const keep = new Set(rows.slice(0, this.maxWindow).map((turn) => turn.id))
+        for (const id of [...this.rows.keys()]) {
+          if (!keep.has(id)) this.rows.delete(id)
+        }
+        return true
+      }
+    }
     const apiBase = () => {
       try {
         const injected = String(window.__dshModelFingerprintApiBase || '').replace(/\/+$/, '')
@@ -24,7 +66,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-68'
+    const CLIENT_BUILD = '2026-11-13-69'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -650,17 +692,12 @@ window.__ModuleLoader__.load({
       const initialFadeRef = React.useRef(true)
       const initialFadeAtRef = React.useRef(0)
       const turnsRef = React.useRef([])
+      const turnWindow = React.useRef(new TurnWindowStore())
       const hasMoreRef = React.useRef(false)
       const renderIdsRef = React.useRef(new Set())
       const autoPreloadRef = React.useRef(false)
       const loadOlderRef = React.useRef(null)
       const refreshRef = React.useRef(null)
-      const mergeTurns = (current, incoming) => {
-        const map = new Map()
-        for (const turn of current || []) map.set(turn.id, turn)
-        for (const turn of incoming || []) map.set(turn.id, turn)
-        return [...map.values()].sort((left, right) => Number(right.turn) - Number(left.turn))
-      }
 
       React.useEffect(() => {
         const latest = turns.length
@@ -675,6 +712,7 @@ window.__ModuleLoader__.load({
           loadedSessionRef.current = targetSession
           turnsKey.current = ''
           turnsRef.current = []
+          turnWindow.current.reset()
           hasMoreRef.current = false
           setHasMore(false)
           renderIdsRef.current = new Set()
@@ -731,7 +769,7 @@ window.__ModuleLoader__.load({
             sessionViewRevision = legacy ? 0 : Number(payload.revision) || 0
             sessionViewStatus = legacy ? 'legacy' : String(payload.status || 'unknown')
             const next = Array.isArray(payload.turns) ? payload.turns : []
-            const merged = mergeTurns(turnsRef.current, next)
+            const merged = turnWindow.current.merge(next)
             const key = JSON.stringify(merged)
             if (key !== turnsKey.current) {
               turnsKey.current = key
@@ -763,7 +801,7 @@ window.__ModuleLoader__.load({
             const payload = await response.json()
             const next = Array.isArray(payload.turns) ? payload.turns : []
             if (next.length) {
-              const merged = mergeTurns(turnsRef.current, next)
+              const merged = turnWindow.current.merge(next)
               turnsRef.current = merged
               setTurns(merged)
             }
@@ -1197,6 +1235,12 @@ window.__ModuleLoader__.load({
           }
           if (topTurn) targets.set(topTurn.turn.id, { top: topY, zone: 'top', turn: topTurn.turn })
           if (bottomTurn) targets.set(bottomTurn.turn.id, { top: bottomY, zone: 'bottom', turn: bottomTurn.turn })
+          const focusTurn = middle.length ? middle[0].turn.turn : latestTurn && latestTurn.turn
+          if (turnWindow.current.pruneAround(focusTurn)) {
+            const pruned = turnWindow.current.turns()
+            turnsRef.current = pruned
+            setTurns(pruned)
+          }
           for (const target of targets.values()) {
             if (target.turn && target.turn.id !== '__current__' && target.turn.primaryShort) lastKnownCard.current = target.turn
           }
@@ -1384,6 +1428,8 @@ window.__ModuleLoader__.load({
             flowTurns: geo.flowTurns,
             turns: turns.length,
             cards: targets.size,
+            windowRows: turnWindow.current.size,
+            windowMax: turnWindow.current.maxWindow,
             transitionRoles: transitionRoles.slice(0, 12),
             cardTargets: [...targets.entries()].map(([id, target]) => ({
               id,
