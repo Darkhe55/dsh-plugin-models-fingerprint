@@ -13,7 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { buildReport, buildTurns, fingerprintLabel, protocolLabel, shortId } from './lib/summary.mjs'
 import { buildSessionView } from './lib/session-view.mjs'
 import { listSessionTurns, normalizeTurnIndex, turnIndexFromObservations } from './lib/turn-index.mjs'
-import { analyzeDegradation, buildCalibration, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity } from './lib/similarity.mjs'
+import { analyzeDegradation, buildCalibration, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity, SIMILARITY_VERSION } from './lib/similarity.mjs'
 import { buildEquivalence } from './lib/equivalence.mjs'
 import { runProbeSuite } from './lib/probe.mjs'
 import { SessionScanner, defaultSessionRoots, discoverProfileRoots } from './lib/scan.mjs'
@@ -645,7 +645,11 @@ export function apply(ctx) {
       const baseline = useProbes
         ? buildOfficialProfile(officialProbes, official, { minSamples: 2 })
         : (store.officialBaseline(official.key) || buildOfficialProfile(observations, official, { minSamples: official.minSamples }))
-      const calibration = useProbes ? null : (store.calibrationFor(official.key) || buildCalibration(observations, official))
+      let calibration = useProbes ? null : store.calibrationFor(official.key)
+      if (!useProbes && (!calibration || !Number.isFinite(calibration.auc) || calibration.version !== SIMILARITY_VERSION)) {
+        calibration = buildCalibration(observations, official)
+        store.saveCalibration(official.key, calibration)
+      }
       const score = scoreSimilarity(rows, baseline, calibration)
       results.push({
         officialKey: official.key,
