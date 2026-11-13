@@ -92,3 +92,22 @@ test('SessionScanner deduplicates live and historical observations', async () =>
   assert.equal(serialized.turnIndex['session-test-1']['1'].steps, 2, 'turn index aggregates without dropping old turns')
   scanner.stop()
 })
+
+test('retention is opt-in and trimmed turns remain in the index', () => {
+  const scanner = new SessionScanner({ roots: [], perSessionLimit: 1, totalLimit: 0 })
+  const observation = {
+    id: 's:1',
+    sessionId: 's',
+    turn: 1,
+    seq: 1,
+    time: 10,
+    fingerprint: 'fp_a',
+    model: 'm',
+  }
+  scanner.addObservation(observation)
+  scanner.addObservation({ ...observation, id: 's:2', turn: 2, seq: 2, time: 20 })
+  assert.equal(scanner.observations.size, 1, 'explicit per-session cap still trims observations')
+  assert.ok(scanner.turnIndex.s['1'], 'trimmed turn remains addressable')
+  assert.ok(scanner.turnIndex.s['2'])
+  scanner.stop()
+})
