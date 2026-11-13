@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-61'
+    const CLIENT_BUILD = '2026-11-13-62'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -939,8 +939,12 @@ window.__ModuleLoader__.load({
         }
 
         let lastScrollAt = 0
+        let lastScrollTop = null
+        let scrollVelocity = 0
         let lastActiveIds = new Set()
-        const spring = 'cubic-bezier(.22,1.4,.36,1)'
+        const reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+        const motionEase = reducedMotion ? 'ease-out' : 'cubic-bezier(.22,1.4,.36,1)'
+        const spring = motionEase
         const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 280ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms ' + spring + ', padding 320ms ' + spring + ', border-radius 320ms ' + spring
 
         const update = (needsRebuild) => {
@@ -1105,6 +1109,9 @@ window.__ModuleLoader__.load({
             if (target.turn && target.turn.id !== '__current__' && target.turn.primaryShort) lastKnownCard.current = target.turn
           }
           const scrolling = performance.now() - lastScrollAt < 90
+          const activeVelocity = scrolling ? Math.abs(scrollVelocity) : 0
+          const motionScale = reducedMotion ? 0.45 : activeVelocity > 6 ? 0.42 : activeVelocity > 2 ? 0.7 : 1
+          const animationDuration = (base) => Math.max(120, Math.round(base * motionScale))
           let layoutChanged = lastActiveIds.size !== targets.size
           if (!layoutChanged) {
             for (const id of targets.keys()) {
@@ -1138,6 +1145,12 @@ window.__ModuleLoader__.load({
             if (role !== 'stable') transitionRoles.push({ id, role, from: previous ? previous.zone : null, to: target.zone })
             const previousScale = previous && Number.isFinite(previous.scale) ? previous.scale : targetScale
             const scaleChanged = Math.abs(previousScale - targetScale) > 0.01
+            const activeShift = node.getAnimations().some((animation) => animation.id === 'mf-shift')
+            let fromTop = previous ? previous.top : target.top
+            if (activeShift) {
+              const box = node.getBoundingClientRect()
+              if (box.height) fromTop = box.top
+            }
             const animateTransform = Boolean(previous && previous.visible && (moved || scaleChanged) && (zoneChanged || !scrolling || layoutChanged))
             node.style.zIndex = target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2'
             const targetOpacity = target.zone === 'middle' ? '1' : '0.5'
@@ -1188,10 +1201,10 @@ window.__ModuleLoader__.load({
                 }
                 node.animate(
                   [
-                    { transform: 'translate3d(' + geo.left + 'px,' + previous.top + 'px,0) scale(' + previousScale + ')' },
+                    { transform: 'translate3d(' + geo.left + 'px,' + fromTop + 'px,0) scale(' + previousScale + ')' },
                     { transform: 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')' },
                   ],
-                  { duration: role === 'squeeze' ? 380 : 340, easing: spring, id: 'mf-shift' },
+                  { duration: animationDuration(role === 'squeeze' ? 380 : 340), easing: spring, id: 'mf-shift' },
                 )
               } catch { /* older engine: settle immediately */ }
             }
@@ -1208,7 +1221,7 @@ window.__ModuleLoader__.load({
                     { transform: 'translate3d(' + geo.left + 'px,' + fromY + 'px,0) scale(' + fromScale + ')', opacity: 0 },
                     { transform: 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')', opacity: targetOpacity },
                   ],
-                  { duration: 260, easing: spring, delay, fill: 'backwards', id: 'mf-enter' },
+                  { duration: animationDuration(260), easing: spring, delay, fill: 'backwards', id: 'mf-enter' },
                 )
               } catch {
                 node.style.opacity = targetOpacity
@@ -1245,7 +1258,7 @@ window.__ModuleLoader__.load({
                     { transform: fromTransform, opacity: fromOpacity },
                     { transform: toTransform, opacity: 0 },
                   ],
-                  { duration: 340, easing: spring, fill: 'forwards', id: 'mf-eject' },
+                  { duration: animationDuration(340), easing: spring, fill: 'forwards', id: 'mf-eject' },
                 )
               } catch {
                 node.style.opacity = '0'
@@ -1325,7 +1338,15 @@ window.__ModuleLoader__.load({
 
         safeUpdate(true)
         const onScroll = () => {
-          lastScrollAt = performance.now()
+          const now = performance.now()
+          const scroller = geometry.current.scrollContainer
+          const top = scroller ? scroller.scrollTop : window.scrollY
+          if (lastScrollTop !== null) {
+            const dt = Math.max(1, now - lastScrollAt)
+            scrollVelocity = Math.abs(top - lastScrollTop) / dt
+          }
+          lastScrollTop = top
+          lastScrollAt = now
           schedule(false)
         }
         const onResize = () => schedule(true)
