@@ -16,6 +16,9 @@ test('compressed state round-trips labels and observations', async () => {
   await store.setLabel('fp_aaaaaaaaaaaa', 'actual-model', 'note')
   await store.flush(fakeScanner)
   store.addProbes([{ id: 'probe:1', routeKey: 'p/m', time: 2, probe: true }])
+  store.setOfficialModels([{ provider: 'official', model: 'm' }])
+  store.saveOfficialBaseline({ key: 'official/m', samples: 20, ready: true })
+  store.saveCalibration('official/m', { calibrated: true, cutoff: 1 })
   await store.flush(fakeScanner)
 
   const files = await fs.readdir(path.join(home, 'model-fingerprint'))
@@ -28,4 +31,7 @@ test('compressed state round-trips labels and observations', async () => {
   assert.equal(reloaded.state.observations['s:1'].sessionId, 's')
   assert.equal(reloaded.state.files['a.jsonl'].size, 1)
   assert.equal(reloaded.probes()[0].id, 'probe:1')
+  assert.equal(reloaded.officialModels()[0].provider, 'official')
+  assert.equal(reloaded.officialBaseline('official/m').samples, 20)
+  assert.equal(reloaded.calibrationFor('official/m').calibrated, true)
 })

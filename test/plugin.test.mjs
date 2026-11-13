@@ -91,6 +91,8 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.ok(routes.has('/model-fingerprint/api/session-view'))
   assert.ok(routes.has('/model-fingerprint/api/session-index'))
   assert.ok(routes.has('/model-fingerprint/api/turn-view'))
+  assert.ok(routes.has('/model-fingerprint/api/official-models'))
+  assert.ok(routes.has('/model-fingerprint/api/similarity'))
   const injectedIndex = indexTap('<html><body></body></html>')
   assert.match(injectedIndex, /__dshModelFingerprintApiBase="http:\/\/127\.0\.0\.1:7373"/)
   assert.match(injectedIndex, /src="http:\/\/127\.0\.0\.1:7373\/model-fingerprint\/widget\.js"/)

@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url'
 import { buildReport, buildTurns, fingerprintLabel, protocolLabel, shortId } from './lib/summary.mjs'
 import { buildSessionView } from './lib/session-view.mjs'
 import { listSessionTurns, normalizeTurnIndex, turnIndexFromObservations } from './lib/turn-index.mjs'
+import { analyzeDegradation, buildCalibration, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity } from './lib/similarity.mjs'
 import { buildEquivalence } from './lib/equivalence.mjs'
 import { runProbeSuite } from './lib/probe.mjs'
 import { SessionScanner, defaultSessionRoots, discoverProfileRoots } from './lib/scan.mjs'
@@ -230,8 +231,22 @@ export function apply(ctx) {
     return report
   }
 
-  const executeProbe = async ({ provider, model, repeats = 1 }) => {
-    await init()
+  const officialModelsNow = () => normalizeOfficialModels(store ? store.officialModels() : [])
+  const allObservationsNow = () => (scanner ? [...scanner.observations.values()] : [])
+  const refreshOfficialProfiles = (models = officialModelsNow()) => {
+    const observations = allObservationsNow()
+    const result = []
+    for (const model of models) {
+      const baseline = buildOfficialProfile(observations, model, { minSamples: model.minSamples })
+      store.saveOfficialBaseline(baseline)
+      const calibration = buildCalibration(observations, model)
+      store.saveCalibration(model.key, calibration)
+      result.push({ baseline, calibration })
+    }
+    return result
+  }
+
+  const executeProbe = async ({ provider, model, repeats = 1 }) => {    await init()
     let targetProvider = provider
     let targetModel = model
     if (!targetProvider || !targetModel) {
@@ -475,6 +490,89 @@ export function apply(ctx) {
       status: row ? 'no-data' : 'missing',
       index: row,
       turn: row ? { ...row, status: 'no-data', hasModelData: false, primaryFingerprint: '', fingerprints: [] } : null,
+    })
+  })
+
+  route('/api/official-models', async (req, res) => {
+    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
+    await init()
+    if (req.method === 'GET' || req.method === 'HEAD') {
+      const models = officialModelsNow()
+      return json(res, 200, {
+        models,
+        baselines: models.map((model) => {
+          const baseline = store.officialBaseline(model.key)
+          return baseline ? {
+            key: baseline.key,
+            label: baseline.label,
+            samples: baseline.samples,
+            ready: baseline.ready,
+            minSamples: baseline.minSamples,
+            fingerprints: baseline.fingerprints,
+            firstTime: baseline.firstTime,
+            lastTime: baseline.lastTime,
+          } : null
+        }).filter(Boolean),
+      })
+    }
+    if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST only' })
+    const body = await readJson(req)
+    const models = normalizeOfficialModels(body && body.models)
+    store.setOfficialModels(models)
+    const profiles = refreshOfficialProfiles(models)
+    await store.flush(scanner)
+    return json(res, 200, {
+      ok: true,
+      models,
+      baselines: profiles.map(({ baseline, calibration: value }) => ({
+        key: baseline.key,
+        samples: baseline.samples,
+        ready: baseline.ready,
+        calibrated: value.calibrated,
+        calibrationReason: value.reason,
+      })),
+    })
+  })
+
+  route('/api/similarity', async (req, res) => {
+    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
+    if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
+    await init()
+    const url = new URL(req.url || '/', 'http://local')
+    const report = reportNow(50)
+    const latest = report && report.latest && report.latest.observation
+    const provider = url.searchParams.get('provider') || (latest && latest.provider) || ''
+    const model = url.searchParams.get('model') || (latest && latest.model) || ''
+    if (!provider || !model) return json(res, 400, { error: 'provider/model required' })
+    const models = officialModelsNow()
+    if (!models.length) return json(res, 409, { error: 'no official model configured', hint: 'POST /api/official-models' })
+    const observations = allObservationsNow()
+    const rows = observations.filter((row) => row.provider === provider && row.model === model && row.behavior)
+    const results = []
+    for (const official of models) {
+      const baseline = store.officialBaseline(official.key) || buildOfficialProfile(observations, official, { minSamples: official.minSamples })
+      const calibration = store.calibrationFor(official.key) || buildCalibration(observations, official)
+      const score = scoreSimilarity(rows, baseline, calibration)
+      results.push({
+        officialKey: official.key,
+        officialLabel: official.label,
+        ...score,
+        degradation: analyzeDegradation(rows, baseline),
+      })
+    }
+    results.sort((left, right) => (right.probability ?? right.score ?? -1) - (left.probability ?? left.score ?? -1))
+    return json(res, 200, {
+      provider,
+      model,
+      samples: rows.length,
+      officialModels: models.length,
+      calibrated: Boolean(results[0] && results[0].calibrated),
+      probability: results[0] ? results[0].probability : null,
+      score: results[0] ? results[0].score : null,
+      verdict: results[0] ? results[0].verdict : 'no-data',
+      best: results[0] || null,
+      candidates: results,
+      generatedAt: Date.now(),
     })
   })
 
