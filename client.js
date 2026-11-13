@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-59'
+    const CLIENT_BUILD = '2026-11-13-60'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -999,7 +999,7 @@ window.__ModuleLoader__.load({
               hold = { at: now, dir: aboveRaw ? 'top' : 'bottom', exiting: true }
               holdMap.set(turn.id, hold)
             }
-            const held = !wasContext && Boolean(hold) && (aboveRaw || belowRaw) && now - hold.at < 120
+            const held = !wasContext && Boolean(hold) && (aboveRaw || belowRaw) && now - hold.at < 90
             const above = aboveRaw && !held
             const below = belowRaw && !held
             measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, segments, above, below, held, heldDir: held ? contactDir : null })
@@ -1060,6 +1060,7 @@ window.__ModuleLoader__.load({
           let entryOrdinal = 0
           if (initialFadeRef.current && !initialFadeAtRef.current) initialFadeAtRef.current = now
           const initialFade = initialFadeRef.current && now - (initialFadeAtRef.current || now) < 900
+          const transitionRoles = []
           let lastBottom = laneTop
           for (const entry of middle) {
             if (entry.held) {
@@ -1120,8 +1121,15 @@ window.__ModuleLoader__.load({
             const targetScale = target.zone === 'middle' ? 1 : 0.88
             positions.current.set(id, { left: geo.left, top: target.top, visible: true, zone: target.zone, scale: targetScale })
             if (!node) continue
+            for (const animation of node.getAnimations()) {
+              if (animation.id === 'mf-eject') animation.cancel()
+            }
             const zoneChanged = Boolean(previous && previous.zone && previous.zone !== target.zone)
             const moved = Boolean(previous && Math.abs(previous.top - target.top) > 2)
+            if (!previous || !previous.visible) transitionRoles.push({ id, role: 'incoming', zone: target.zone })
+            else if (zoneChanged && target.zone !== 'middle') transitionRoles.push({ id, role: 'squeeze', from: previous.zone, to: target.zone })
+            else if (zoneChanged) transitionRoles.push({ id, role: 'pushing', from: previous.zone, to: target.zone })
+            else if (moved) transitionRoles.push({ id, role: 'pushed', zone: target.zone })
             const previousScale = previous && Number.isFinite(previous.scale) ? previous.scale : targetScale
             const scaleChanged = Math.abs(previousScale - targetScale) > 0.01
             const animateTransform = Boolean(previous && previous.visible && (moved || scaleChanged) && (zoneChanged || !scrolling || layoutChanged))
@@ -1200,17 +1208,34 @@ window.__ModuleLoader__.load({
             if (targets.has(id)) continue
             const previous = positions.current.get(id)
             if (previous && previous.visible) {
+              transitionRoles.push({ id, role: 'ejecting', from: previous.zone })
               const ejectDistance = Math.max(64, cardH * 1.2)
-              node.style.transition = 'opacity 220ms ease 60ms, transform 320ms ' + spring + ', filter 180ms ease'
-              node.style.opacity = '0'
-              node.style.scale = '1'
-              node.style.pointerEvents = 'none'
-              if (previous.zone === 'top') node.style.transform = 'translate3d(' + geo.left + 'px,' + Math.max(0, previous.top - ejectDistance) + 'px,0) scale(0.76)'
-              else if (previous.zone === 'bottom') node.style.transform = 'translate3d(' + geo.left + 'px,' + (previous.top + ejectDistance) + 'px,0) scale(0.76)'
+              const fromTransform = node.style.transform || 'translate3d(' + geo.left + 'px,' + previous.top + 'px,0) scale(0.88)'
+              const fromOpacity = Number(window.getComputedStyle(node).opacity) || 0.5
+              let toTransform = fromTransform
+              if (previous.zone === 'top') toTransform = 'translate3d(' + geo.left + 'px,' + Math.max(0, previous.top - ejectDistance) + 'px,0) scale(0.76)'
+              else if (previous.zone === 'bottom') toTransform = 'translate3d(' + geo.left + 'px,' + (previous.top + ejectDistance) + 'px,0) scale(0.76)'
               else if (previous.zone === 'middle') {
                 const direction = previous.top < (geo.clipTop + geo.clipBottom) / 2 ? -1 : 1
                 const outgoing = direction < 0 ? Math.max(0, geo.clipTop - ejectDistance) : geo.clipBottom + ejectDistance
-                node.style.transform = 'translate3d(' + geo.left + 'px,' + outgoing + 'px,0) scale(0.76)'
+                toTransform = 'translate3d(' + geo.left + 'px,' + outgoing + 'px,0) scale(0.76)'
+              }
+              node.style.transition = 'none'
+              node.style.pointerEvents = 'none'
+              try {
+                for (const animation of node.getAnimations()) {
+                  if (animation.id === 'mf-eject') animation.cancel()
+                }
+                node.animate(
+                  [
+                    { transform: fromTransform, opacity: fromOpacity },
+                    { transform: toTransform, opacity: 0 },
+                  ],
+                  { duration: 340, easing: spring, fill: 'forwards', id: 'mf-eject' },
+                )
+              } catch {
+                node.style.opacity = '0'
+                node.style.transform = toTransform
               }
             }
             positions.current.set(id, { left: geo.left, top: previous ? previous.top : -9999, visible: false, zone: previous ? previous.zone : 'hidden' })
@@ -1220,6 +1245,7 @@ window.__ModuleLoader__.load({
             flowTurns: geo.flowTurns,
             turns: turns.length,
             cards: targets.size,
+            transitionRoles: transitionRoles.slice(0, 12),
             cardTargets: [...targets.entries()].map(([id, target]) => ({
               id,
               turn: target.turn ? target.turn.turn : null,
