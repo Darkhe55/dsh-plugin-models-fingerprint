@@ -106,7 +106,7 @@ function hostAllowed(req) {
   const parts = hostParts(req && req.headers && req.headers.host)
   if (!parts || !LOOPBACK_HOSTS.has(parts.hostname)) return false
   if (!allowedPort) return true
-  return parts.port === allowedPort
+  return allowedHosts.has(parts.hostname + ':' + parts.port)
 }
 
 function originAllowed(req) {

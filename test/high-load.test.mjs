@@ -88,3 +88,27 @@ test('one hundred thousand turn index still pages within budget', () => {
   assert.equal(page.hasMore, true)
   assert.ok(elapsed < 5000, '100k index budget exceeded: ' + elapsed + 'ms')
 })
+
+test('one hundred thousand observations build one session turns within budget', async () => {
+  const { buildTurns } = await import('../lib/summary.mjs')
+  const rows = []
+  for (let index = 0; index < 100000; index += 1) {
+    rows.push({
+      id: 'bulk:' + index,
+      sessionId: 'bulk',
+      seq: index,
+      turn: Math.floor(index / 10) + 1,
+      step: (index % 10) + 1,
+      time: index,
+      provider: 'p',
+      model: 'm',
+      fingerprint: 'fp_bulk',
+      behavior: { tokensPerChar: 0.3, charsPerChunk: 4 },
+    })
+  }
+  const started = Date.now()
+  const turns = buildTurns(rows, 'bulk')
+  const elapsed = Date.now() - started
+  assert.equal(turns.length, 10000)
+  assert.ok(elapsed < 5000, '100k observation turn budget exceeded: ' + elapsed + 'ms')
+})
