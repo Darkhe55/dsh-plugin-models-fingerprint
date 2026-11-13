@@ -1,0 +1,830 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>模型指纹监控 · DSH</title>
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f5f6f8;
+    --panel: #ffffff;
+    --panel-2: #f0f2f5;
+    --text: #1b1f24;
+    --muted: #667085;
+    --faint: #98a2b3;
+    --line: #e4e7ec;
+    --accent: #2f6fed;
+    --accent-soft: #eaf0ff;
+    --good: #0f8a5f;
+    --good-soft: #e7f7f0;
+    --warn: #b25e09;
+    --warn-soft: #fff3e0;
+    --bad: #c43232;
+    --bad-soft: #fdecec;
+    --code: #f6f7f9;
+    --shadow: 0 1px 2px rgba(16, 24, 40, .06), 0 8px 24px rgba(16, 24, 40, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #101318;
+      --panel: #171b22;
+      --panel-2: #1e242d;
+      --text: #e8edf4;
+      --muted: #9aa6b6;
+      --faint: #748195;
+      --line: #2a3340;
+      --accent: #7aa7ff;
+      --accent-soft: #1d2b4a;
+      --good: #53d3a4;
+      --good-soft: #113227;
+      --warn: #f2b35d;
+      --warn-soft: #332410;
+      --bad: #ff8e8e;
+      --bad-soft: #3a1717;
+      --code: #0f1319;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .4), 0 12px 32px rgba(0, 0, 0, .35);
+    }
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .wrap { max-width: 1320px; margin: 0 auto; padding: 28px 28px 64px; }
+  .top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; margin-bottom: 22px; }
+  .brand { display: flex; gap: 14px; align-items: center; }
+  .logo {
+    width: 42px; height: 42px; border-radius: 13px; display: grid; place-items: center;
+    background: linear-gradient(145deg, var(--accent), #8b5cf6); color: #fff; font-weight: 800; font-size: 15px;
+    letter-spacing: -.04em; box-shadow: var(--shadow);
+  }
+  h1 { font-size: 22px; line-height: 1.25; margin: 0 0 4px; letter-spacing: -.02em; }
+  .sub { color: var(--muted); font-size: 13px; }
+  .pills { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 999px;
+    background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 12px; white-space: nowrap;
+  }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: 0 0 auto; }
+  .dot.good { background: var(--good); } .dot.warn { background: var(--warn); } .dot.bad { background: var(--bad); }
+  .stats { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 18px; }
+  .stat {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px;
+    box-shadow: var(--shadow); min-width: 0;
+  }
+  .stat .k { color: var(--muted); font-size: 12px; }
+  .stat .v { font-size: 24px; line-height: 1.2; font-weight: 700; margin-top: 4px; letter-spacing: -.03em; }
+  .stat .n { color: var(--faint); font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .9fr); gap: 16px; margin-bottom: 18px; }
+  .card {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); min-width: 0;
+  }
+  .card-h { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+  .card-h h2 { font-size: 14px; margin: 0; letter-spacing: -.01em; }
+  .card-b { padding: 16px; }
+  .latest-main { display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+  .latest-main .model { font-size: 20px; font-weight: 700; letter-spacing: -.02em; }
+  .latest-main .fp { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--accent); font-weight: 700; }
+  .verdict { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+  .verdict.good { background: var(--good-soft); color: var(--good); }
+  .verdict.warn { background: var(--warn-soft); color: var(--warn); }
+  .verdict.bad { background: var(--bad-soft); color: var(--bad); }
+  .verdict.info { background: var(--accent-soft); color: var(--accent); }
+  .kv { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 7px 12px; margin-top: 13px; font-size: 13px; }
+  .kv .k { color: var(--muted); }
+  .kv .v { min-width: 0; overflow-wrap: anywhere; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+  .conf { display: flex; align-items: center; gap: 10px; margin-top: 15px; }
+  .bar { height: 7px; border-radius: 999px; background: var(--panel-2); flex: 1 1 auto; overflow: hidden; }
+  .bar > i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--warn), var(--good)); }
+  .muted { color: var(--muted); }
+  .faint { color: var(--faint); }
+  .small { font-size: 12px; }
+  .alerts { display: grid; gap: 10px; }
+  .alert { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+  .alert .bar-side { width: 4px; border-radius: 4px; background: var(--faint); }
+  .alert.high .bar-side { background: var(--bad); } .alert.warn .bar-side { background: var(--warn); } .alert.info .bar-side { background: var(--accent); }
+  .alert .t { font-weight: 600; font-size: 13px; }
+  .alert .d { color: var(--muted); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+  .alert .m { color: var(--faint); font-size: 11px; margin-top: 4px; }
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); padding: 0 12px; overflow-x: auto; }
+  .tab {
+    appearance: none; background: transparent; border: 0; color: var(--muted); padding: 12px 12px 10px; cursor: pointer;
+    border-bottom: 2px solid transparent; white-space: nowrap; font-size: 13px;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+  .toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+  .search { width: min(320px, 100%); padding: 8px 11px; border-radius: 9px; border: 1px solid var(--line); background: var(--bg); color: var(--text); outline: none; }
+  .search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .select { max-width: min(560px, 70vw); padding: 7px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); color: var(--text); outline: none; font-size: 12px; }
+  .select:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .turns-list { display: grid; gap: 10px; padding: 14px 16px; max-height: 64vh; overflow: auto; }
+  .turn-card { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--panel); }
+  .turn-card.latest { border-color: color-mix(in srgb, var(--accent) 38%, var(--line)); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .turn-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+  .turn-title { display: flex; align-items: baseline; gap: 9px; min-width: 0; flex-wrap: wrap; }
+  .turn-title strong { font-size: 13px; letter-spacing: -.01em; }
+  .turn-time { color: var(--faint); font-size: 11px; }
+  .turn-model { font-size: 12px; color: var(--muted); margin-top: 4px; overflow-wrap: anywhere; }
+  .turn-metrics { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 7px; margin-top: 10px; }
+  .turn-metric { background: var(--panel-2); border-radius: 9px; padding: 6px 8px; font-size: 10px; color: var(--muted); min-width: 0; }
+  .turn-metric b { display: block; color: var(--text); font-size: 13px; line-height: 1.3; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .turn-delta { margin-top: 8px; color: var(--muted); font-size: 11px; display: flex; flex-wrap: wrap; gap: 5px 10px; }
+  .turn-delta .up { color: var(--warn); } .turn-delta .down { color: var(--good); }
+  .turn-steps { margin-top: 9px; border-top: 1px solid var(--line); padding-top: 7px; }
+  .turn-steps summary { cursor: pointer; color: var(--muted); font-size: 11px; }
+  .turn-step { display: flex; flex-wrap: wrap; gap: 4px 10px; padding: 4px 0; border-bottom: 1px dashed var(--line); font-size: 11px; color: var(--muted); }
+  .turn-step:last-child { border-bottom: 0; }
+  .turn-step .mono { color: var(--text); }
+  .turn-step-fp { color: var(--accent); font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-weight: 700; }
+  .turn-verdict { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .turn-verdict.same { background: var(--good-soft); color: var(--good); }
+  .turn-verdict.changed { background: var(--bad-soft); color: var(--bad); }
+  .turn-verdict.mixed { background: var(--warn-soft); color: var(--warn); }
+  .turn-verdict.generation { background: var(--accent-soft); color: var(--accent); }
+  .turn-verdict.first { background: var(--panel-2); color: var(--muted); }
+  .mf-embed .top { display: none; }
+  .mf-embed .wrap { padding-top: 16px; }
+  .mf-embed .foot { display: none; }
+  .mf-embed .turns-list { max-height: calc(100vh - 210px); }
+  .eq-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-bottom: 12px; }
+  .eq-card { background: var(--panel-2); border-radius: 10px; padding: 9px 10px; }
+  .eq-card .k { color: var(--muted); font-size: 10px; }
+  .eq-card .v { font-size: 17px; font-weight: 700; margin-top: 2px; }
+  .eq-section { margin-top: 14px; }
+  .eq-section h3 { font-size: 12px; margin: 0 0 8px; color: var(--muted); font-weight: 600; }
+  .eq-pair { display: grid; grid-template-columns: minmax(0, 1.6fr) 90px 80px 120px; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); font-size: 12px; }
+  .eq-pair:last-child { border-bottom: 0; }
+  .eq-model { min-width: 0; overflow-wrap: anywhere; }
+  .eq-distance { font-variant-numeric: tabular-nums; font-weight: 700; }
+  .eq-bar { height: 5px; background: var(--panel-2); border-radius: 999px; overflow: hidden; margin-top: 3px; }
+  .eq-bar > i { display: block; height: 100%; background: linear-gradient(90deg, var(--good), var(--warn), var(--bad)); }
+  .probe-box { border-top: 1px solid var(--line); padding: 13px 16px 15px; background: var(--panel-2); }
+  .probe-title { font-size: 12px; font-weight: 650; margin-bottom: 8px; }
+  .probe-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .probe-row .select { max-width: 360px; flex: 1 1 240px; }
+  .probe-repeats { flex: 0 0 110px; max-width: 110px; }
+  @media (max-width: 760px) { .eq-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } .eq-pair { grid-template-columns: minmax(0, 1fr) 70px 70px; } .eq-pair .eq-samples { display: none; } }
+  @media (max-width: 760px) { .turn-metrics { grid-template-columns: repeat(3, minmax(0, 1fr)); } .select { max-width: 100%; width: 100%; } }
+  .table-wrap { overflow: auto; max-height: 63vh; }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { position: sticky; top: 0; background: var(--panel); color: var(--muted); font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .04em; z-index: 1; }
+  tbody tr:hover { background: var(--panel-2); }
+  td.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .fp-id { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color: var(--accent); font-weight: 700; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font-size: 11px; color: var(--muted); margin: 1px 3px 1px 0; white-space: nowrap; }
+  .chip.hot { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
+  .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
+  .subline { color: var(--faint); font-size: 11px; margin-top: 3px; }
+  .empty { padding: 36px 16px; text-align: center; color: var(--muted); }
+  .err { margin: 16px 0; padding: 12px 14px; border-radius: 12px; background: var(--bad-soft); color: var(--bad); border: 1px solid color-mix(in srgb, var(--bad) 30%, transparent); }
+  .foot { margin-top: 18px; color: var(--faint); font-size: 11px; line-height: 1.7; }
+  .label-btn { appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 7px; padding: 3px 7px; cursor: pointer; font-size: 11px; white-space: nowrap; }
+  .label-btn:hover { border-color: var(--accent); color: var(--accent); }
+  details { margin-top: 4px; }
+  details summary { cursor: pointer; color: var(--muted); font-size: 11px; }
+  pre { margin: 7px 0 0; padding: 10px; background: var(--code); border: 1px solid var(--line); border-radius: 9px; overflow: auto; max-height: 260px; font-size: 11px; line-height: 1.5; }
+  .method { padding: 18px; display: grid; gap: 14px; }
+  .method h3 { margin: 0 0 6px; font-size: 14px; }
+  .method p, .method li { color: var(--muted); font-size: 13px; }
+  .method ul { margin: 6px 0 0 20px; padding: 0; }
+  .method code { background: var(--panel-2); border: 1px solid var(--line); border-radius: 5px; padding: 1px 5px; font-size: 12px; }
+  .split { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .refresh { appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 12px; }
+  .refresh:hover { border-color: var(--accent); color: var(--accent); }
+  @media (max-width: 980px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 560px) { .wrap { padding: 18px 14px 48px; } .top { flex-direction: column; } .pills { justify-content: flex-start; } .stat .v { font-size: 20px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <div class="logo">FP</div>
+      <div>
+        <h1>模型指纹监控</h1>
+        <div class="sub">不直接信任模型名称：对照历史会话中的协议签名、响应 ID、工具调用格式与流式行为。</div>
+      </div>
+    </div>
+    <div class="pills">
+      <span class="pill" id="scan-pill"><span class="dot" id="scan-dot"></span><span id="scan-text">正在载入…</span></span>
+      <span class="pill" id="updated-pill">—</span>
+      <button class="refresh" id="refresh" type="button">立即刷新</button>
+    </div>
+  </header>
+
+  <section class="stats" id="stats"></section>
+  <div id="error" class="err" hidden></div>
+
+  <section class="grid" id="overview">
+    <div class="card">
+      <div class="card-h"><h2>最近一次模型响应</h2><span class="faint small" id="latest-time"></span></div>
+      <div class="card-b" id="latest"><div class="empty">正在读取历史会话…</div></div>
+    </div>
+    <div class="card">
+      <div class="card-h"><h2>证据提示</h2><span class="faint small" id="alert-count"></span></div>
+      <div class="card-b" id="alerts"><div class="empty">暂无提示</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="tabs" id="tabs">
+      <button class="tab on" data-tab="turns" type="button">逐轮检测</button>
+      <button class="tab" data-tab="fingerprints" type="button">指纹族</button>
+      <button class="tab" data-tab="equivalence" type="button">模型等价性</button>
+      <button class="tab" data-tab="routes" type="button">声称模型</button>
+      <button class="tab" data-tab="sessions" type="button">历史会话</button>
+      <button class="tab" data-tab="method" type="button">方法与边界</button>
+    </div>
+    <div id="panel-turns">
+      <div class="toolbar">
+        <div class="split">
+          <span class="faint small">会话</span>
+          <select id="turn-session" class="select"></select>
+        </div>
+        <span class="faint small" id="turn-count"></span>
+      </div>
+      <div class="turns-list" id="turns-list"><div class="empty">正在读取逐轮检测…</div></div>
+    </div>
+    <div id="panel-fingerprints" hidden>
+      <div class="toolbar">
+        <input class="search" id="search" placeholder="筛选指纹、模型名、API、会话…" />
+        <span class="faint small" id="fp-count"></span>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>指纹</th><th>协议签名</th><th>声称名称</th><th>样本</th><th>行为摘要</th><th>最近</th><th>标签</th></tr></thead>
+        <tbody id="fp-body"></tbody>
+      </table></div>
+    </div>
+    <div id="panel-routes" hidden>
+      <div class="table-wrap"><table>
+        <thead><tr><th>声称模型</th><th>样本</th><th>指纹分布</th><th>状态</th><th>最近</th></tr></thead>
+        <tbody id="route-body"></tbody>
+      </table></div>
+    </div>
+    <div id="panel-equivalence" hidden>
+      <div class="toolbar">
+        <div class="muted small">供应商无关行为距离 · 越低越像 · 被动历史 + 可选固定探针</div>
+        <span class="faint small" id="eq-stats"></span>
+      </div>
+      <div class="card-b" id="eq-content"><div class="empty">正在读取等价性分析…</div></div>
+      <div class="probe-box">
+        <div class="probe-title">固定探针 <span class="faint">（可选，会产生模型 token 消耗）</span></div>
+        <div class="probe-row">
+          <select id="probe-route" class="select"></select>
+          <select id="probe-repeats" class="select probe-repeats">
+            <option value="1">重复 1 次</option>
+            <option value="2">重复 2 次</option>
+            <option value="3">重复 3 次</option>
+          </select>
+          <button class="refresh" id="probe-run" type="button">运行固定探针</button>
+        </div>
+        <div class="faint small" id="probe-note">将调用 6 个固定 prompt；每次最多 64 output tokens。运行前会二次确认。</div>
+      </div>
+    </div>
+    <div id="panel-sessions" hidden>
+      <div class="table-wrap"><table>
+        <thead><tr><th>会话</th><th>工作目录</th><th>模型</th><th>样本</th><th>最近</th></tr></thead>
+        <tbody id="session-body"></tbody>
+      </table></div>
+    </div>
+    <div id="panel-method" class="method" hidden>
+      <div>
+        <h3>它到底在看什么</h3>
+        <p>每条助手消息会生成一个“观测”，指纹由以下<strong>不包含声称模型名</strong>的字段组成：</p>
+        <ul>
+          <li><strong>协议层：</strong>wire API、适配器类型/版本、wire provider、响应 ID 的形状（长度/字母表/前缀）、是否有 replay 元数据。</li>
+          <li><strong>行为层：</strong>输出 token / 字符比（tokenizer 特征）、流式分块粒度、工具参数 JSON 的空格与转义风格、推理内容占比、首 token 延迟与分块间隔（仅用于基线偏离，不参与指纹哈希）。</li>
+          <li><strong>辅助证据：</strong>工具调用 ID 的形状、usage 字段集合、stop reason；这些展示在详情中，但不会单独把同一协议拆碎。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>能回答什么</h3>
+        <ul>
+          <li>同一声称模型的历史响应，协议指纹是否稳定；何时换了指纹。</li>
+          <li>两个不同的声称名称是否共享同一指纹（可能是别名、网关重命名或同一上游）。</li>
+          <li>本次行为统计是否显著偏离该指纹的历史基线；某路由是否长期存在多个指纹。</li>
+          <li>你可以给指纹写“人工标签”，之后名称与标签不一致会被标出。</li>
+        </ul>
+      </div>
+      <div>
+        <h3>不能回答什么</h3>
+        <p>黑盒 API 无法被“证明”为某个具体模型。指纹是<strong>证据</strong>，不是密码学身份；同一模型经过不同网关可能得到不同协议指纹，不同模型也可能共享相同的 API 外壳。置信度表示证据强度，不是“这是某模型的概率”。最终判断应结合供应商账单、接口文档、人工抽检和这里的标签。</p>
+      </div>
+      <div>
+        <h3>数据与隐私</h3>
+        <p>只保存指标、哈希和 ID 形状，不保存提示词或回复正文。状态文件位于 <code>~/.dsh/model-fingerprint/state.json.zst</code>，只在本地读取 DSH 会话日志。历史扫描是增量的，日志追加时只解析新帧。</p>
+      </div>
+    </div>
+  </section>
+
+  <div class="foot">
+    指纹是观测证据，不是模型身份证明。建议给确认过的指纹写人工标签，再让系统对照名称与标签。
+  </div>
+</div>
+
+<script>
+const TOKEN = "__MF_TOKEN__";
+const $ = (id) => document.getElementById(id);
+const params = new URLSearchParams(location.search);
+if (params.has('embed')) document.documentElement.classList.add('mf-embed');
+const state = {
+  data: null,
+  tab: params.get('tab') || 'turns',
+  query: '',
+  timer: null,
+  failures: 0,
+  loading: false,
+  turns: null,
+  turnsLoading: false,
+  turnSessionId: params.get('session') || null,
+  equivalence: null,
+  eqLoading: false,
+};
+const esc = (value) => String(value == null ? '' : value);
+const fmtTime = (time) => {
+  if (!time) return '—';
+  try { return new Intl.DateTimeFormat('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }).format(new Date(time)); }
+  catch { return '—'; }
+};
+const relTime = (time) => {
+  if (!time) return '—';
+  const diff = Date.now() - time;
+  if (diff < 60e3) return Math.max(0, Math.round(diff / 1000)) + ' 秒前';
+  if (diff < 3600e3) return Math.round(diff / 60e3) + ' 分钟前';
+  if (diff < 86400e3) return Math.round(diff / 3600e3) + ' 小时前';
+  return Math.round(diff / 86400e3) + ' 天前';
+};
+const fmtPct = (value) => value == null ? '—' : Math.round(value * 100) + '%';
+const fmtNum = (value) => value == null ? '—' : Number(value).toLocaleString('zh-CN');
+const fmtBehavior = (behavior) => {
+  if (!behavior) return '—';
+  const bits = [];
+  if (behavior.tokensPerChar != null) bits.push(behavior.tokensPerChar.toFixed(2) + ' tok/字');
+  if (behavior.charsPerChunk != null) bits.push(behavior.charsPerChunk.toFixed(1) + ' 字/块');
+  if (behavior.reasoningRatio != null && behavior.reasoningRatio > 0.01) bits.push('推理 ' + fmtPct(behavior.reasoningRatio));
+  if (behavior.jsonSpacing != null) bits.push('JSON 空格 ' + fmtPct(behavior.jsonSpacing));
+  return bits.join(' · ') || '—';
+};
+const verdictTone = (verdict) => ['consistent'].includes(verdict) ? 'good' : ['unverified', 'mixed', 'alias', 'generation'].includes(verdict) ? 'info' : ['changed', 'label-mismatch', 'behavior-drift'].includes(verdict) ? 'bad' : 'warn';
+const statusChip = (status) => {
+  const map = { stable: ['稳定', ''], mixed: ['混合', 'warn'], new: ['新指纹', 'hot'], alias: ['多名称', 'warn'], consistent: ['一致', ''], changed: ['变化', 'bad'], generation: ['代际变化', ''], unverified: ['样本不足', ''], 'label-mismatch': ['标签不符', 'bad'], 'behavior-drift': ['行为偏离', 'warn'] };
+  const [text, cls] = map[status] || [status || '—', ''];
+  return `<span class="chip ${cls}">${esc(text)}</span>`;
+};
+
+function statCard(label, value, note) {
+  return `<div class="stat"><div class="k">${esc(label)}</div><div class="v">${esc(value)}</div><div class="n">${esc(note || '')}</div></div>`;
+}
+
+function renderStats(data) {
+  const s = data.stats || {};
+  $('stats').innerHTML = [
+    statCard('历史会话', fmtNum(s.sessions), '含子会话与工作区'),
+    statCard('模型响应观测', fmtNum(s.observations), '已提取的助手消息'),
+    statCard('协议指纹', fmtNum(s.fingerprints), '按协议形状聚类'),
+    statCard('声称模型路由', fmtNum(s.routes), '名称只作为属性'),
+    statCard('证据提示', fmtNum(s.alerts), s.highAlerts ? s.highAlerts + ' 条高优先级' : '暂无高优先级'),
+  ].join('');
+}
+
+function renderScan(data) {
+  const scan = data.scan || {};
+  let tone = 'good', text = '实时监控中';
+  if (scan.scanning) { tone = 'warn'; text = '正在扫描历史 ' + (scan.queue || 0) + ' 个待处理'; }
+  else if (scan.lastError) { tone = 'bad'; text = '扫描有错误'; }
+  else if (scan.discovered && scan.cachedFiles < scan.discovered) { tone = 'warn'; text = '已载入 ' + scan.cachedFiles + '/' + scan.discovered + ' 个会话'; }
+  else if (scan.discovered) { text = '已载入 ' + scan.cachedFiles + ' 个会话'; }
+  $('scan-dot').className = 'dot ' + tone;
+  $('scan-text').textContent = text;
+  $('updated-pill').textContent = '更新于 ' + fmtTime(data.generatedAt);
+  const roots = scan.roots && scan.roots.length ? scan.roots.join(' · ') : '~/.dsh/sessions';
+  const meta = document.querySelector('.foot');
+  if (meta) meta.title = '会话根目录：' + roots;
+}
+
+function renderLatest(data) {
+  const latest = data.latest;
+  if (!latest) {
+    $('latest').innerHTML = '<div class="empty">还没有解析到助手消息。历史扫描会在后台继续；新会话产生响应后会自动出现。</div>';
+    $('latest-time').textContent = '';
+    return;
+  }
+  const o = latest.observation || {};
+  const a = latest.assessment || {};
+  const fp = latest.fingerprint || {};
+  const route = latest.route || {};
+  const behavior = o.behavior || {};
+  const detail = o.protocolDetail || {};
+  const toolShapes = (detail.toolIdShapes || []).join(' + ') || '未调用工具';
+  const usage = (detail.usageKeys || []).join(' + ') || '无 usage';
+  $('latest-time').textContent = relTime(o.time);
+  $('latest').innerHTML = `
+    <div class="latest-main">
+      <span class="model">${esc(o.provider)} / ${esc(o.model)}</span>
+      <span class="fp">FP-${esc(fp.short || '')}</span>
+      <span class="verdict ${verdictTone(a.verdict)}">${esc(a.verdictLabel || a.verdict || '—')}</span>
+    </div>
+    <div class="muted small">会话 <span class="mono">${esc(o.sessionId)}</span>${latest.session && latest.session.cwd ? ' · ' + esc(latest.session.cwd) : ''}</div>
+    <div class="kv">
+      <div class="k">协议签名</div><div class="v">${esc(detail.api || '-')} · ${esc(detail.adapter || '-')} · id ${esc(detail.responseIdShape || 'none')}</div>
+      <div class="k">工具 ID</div><div class="v">${esc(toolShapes)}</div>
+      <div class="k">行为统计</div><div class="v">${esc(fmtBehavior(behavior))}</div>
+      <div class="k">Token</div><div class="v">in ${fmtNum(o.tokens && o.tokens.input)} / out ${fmtNum(o.tokens && o.tokens.output)}${o.tokens && o.tokens.cacheRead ? ' · cache ' + fmtNum(o.tokens.cacheRead) : ''}</div>
+      <div class="k">usage 字段</div><div class="v mono">${esc(usage)}</div>
+      <div class="k">扩展元数据</div><div class="v">system fingerprint: ${esc(detail.systemFingerprint || '—')} · service tier: ${esc(detail.serviceTier || '—')} · logprobs: ${detail.logprobs ? '有' : '无'}</div>
+      <div class="k">历史证据</div><div class="v">${fp.observations ? '该指纹 ' + fmtNum(fp.observations) + ' 条 · ' + fmtNum(fp.names && fp.names.length) + ' 个声称名称' : '暂无历史'}${route.dominantFingerprint ? ' · 本路由最常见 ' + esc((route.dominantFingerprint || '').replace('fp_', '').slice(0, 8).toUpperCase()) : ''}</div>
+    </div>
+    <div class="conf"><span class="faint small">证据强度</span><span class="bar"><i style="width:${Math.max(4, Math.round((a.confidence || 0) * 100))}%"></i></span><span class="mono small">${fmtPct(a.confidence)}</span></div>
+    ${a.reasons && a.reasons.length ? `<div class="subline">${esc(a.reasons.join('；'))}</div>` : ''}
+  `;
+}
+
+function renderAlerts(data) {
+  const alerts = data.alerts || [];
+  $('alert-count').textContent = alerts.length ? alerts.length + ' 条' : '';
+  if (!alerts.length) { $('alerts').innerHTML = '<div class="empty">暂无明显异常。新指纹或协议变化会出现在这里。</div>'; return; }
+  $('alerts').innerHTML = alerts.slice(0, 8).map((alert) => `
+    <div class="alert ${esc(alert.severity)}">
+      <div class="bar-side"></div>
+      <div>
+        <div class="t">${esc(alert.title)}</div>
+        <div class="d">${esc(alert.detail || '')}</div>
+        <div class="m">${esc(alert.kind)} · ${relTime(alert.time)}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function behaviorText(fp) {
+  const b = fp.behavior || {};
+  const bits = [];
+  if (b.tokensPerChar != null) bits.push('tok/字 ' + b.tokensPerChar.toFixed(2));
+  if (b.charsPerChunk != null) bits.push(b.charsPerChunk.toFixed(1) + ' 字/块');
+  if (b.reasoningRatio != null && b.reasoningRatio > .01) bits.push('推理 ' + fmtPct(b.reasoningRatio));
+  return bits.join(' · ') || '—';
+}
+
+function renderFingerprints(data) {
+  const rows = data.fingerprints || [];
+  const q = state.query.trim().toLowerCase();
+  const filtered = q ? rows.filter((fp) => [fp.id, fp.short, fp.label, fp.primaryName, fp.protocol && fp.protocol.api, fp.protocol && fp.protocol.adapter, ...(fp.names || []).map((n) => n.name)].filter(Boolean).join(' ').toLowerCase().includes(q)) : rows;
+  $('fp-count').textContent = filtered.length + ' / ' + rows.length + ' 个指纹';
+  if (!filtered.length) { $('fp-body').innerHTML = '<tr><td colspan="7"><div class="empty">没有匹配的指纹</div></td></tr>'; return; }
+  $('fp-body').innerHTML = filtered.map((fp) => {
+    const p = fp.protocol || {};
+    const names = (fp.names || []).slice(0, 4).map((n, i) => `<span class="chip ${i === 0 ? 'hot' : ''}">${esc(n.name)} ×${n.count}</span>`).join('');
+    const tools = (fp.toolShapes || []).slice(0, 3).map((s) => s.key === 'none' ? '' : `<span class="chip">${esc(s.key)}</span>`).join('');
+    const usage = (fp.usageFields || []).slice(0, 2).map((s) => `<span class="chip">${esc(s.key === 'none' ? '无 usage' : s.key.split('+').length + ' fields')}</span>`).join('');
+    return `<tr>
+      <td><div class="fp-id">FP-${esc(fp.short)}</div><div class="subline">${fmtNum(fp.observations)} 条 · ${fmtNum(fp.sessions)} 会话</div></td>
+      <td><div>${esc(p.api || '-')} · ${esc(p.adapter || '-')}</div><div class="subline">id ${esc(p.responseId || 'none')}${p.replay ? ' · ' + esc(p.replay) : ''}</div><div>${tools}${usage}</div></td>
+      <td>${names || '<span class="faint">—</span>'}<div class="subline">${fp.status === 'alias' ? '同一指纹多个名称' : ''}</div></td>
+      <td class="n">${fmtNum(fp.observations)}</td>
+      <td>${esc(behaviorText(fp))}<div class="subline">首 token ${fp.behavior && fp.behavior.ttftMs != null ? fmtNum(fp.behavior.ttftMs) + ' ms' : '—'} · 流 ${fp.behavior && fp.behavior.streamMs != null ? fmtNum(fp.behavior.streamMs) + ' ms' : '—'}</div></td>
+      <td class="n">${relTime(fp.lastSeen)}<div class="subline">${fmtTime(fp.firstSeen)} 起</div></td>
+      <td>${fp.label ? `<span class="chip hot">${esc(fp.label)}</span>` : statusChip(fp.status)}<div><button class="label-btn" data-label="${esc(fp.id)}">${fp.label ? '改标签' : '写标签'}</button></div></td>
+    </tr>`;
+  }).join('');
+}
+
+function renderRoutes(data) {
+  const rows = data.routes || [];
+  $('route-body').innerHTML = rows.length ? rows.map((r) => `
+    <tr>
+      <td><strong>${esc(r.provider)} / ${esc(r.model)}</strong><div class="subline mono">${esc(r.routeKey)}</div></td>
+      <td class="n">${fmtNum(r.observations)}</td>
+      <td>${r.fingerprints.map((f, i) => `<span class="chip ${i === 0 ? 'hot' : ''}">FP-${esc(f.short)} ×${f.count}</span>`).join('')}</td>
+      <td>${statusChip(r.status)}<div class="subline">主导 ${fmtPct(r.dominantShare)}</div></td>
+      <td class="n">${relTime(r.lastSeen)}<div class="subline">${fmtTime(r.firstSeen)} 起</div></td>
+    </tr>
+  `).join('') : '<tr><td colspan="5"><div class="empty">暂无路由</div></td></tr>';
+}
+
+function renderSessions(data) {
+  const rows = data.sessions || [];
+  $('session-body').innerHTML = rows.length ? rows.map((s) => `
+    <tr>
+      <td><span class="mono">${esc(s.id)}</span><div class="subline">${s.status === 'mixed' ? '会话内出现多个指纹' : '单一指纹'}</div></td>
+      <td>${esc(s.cwd || '—')}</td>
+      <td>${s.routes.slice(0, 4).map((r) => `<span class="chip">${esc(r.routeKey)} ×${r.count}</span>`).join('')}${s.routes.length > 4 ? `<span class="chip">+${s.routes.length - 4}</span>` : ''}</td>
+      <td class="n">${fmtNum(s.observations)}</td>
+      <td class="n">${relTime(s.lastSeen)}</td>
+    </tr>
+  `).join('') : '<tr><td colspan="5"><div class="empty">暂无会话</div></td></tr>';
+}
+
+function populateTurnSessions(data) {
+  const select = $('turn-session');
+  const sessions = data.sessions || [];
+  const known = sessions.some((session) => session.id === state.turnSessionId);
+  if (!known) state.turnSessionId = (data.latest && data.latest.session && data.latest.session.id) || (sessions[0] && sessions[0].id) || null;
+  select.innerHTML = sessions.map((session) => {
+    const name = String(session.cwd || session.id).split(/[\\/]/).filter(Boolean).pop() || session.id;
+    return `<option value="${esc(session.id)}">${esc(name)} · ${fmtNum(session.observations)} 条 · ${relTime(session.lastSeen)}</option>`;
+  }).join('');
+  if (state.turnSessionId) select.value = state.turnSessionId;
+}
+
+function turnMetric(label, value) {
+  return `<div class="turn-metric">${esc(label)}<b>${esc(value == null ? '—' : value)}</b></div>`;
+}
+
+function turnDeltaText(delta) {
+  if (!delta) return '<span class="faint">首轮无对照</span>';
+  const bits = [];
+  const signed = (value, digits) => (value > 0 ? '+' : '') + Number(value).toFixed(digits);
+  if (delta.tokensPerChar != null) bits.push(`tok/字 <span class="${delta.tokensPerChar >= 0 ? 'up' : 'down'}">${signed(delta.tokensPerChar, 2)}</span>`);
+  if (delta.charsPerChunk != null) bits.push(`字/块 <span class="${delta.charsPerChunk >= 0 ? 'up' : 'down'}">${signed(delta.charsPerChunk, 1)}</span>`);
+  if (delta.reasoningRatio != null) bits.push(`推理占比 <span class="${delta.reasoningRatio >= 0 ? 'up' : 'down'}">${signed(delta.reasoningRatio * 100, 1)}pp</span>`);
+  if (delta.ttftMs != null) bits.push(`首 token <span>${signed(delta.ttftMs, 0)}ms</span>`);
+  return bits.length ? bits.join(' · ') : '<span class="faint">首轮无对照</span>';
+}
+
+function renderTurns() {
+  const turns = state.turns || [];
+  const session = state.data && (state.data.sessions || []).find((item) => item.id === state.turnSessionId);
+  $('turn-count').textContent = turns.length ? `${turns.length} 轮 · ${session && session.cwd ? session.cwd : state.turnSessionId || ''}` : '';
+  if (!state.turnSessionId) {
+    $('turns-list').innerHTML = '<div class="empty">还没有可用会话。等历史扫描完成或产生一次响应后会自动出现。</div>';
+    return;
+  }
+  if (!turns.length) {
+    $('turns-list').innerHTML = '<div class="empty">这个会话还没有逐轮观测。</div>';
+    return;
+  }
+  $('turns-list').innerHTML = turns.map((turn, index) => {
+    const models = (turn.models || []).map((item) => `<span class="chip ${item.name === turn.primaryModel ? 'hot' : ''}">${esc(item.name)} ×${item.count}</span>`).join('');
+    const fpChips = (turn.fingerprints || []).map((item) => `<span class="chip ${item.id === turn.primaryFingerprint ? 'hot' : ''}">FP-${esc(item.short)} ×${item.count}</span>`).join('');
+    const stepRows = (turn.stepList || []).map((step) => {
+      const detail = step.protocol || {};
+      return `<div class="turn-step">
+        <span class="mono">#${esc(step.seq)}</span>
+        <span>step ${esc(step.step)}</span>
+        <span class="turn-step-fp">FP-${esc((step.fingerprint || '').replace('fp_', '').slice(0, 8).toUpperCase())}</span>
+        <span>${esc(detail.api || '-')} · ${esc(detail.adapter || '-')}</span>
+        <span>out ${fmtNum(step.tokens && step.tokens.output)}</span>
+        <span>${esc(step.model)}</span>
+      </div>`;
+    }).join('');
+    const mixed = turn.mixed ? `<span class="chip warn">本轮 ${turn.fingerprints.length} 个指纹</span>` : '';
+    return `<div class="turn-card ${index === 0 ? 'latest' : ''}">
+      <div class="turn-head">
+        <div class="turn-title">
+          <strong>第 ${esc(turn.turn)} 轮</strong>
+          <span class="turn-verdict ${esc(turn.verdict)}">${esc(turn.verdictLabel)}</span>
+          <span class="chip hot">FP-${esc(turn.primaryShort)}</span>
+          ${mixed}
+        </div>
+        <span class="turn-time">${fmtTime(turn.endTime)} · ${relTime(turn.endTime)}</span>
+      </div>
+      <div class="turn-model">${models || esc(turn.primaryModel)} <span class="faint">·</span> ${fpChips}</div>
+      <div class="turn-metrics">
+        ${turnMetric('模型步骤', fmtNum(turn.steps))}
+        ${turnMetric('输出 token', fmtNum(turn.tokens && turn.tokens.output))}
+        ${turnMetric('文本字符', fmtNum(turn.textChars))}
+        ${turnMetric('工具调用', fmtNum(turn.toolCalls))}
+        ${turnMetric('首 token', turn.behavior && turn.behavior.ttftMs != null ? fmtNum(turn.behavior.ttftMs) + 'ms' : '—')}
+      </div>
+      <div class="turn-delta">${turnDeltaText(turn.delta)} <span class="faint">·</span> ${esc(fmtBehavior(turn.behavior))}</div>
+      <details class="turn-steps">
+        <summary>查看 ${esc(turn.steps)} 个模型步骤</summary>
+        ${stepRows}
+      </details>
+    </div>`;
+  }).join('');
+}
+
+async function loadTurns(force) {
+  if (!state.turnSessionId) {
+    renderTurns();
+    return;
+  }
+  if (state.turnsLoading) return;
+  state.turnsLoading = true;
+  try {
+    const res = await fetch('/model-fingerprint/api/session?id=' + encodeURIComponent(state.turnSessionId) + '&limit=200' + (force ? '&ts=' + Date.now() : ''), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const payload = await res.json();
+    state.turns = payload.turns || [];
+    renderTurns();
+  } catch (error) {
+    $('turns-list').innerHTML = `<div class="empty">读取逐轮检测失败：${esc(error && error.message ? error.message : String(error))}</div>`;
+  } finally {
+    state.turnsLoading = false;
+  }
+}
+
+async function loadEquivalence(force) {
+  if (state.eqLoading) return;
+  state.eqLoading = true;
+  try {
+    const res = await fetch('/model-fingerprint/api/equivalence?limit=120' + (force ? '&ts=' + Date.now() : ''), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    state.equivalence = await res.json();
+    renderEquivalence();
+  } catch (error) {
+    $('eq-content').innerHTML = `<div class="empty">读取等价性分析失败：${esc(error && error.message ? error.message : String(error))}</div>`;
+  } finally {
+    state.eqLoading = false;
+  }
+}
+
+const eqTone = (verdict) => verdict === 'same-behavior' ? 'good' : verdict === 'different-behavior' ? 'bad' : 'warn';
+const eqLabel = (verdict) => verdict === 'same-behavior' ? '行为相近' : verdict === 'different-behavior' ? '行为不同' : '不确定';
+
+function renderEquivalence() {
+  const report = state.equivalence;
+  if (!report) return;
+  const stats = report.stats || {};
+  const methods = report.methods || {};
+  $('eq-stats').textContent = `${stats.routes || 0} 路由 · ${stats.comparable || 0} 可比对 · 探针 ${stats.probes || 0} 条`;
+  const claims = (report.claims || []).slice(0, 8).map((claim) => `
+    <div class="eq-pair">
+      <div class="eq-model"><strong>${esc(claim.model)}</strong><div class="faint small">${claim.routes.map((route) => esc(route.provider) + ' ×' + fmtNum(route.observations) + (route.label ? ' · ' + esc(route.label) : '')).join(' · ')}</div></div>
+      <div class="eq-distance">${claim.same} 同 / ${claim.different} 异</div>
+      <div>${claim.different ? '<span class="chip bad">存在差异</span>' : claim.same ? '<span class="chip">行为相近</span>' : '<span class="chip">样本不足</span>'}</div>
+      <div class="faint small">${claim.routes.length} 个路由</div>
+    </div>
+  `).join('');
+  const pairs = (report.pairs || []).filter((pair) => pair.verdict !== 'inconclusive').slice(0, 24).map((pair) => `
+    <div class="eq-pair">
+      <div class="eq-model">${esc(pair.a)} <span class="faint">↔</span> ${esc(pair.b)}
+        <div class="faint small">${pair.sameModelName ? '同名' : '异名'} · ${pair.sameProvider ? '同供应商' : '跨供应商'} · ${pair.protocolCompatible ? '协议同族' : '协议不同'} · ${pair.sourceA}/${pair.sourceB}${pair.sameLabel ? ' · 同标签' : ''}${pair.tokenizerDistance != null ? ' · tokΔ ' + pair.tokenizerDistance : ''}</div>
+        <div class="eq-bar"><i style="width:${Math.min(100, Math.round((pair.distance || 0) / (methods.differentThreshold || 1) * 100))}%"></i></div>
+      </div>
+      <div><span class="verdict ${eqTone(pair.verdict)}">${esc(eqLabel(pair.verdict))}</span><div class="eq-distance">${pair.distance == null ? '—' : pair.distance}</div></div>
+      <div class="faint small">相对 ${pair.relative == null ? '—' : pair.relative}<br/>覆盖 ${fmtPct(pair.coverage)}</div>
+      <div class="faint small eq-samples">样本 ${fmtNum(pair.samplesA)} / ${fmtNum(pair.samplesB)}<br/>探针 ${pair.probesA} / ${pair.probesB}</div>
+    </div>
+  `).join('');
+  const probes = (report.routes || []).map((route) => `<option value="${esc(route.routeKey)}">${esc(route.routeKey)} · ${route.source === 'probe' ? '有探针' : '被动'} · ${fmtNum(route.samples)} 样本</option>`).join('');
+  $('probe-route').innerHTML = probes || '<option value="">暂无路由</option>';
+  $('eq-content').innerHTML = `
+    <div class="eq-grid">
+      <div class="eq-card"><div class="k">可比对路由</div><div class="v">${fmtNum(stats.comparable)}</div></div>
+      <div class="eq-card"><div class="k">行为相近对</div><div class="v">${fmtNum(stats.sameBehavior)}</div></div>
+      <div class="eq-card"><div class="k">行为不同对</div><div class="v">${fmtNum(stats.differentBehavior)}</div></div>
+      <div class="eq-card"><div class="k">探针观测</div><div class="v">${fmtNum(stats.probes)}</div></div>
+    </div>
+    <div class="faint small">阈值：相近 ≤ ${methods.sameThreshold ?? '—'} · 不同 ≥ ${methods.differentThreshold ?? '—'} · 自身基线 ${methods.selfMedian ?? '—'}。${methods.passiveOnly ? '当前全部为被动历史样本。' : '部分路由已有固定探针。'}</div>
+    ${claims ? `<div class="eq-section"><h3>同名跨供应商</h3>${claims}</div>` : ''}
+    <div class="eq-section"><h3>跨路由行为对比</h3>${pairs || '<div class="empty">暂无足够的跨路由行为样本。</div>'}</div>
+  `;
+}
+
+async function runProbe() {
+  const routeKey = $('probe-route').value;
+  if (!routeKey) return;
+  const [provider, ...rest] = routeKey.split('/');
+  const model = rest.join('/');
+  const repeats = Number($('probe-repeats').value) || 1;
+  const calls = 6 * repeats;
+  const button = $('probe-run');
+  if (button.dataset.armed !== 'true') {
+    button.dataset.armed = 'true';
+    button.textContent = `确认运行 ${calls} 次`;
+    $('probe-note').textContent = `将真实调用 ${provider} / ${model} 共 ${calls} 次（6 个 prompt × ${repeats} 次），会产生模型 token 消耗。再次点击确认。`;
+    return;
+  }
+  button.dataset.armed = 'false';
+  button.disabled = true;
+  $('probe-note').textContent = `正在运行 ${calls} 次固定探针…`;
+  try {
+    const res = await fetch('/model-fingerprint/api/probe', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mf-token': TOKEN },
+      body: JSON.stringify({ provider, model, repeats, confirm: true }),
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
+    $('probe-note').textContent = `探针完成：${body.calls} 次 · tokenizer ${(body.tokenizerVector || []).map((item) => item.promptId + '=' + (item.delta == null ? '—' : item.delta)).join(' · ')}`;
+    await loadEquivalence(true);
+  } catch (error) {
+    $('probe-note').textContent = '探针失败：' + (error && error.message ? error.message : String(error));
+  } finally {
+    button.disabled = false;
+    button.textContent = '运行固定探针';
+    button.dataset.armed = 'false';
+  }
+}
+
+function render(data) {
+  state.data = data;
+  $('error').hidden = true;
+  renderStats(data);
+  renderScan(data);
+  renderLatest(data);
+  renderAlerts(data);
+  renderFingerprints(data);
+  renderRoutes(data);
+  renderSessions(data);
+  populateTurnSessions(data);
+  if (state.tab === 'turns' && !state.turns) loadTurns();
+}
+
+async function load(force) {
+  if (state.loading) return;
+  state.loading = true;
+  try {
+    const res = await fetch('/model-fingerprint/api/status?limit=300' + (force ? '&ts=' + Date.now() : ''), { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    state.failures = 0;
+    render(data);
+  } catch (error) {
+    state.failures += 1;
+    $('error').hidden = false;
+    $('error').textContent = '读取指纹状态失败：' + (error && error.message ? error.message : String(error)) + '。确认 DSH 仍在运行，并检查插件已加载。';
+    $('scan-dot').className = 'dot bad';
+    $('scan-text').textContent = '连接失败';
+  } finally {
+    state.loading = false;
+  }
+}
+
+async function saveLabel(id) {
+  const row = (state.data && state.data.fingerprints || []).find((fp) => fp.id === id);
+  const current = row && row.label || '';
+  const label = window.prompt('给这个指纹写人工标签（留空删除）。标签应是你确认过的实际模型，例如 deepseek-v4-pro。', current);
+  if (label === null) return;
+  const note = window.prompt('可选备注（来源、账单、抽检结论等）', row && row.note || '') || '';
+  try {
+    const res = await fetch('/model-fingerprint/api/label', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-mf-token': TOKEN },
+      body: JSON.stringify({ fingerprintId: id, label, note }),
+    });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    await load(true);
+  } catch (error) {
+    window.alert('保存标签失败：' + (error && error.message ? error.message : String(error)));
+  }
+}
+
+function activateTab(tab) {
+  const names = ['turns', 'fingerprints', 'equivalence', 'routes', 'sessions', 'method'];
+  if (!names.includes(tab)) tab = 'turns';
+  state.tab = tab;
+  for (const item of document.querySelectorAll('.tab')) item.classList.toggle('on', item.dataset.tab === tab);
+  for (const name of names) $('panel-' + name).hidden = name !== tab;
+  if (tab === 'turns' && state.data) {
+    populateTurnSessions(state.data);
+    if (!state.turns) loadTurns();
+  }
+  if (tab === 'equivalence' && !state.equivalence) loadEquivalence();
+}
+
+$('tabs').addEventListener('click', (event) => {
+  const button = event.target.closest('.tab');
+  if (!button) return;
+  activateTab(button.dataset.tab);
+});
+$('turn-session').addEventListener('change', (event) => {
+  state.turnSessionId = event.target.value || null;
+  state.turns = null;
+  loadTurns(true);
+});
+$('probe-run').addEventListener('click', runProbe);
+$('search').addEventListener('input', (event) => {
+  state.query = event.target.value || '';
+  if (state.data) renderFingerprints(state.data);
+});
+$('fp-body').addEventListener('click', (event) => {
+  const button = event.target.closest('[data-label]');
+  if (button) saveLabel(button.dataset.label);
+});
+$('refresh').addEventListener('click', () => {
+  load(true);
+  if (state.tab === 'turns') loadTurns(true);
+  if (state.tab === 'equivalence') loadEquivalence(true);
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    load(true);
+    if (state.tab === 'turns') loadTurns(true);
+  }
+});
+
+activateTab(state.tab);
+load();
+state.timer = setInterval(() => {
+  if (!document.hidden) {
+    load(false);
+    if (state.tab === 'turns') loadTurns(false);
+  }
+}, 5000);
+</script>
+</body>
+</html>

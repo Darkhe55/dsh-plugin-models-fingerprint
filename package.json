@@ -1,0 +1,51 @@
+{
+  "name": "dsh-plugin-model-fingerprint",
+  "version": "0.1.0",
+  "description": "Evidence-based model fingerprint monitor for DSH: matches historical session protocol signatures and behavior against claimed model names.",
+  "keywords": [
+    "dsh",
+    "dsh-plugin",
+    "deepseek-harness",
+    "model-fingerprint",
+    "provenance"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Darkhe55/dsh-plugin-models-fingerprint.git"
+  },
+  "type": "module",
+  "main": "index.js",
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js"
+  },
+  "engines": {
+    "dsh": ">=0.2.2-rc.1 <0.3.0"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  },
+  "scripts": {
+    "test": "node test/core.test.mjs && node test/scan.test.mjs && node test/summary.test.mjs && node test/equivalence.test.mjs && node test/probe.test.mjs && node test/store.test.mjs && node test/plugin.test.mjs",
+    "check": "node --check index.js && node --check client.js && node --check public/widget.js"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/",
+    "public/",
+    "cordis.patch.yml",
+    "README.md"
+  ]
+}
