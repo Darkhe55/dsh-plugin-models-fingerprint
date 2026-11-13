@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-62'
+    const CLIENT_BUILD = '2026-11-13-63'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -945,7 +945,7 @@ window.__ModuleLoader__.load({
         const reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
         const motionEase = reducedMotion ? 'ease-out' : 'cubic-bezier(.22,1.4,.36,1)'
         const spring = motionEase
-        const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 280ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms ' + spring + ', padding 320ms ' + spring + ', border-radius 320ms ' + spring
+        const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 280ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms cubic-bezier(.22,1,.36,1), padding 320ms cubic-bezier(.22,1,.36,1), border-radius 320ms cubic-bezier(.22,1,.36,1)'
 
         const update = (needsRebuild) => {
           if (needsRebuild || !geometry.current.ready) rebuild()
@@ -1083,13 +1083,30 @@ window.__ModuleLoader__.load({
             const visibleTop = Math.max(entry.top, geo.clipTop + 4)
             const visibleBottom = Math.min(entry.bottom, geo.clipBottom - 4)
             if (visibleBottom <= visibleTop) continue
-            const center = (visibleTop + visibleBottom) / 2
-            let y = Math.min(Math.max(center - cardH / 2, laneTop), laneMax)
+            const lineTop = entry.segments && entry.segments.length
+              ? Math.min(...entry.segments.map((segment) => segment.top))
+              : visibleTop
+            const lineBottom = entry.segments && entry.segments.length
+              ? Math.max(...entry.segments.map((segment) => segment.bottom))
+              : visibleBottom
+            const center = (lineTop + lineBottom) / 2
+            const prior = positions.current.get(entry.turn.id)
+            let y
+            if (prior && prior.visible && prior.zone === 'middle') {
+              const topEdge = prior.top
+              const bottomEdge = prior.top + cardH
+              if (center > bottomEdge) y = center - cardH
+              else if (center < topEdge) y = center
+              else y = prior.top
+            } else {
+              y = center - cardH / 2
+            }
+            y = Math.min(Math.max(y, laneTop), laneMax)
             y = Math.min(Math.max(y, lastBottom + 4), laneMax)
             const target = { top: y, zone: 'middle', turn: entry.turn, synthetic: Boolean(entry.synthetic), lastKnown: Boolean(entry.lastKnown) }
             if (!entry.synthetic) {
-              target.rangeTop = visibleTop
-              target.rangeBottom = visibleBottom
+              target.rangeTop = lineTop
+              target.rangeBottom = lineBottom
               target.segments = entry.segments || []
             }
             targets.set(entry.turn.id, target)
@@ -1128,6 +1145,9 @@ window.__ModuleLoader__.load({
             const targetScale = target.zone === 'middle' ? 1 : 0.88
             positions.current.set(id, { left: geo.left, top: target.top, visible: true, zone: target.zone, scale: targetScale })
             if (!node) continue
+            const reentryRect = previous && !previous.visible && node.getAnimations().some((animation) => animation.id === 'mf-eject')
+              ? node.getBoundingClientRect()
+              : null
             for (const animation of node.getAnimations()) {
               if (animation.id === 'mf-eject' || animation.id === 'mf-enter') animation.cancel()
             }
@@ -1155,7 +1175,7 @@ window.__ModuleLoader__.load({
             node.style.zIndex = target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2'
             const targetOpacity = target.zone === 'middle' ? '1' : '0.5'
             const context = target.zone !== 'middle'
-            node.style.transition = transitionFor(false)
+            node.style.transition = scrolling ? 'none' : transitionFor(false)
             node.style.pointerEvents = 'auto'
             node.style.scale = '1'
             node.style.transform = 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')'
@@ -1209,12 +1229,12 @@ window.__ModuleLoader__.load({
               } catch { /* older engine: settle immediately */ }
             }
             if (role === 'incoming') {
-              const delay = initialFade ? Math.min(140, entryOrdinal * 35) : 0
+              const delay = reentryRect ? 0 : initialFade ? Math.min(140, entryOrdinal * 35) : 0
               entryOrdinal += 1
               node.style.transition = 'none'
               node.style.opacity = targetOpacity
-              const fromY = initialFade ? target.top : target.top + (target.zone === 'top' ? -6 : 6)
-              const fromScale = initialFade ? targetScale : targetScale * 0.96
+              const fromY = reentryRect ? reentryRect.top : initialFade ? target.top : target.top + (target.zone === 'top' ? -6 : 6)
+              const fromScale = reentryRect ? targetScale : initialFade ? targetScale : targetScale * 0.96
               try {
                 node.animate(
                   [
