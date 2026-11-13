@@ -67,7 +67,7 @@ test('similarity score is calibrated only when same/different pairs separate', (
     },
   }))
   const baseline = buildOfficialProfile(officialRows, { provider: 'official', model: 'official-model', minSamples: 20 })
-  const calibration = buildCalibration([...officialRows, ...otherRows], { provider: 'official', model: 'official-model' }, { minPairs: 1 })
+  const calibration = buildCalibration([...officialRows, ...otherRows], { provider: 'official', model: 'official-model' })
   assert.equal(calibration.calibrated, true)
   const same = scoreSimilarity(officialRows.slice(0, 10), baseline, calibration)
   const different = scoreSimilarity(otherRows.slice(0, 10), baseline, calibration)
