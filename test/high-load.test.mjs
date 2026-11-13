@@ -74,3 +74,17 @@ test('official similarity scoring stays bounded for a thousand observations', as
   assert.ok(score.score >= 0 && score.score <= 1)
   assert.ok(elapsed < 2000, 'similarity budget exceeded: ' + elapsed + 'ms')
 })
+
+test('one hundred thousand turn index still pages within budget', () => {
+  const index = {}
+  const started = Date.now()
+  for (let turn = 1; turn <= 100000; turn += 1) {
+    recordTurnIndex(index, { sessionId: 'bulk', turn, seq: turn, time: turn, fingerprint: 'fp_bulk' })
+  }
+  const page = listSessionTurns(index, 'bulk', { limit: 200 })
+  const elapsed = Date.now() - started
+  assert.equal(page.turns.length, 200)
+  assert.equal(page.turns[0].turn, 100000)
+  assert.equal(page.hasMore, true)
+  assert.ok(elapsed < 5000, '100k index budget exceeded: ' + elapsed + 'ms')
+})

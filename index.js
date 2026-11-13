@@ -24,7 +24,16 @@ export const inject = ['webServer', 'tools', 'sessions', 'llm']
 const here = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC = path.join(here, 'public')
 const ROUTE = '/model-fingerprint'
-const TOKEN = randomBytes(16).toString('hex')
+const TOKEN_TTL_MS = 30 * 60 * 1000
+let tokenValue = randomBytes(16).toString('hex')
+let tokenIssuedAt = Date.now()
+function currentToken() {
+  if (Date.now() - tokenIssuedAt > TOKEN_TTL_MS) {
+    tokenValue = randomBytes(16).toString('hex')
+    tokenIssuedAt = Date.now()
+  }
+  return tokenValue
+}
 const DSH_HOME = process.env.DSH_HOME ? path.resolve(process.env.DSH_HOME) : path.join(os.homedir(), '.dsh')
 
 const json = (res, status, value) => {
@@ -110,10 +119,11 @@ function originAllowed(req) {
 }
 
 function tokenAllowed(req) {
+  const expected = currentToken()
   const given = String((req.headers && (req.headers['x-mf-token'] || req.headers['X-MF-Token'])) || '')
-  if (!given || given.length !== TOKEN.length) return false
+  if (!given || given.length !== expected.length) return false
   try {
-    return timingSafeEqual(Buffer.from(given), Buffer.from(TOKEN))
+    return timingSafeEqual(Buffer.from(given), Buffer.from(expected))
   } catch {
     return false
   }
@@ -393,7 +403,7 @@ export function apply(ctx) {
   const html = async (res) => {
     try {
       const source = await fs.readFile(path.join(PUBLIC, 'dashboard.html'), 'utf8')
-      text(res, 200, source.replaceAll('__MF_TOKEN__', TOKEN), 'text/html; charset=utf-8')
+      text(res, 200, source.replaceAll('__MF_TOKEN__', currentToken()), 'text/html; charset=utf-8')
     } catch (error) {
       text(res, 500, 'dashboard asset missing: ' + (error && error.message ? error.message : String(error)))
     }
