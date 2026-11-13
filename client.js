@@ -19,10 +19,11 @@ window.__ModuleLoader__.load({
     let canvasOpen = false
     let sessionViewRevision = 0
     let sessionViewStatus = 'unknown'
+    let canvasProbe = []
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-44'
+    const CLIENT_BUILD = '2026-11-13-45'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -88,11 +89,21 @@ window.__ModuleLoader__.load({
     }
     const detectCanvasOpen = () => {
       try {
-        const nodes = document.querySelectorAll('.dshcv-root')
+        const nodes = document.querySelectorAll('.dshcv-root, .dshcv-head')
+        canvasProbe = []
         for (const node of nodes) {
           const rect = node.getBoundingClientRect()
           const style = window.getComputedStyle(node)
-          if (node.getClientRects().length && style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.05 && rect.width > 80 && rect.height > 80) return true
+          canvasProbe.push({
+            className: String(node.className || '').slice(0, 60),
+            width: Math.round(rect.width),
+            height: Math.round(rect.height),
+            top: Math.round(rect.top),
+            display: style.display,
+            visibility: style.visibility,
+            opacity: style.opacity,
+          })
+          if (node.getClientRects().length && style.display !== 'none' && style.visibility !== 'hidden' && Number(style.opacity) > 0.05 && rect.width > 80 && rect.height > 20) return true
         }
       } catch { /* canvas plugin is optional */ }
       return false
@@ -1154,6 +1165,7 @@ window.__ModuleLoader__.load({
               } catch { return null }
             })(),
             canvasOpen,
+            canvasProbe: canvasProbe.slice(0, 6),
             viewport: window.innerWidth,
           }
         }
@@ -1463,6 +1475,7 @@ window.__ModuleLoader__.load({
           canvasOpen,
           sessionViewRevision,
           sessionViewStatus,
+          canvasProbe: canvasProbe.slice(0, 6),
           open,
           apiBase: apiBase(),
           widget: Boolean(window.__dshModelFingerprintWidget),
