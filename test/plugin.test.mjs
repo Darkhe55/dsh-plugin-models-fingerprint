@@ -166,6 +166,11 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   const turnBody = await requestRoute('/api/turn-view', '?id=session-live&turn=1')
   assert.equal(turnBody.turn.turn, 1)
   assert.equal(turnBody.turn.primaryModel, 'claimed-a')
+  const officialBody = await requestRoute('/api/official-models', '')
+  assert.equal(Array.isArray(officialBody.models), true)
+  assert.equal(officialBody.models.length, 0)
+  const similarityBody = await requestRoute('/api/similarity', '?provider=provider-a&model=claimed-a')
+  assert.equal(similarityBody.error, 'no official model configured')
 
   const fingerprintId = jsonBody.latest.fingerprint.id
   const labelResult = await registeredTool.execute({ action: 'label', fingerprintId, label: 'actual-model', note: 'test' }, {})
