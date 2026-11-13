@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-51'
+    const CLIENT_BUILD = '2026-11-13-53'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1074,11 +1074,18 @@ window.__ModuleLoader__.load({
             if (!node) continue
             const zoneChanged = Boolean(previous && previous.zone && previous.zone !== target.zone)
             const moved = Boolean(previous && Math.abs(previous.top - target.top) > 2)
+            const useShift = Boolean(previous && previous.visible && moved && (zoneChanged || !scrolling || layoutChanged) && typeof node.animate === 'function')
             node.style.zIndex = target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2'
             const targetOpacity = target.zone === 'middle' ? '1' : '0.5'
-            const targetScale = target.zone === 'middle' ? '1' : '0.88'
+            // Do not use the standalone `scale` property on absolutely
+            // translated cards: it scales their translate coordinates toward
+            // the viewport origin, so a bottom card appears around mid-screen.
+            const targetScale = '1'
             const context = target.zone !== 'middle'
-            node.style.transition = transitionFor(!scrolling)
+            // WAAPI shifts own the horizontal/vertical movement. Keeping CSS
+            // transform transition on the same node double-animates the move and
+            // makes a middle -> bottom card travel up before it settles down.
+            node.style.transition = transitionFor(!scrolling && !useShift)
             node.style.pointerEvents = 'auto'
             node.style.transform = 'translate3d(' + geo.left + 'px,' + target.top + 'px,0)'
             node.style.filter = context ? 'grayscale(.45) saturate(.65)' : 'none'
@@ -1116,7 +1123,7 @@ window.__ModuleLoader__.load({
                 }
               }
             }
-            if (previous && previous.visible && moved && (zoneChanged || !scrolling || layoutChanged) && typeof node.animate === 'function') {
+            if (useShift) {
               let shift = previous.top - target.top
               if (target.zone === 'bottom' && shift > 0) shift = -Math.min(48, Math.abs(shift))
               try {
@@ -1131,7 +1138,7 @@ window.__ModuleLoader__.load({
             }
             if (!previous || !previous.visible) {
               node.style.opacity = '0'
-              node.style.scale = '0.82'
+              node.style.scale = '1'
               window.requestAnimationFrame(() => {
                 const current = positions.current.get(id)
                 if (!current || !current.visible || !node.isConnected) return
@@ -1149,7 +1156,7 @@ window.__ModuleLoader__.load({
             if (previous && previous.visible) {
               node.style.transition = 'opacity 150ms ease, scale 300ms ' + spring + ', transform 280ms ' + spring
               node.style.opacity = '0'
-              node.style.scale = '0.86'
+              node.style.scale = '1'
               node.style.pointerEvents = 'none'
               if (previous.zone === 'top') node.style.transform = 'translate3d(' + geo.left + 'px,' + Math.max(0, previous.top - 40) + 'px,0)'
               else if (previous.zone === 'bottom') node.style.transform = 'translate3d(' + geo.left + 'px,' + (previous.top + 64) + 'px,0)'
