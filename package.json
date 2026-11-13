@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-model-fingerprint",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Evidence-based model fingerprint monitor for DSH: matches historical session protocol signatures and behavior against claimed model names.",
   "keywords": [
     "dsh",

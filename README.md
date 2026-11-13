@@ -314,53 +314,54 @@ Windows Desktop / Web
 3. `npm run build && npm test && npm run check`；
 4. `npm publish --access public --provenance`。
 
-### 一次性配置
+### 一次性配置：Trusted Publisher
 
-1. 在 npm 创建 Automation Token；
-2. 在 GitHub 仓库 **Settings → Secrets and variables → Actions** 添加：
-   ```text
-   NPM_TOKEN
-   ```
-3. 确认仓库是 public，`--provenance` 才能正常使用。
-
-### 首次发布
-
-第一次发布需要先在 npm 创建 Automation Token，不能直接依赖本地 2FA 交互：
-
-1. 登录 https://www.npmjs.com/；
-2. **Access Tokens → Generate New Token**；
-3. 选择 **Granular Access Token**，权限必须是：
-   - **Read and write (publish and stage)**
-   - 不要选 **Read and write (stage only)**
-4. 包权限至少包含当前包名；首次创建包需要允许新包；
-5. 在仓库根目录执行并粘贴 token：
-   ```powershell
-   gh secret set NPM_TOKEN
-   ```
-6. 创建第一个版本标签并推送：
-   ```powershell
-   git tag v0.1.0
-   git push origin v0.1.0
-   ```
-7. GitHub Actions 会构建、测试并发布。
-
-如果首次发布报：
+在 npm 包设置页配置 **Trusted Publisher → GitHub Actions**：
 
 ```text
-E_STAGE_REQUIRED
-this token can only publish to a staging area
+Organization/user: Darkhe55
+Repository:        dsh-plugin-models-fingerprint
+Workflow filename: publish.yml
+Environment:       （留空）
 ```
 
-说明 `NPM_TOKEN` 是 **stage only** token。重新生成一个 **publish and stage** token，替换 secret 后重跑 workflow 即可。
+工作流使用 GitHub OIDC：
 
-如果希望先在本地验证 npm 包：
+```yaml
+permissions:
+  id-token: write
+```
+
+因此发布不再需要长期 `NPM_TOKEN` secret。GitHub Actions 会用 OIDC 换取一次性的 npm 发布凭证。
+
+要求：
+
+- 仓库为 public；
+- workflow 文件名必须是 `publish.yml`；
+- npm 包已存在于 registry；
+- runner 使用支持 Trusted Publishing 的 npm 版本。
+
+### 首次 OIDC 发布
+
+`0.1.0` 已通过 token 完成首次发布；Trusted Publisher 从下一个版本开始使用。
 
 ```powershell
-npm login --auth-type=web
-npm publish --access public
+npm version patch
+git push --follow-tags
 ```
 
-本地 `npm publish` 可能要求浏览器 OTP；CI 使用正确权限的 Automation/Granular Token 不需要交互式 OTP。
+例如当前是 `0.1.0`，会创建 `v0.1.1`。推送标签后 GitHub Actions 会自动构建、测试并通过 OIDC 发布。
+
+如果 OIDC 发布失败，检查：
+
+1. npm Trusted Publisher 的仓库名和 workflow 文件名是否完全一致；
+2. workflow 是否包含 `id-token: write`；
+3. 是否仍错误配置了 `NODE_AUTH_TOKEN`；
+4. npm 上该版本是否已经存在。
+
+旧的 `NPM_TOKEN` 可以继续保留作应急，但 Trusted Publisher 工作流不会读取它；确认 OIDC 稳定后建议在 GitHub Secrets 中删除。
+
+### 发布新版本
 
 ### 发布新版本
 
