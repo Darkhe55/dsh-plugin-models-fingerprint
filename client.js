@@ -66,7 +66,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-69'
+    const CLIENT_BUILD = '2026-11-13-70'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1259,8 +1259,12 @@ window.__ModuleLoader__.load({
           }
           const previousActiveIds = lastActiveIds
           lastActiveIds = new Set(targets.keys())
-          const nextRenderIds = new Set(lastActiveIds)
-          for (const id of previousActiveIds) nextRenderIds.add(id)
+          const CARD_POOL_LIMIT = 9
+          const nextRenderIds = new Set(targets.keys())
+          for (const id of previousActiveIds) {
+            if (nextRenderIds.size >= CARD_POOL_LIMIT) break
+            nextRenderIds.add(id)
+          }
           let renderChanged = nextRenderIds.size !== renderIdsRef.current.size
           if (!renderChanged) {
             for (const id of nextRenderIds) {
@@ -1428,6 +1432,7 @@ window.__ModuleLoader__.load({
             flowTurns: geo.flowTurns,
             turns: turns.length,
             cards: targets.size,
+            cardNodes: cardRefs.current.size,
             windowRows: turnWindow.current.size,
             windowMax: turnWindow.current.maxWindow,
             transitionRoles: transitionRoles.slice(0, 12),
