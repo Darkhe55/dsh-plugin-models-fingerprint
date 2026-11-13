@@ -328,17 +328,30 @@ Windows Desktop / Web
 第一次发布需要先在 npm 创建 Automation Token，不能直接依赖本地 2FA 交互：
 
 1. 登录 https://www.npmjs.com/；
-2. **Access Tokens → Generate New Token → Automation**；
-3. 在仓库根目录执行并粘贴 token：
+2. **Access Tokens → Generate New Token**；
+3. 选择 **Granular Access Token**，权限必须是：
+   - **Read and write (publish and stage)**
+   - 不要选 **Read and write (stage only)**
+4. 包权限至少包含当前包名；首次创建包需要允许新包；
+5. 在仓库根目录执行并粘贴 token：
    ```powershell
    gh secret set NPM_TOKEN
    ```
-4. 创建第一个版本标签并推送：
+6. 创建第一个版本标签并推送：
    ```powershell
    git tag v0.1.0
    git push origin v0.1.0
    ```
-5. GitHub Actions 会构建、测试并发布。
+7. GitHub Actions 会构建、测试并发布。
+
+如果首次发布报：
+
+```text
+E_STAGE_REQUIRED
+this token can only publish to a staging area
+```
+
+说明 `NPM_TOKEN` 是 **stage only** token。重新生成一个 **publish and stage** token，替换 secret 后重跑 workflow 即可。
 
 如果希望先在本地验证 npm 包：
 
@@ -347,7 +360,7 @@ npm login --auth-type=web
 npm publish --access public
 ```
 
-本地 `npm publish` 可能要求浏览器 OTP；CI 使用 Automation Token 不需要交互式 OTP。
+本地 `npm publish` 可能要求浏览器 OTP；CI 使用正确权限的 Automation/Granular Token 不需要交互式 OTP。
 
 ### 发布新版本
 
