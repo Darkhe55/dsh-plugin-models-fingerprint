@@ -323,6 +323,32 @@ Windows Desktop / Web
    ```
 3. 确认仓库是 public，`--provenance` 才能正常使用。
 
+### 首次发布
+
+第一次发布需要先在 npm 创建 Automation Token，不能直接依赖本地 2FA 交互：
+
+1. 登录 https://www.npmjs.com/；
+2. **Access Tokens → Generate New Token → Automation**；
+3. 在仓库根目录执行并粘贴 token：
+   ```powershell
+   gh secret set NPM_TOKEN
+   ```
+4. 创建第一个版本标签并推送：
+   ```powershell
+   git tag v0.1.0
+   git push origin v0.1.0
+   ```
+5. GitHub Actions 会构建、测试并发布。
+
+如果希望先在本地验证 npm 包：
+
+```powershell
+npm login --auth-type=web
+npm publish --access public
+```
+
+本地 `npm publish` 可能要求浏览器 OTP；CI 使用 Automation Token 不需要交互式 OTP。
+
 ### 发布新版本
 
 只在准备发版时执行：
