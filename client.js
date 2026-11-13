@@ -23,7 +23,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-45'
+    const CLIENT_BUILD = '2026-11-13-46'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1166,6 +1166,7 @@ window.__ModuleLoader__.load({
             })(),
             canvasOpen,
             canvasProbe: canvasProbe.slice(0, 6),
+            railOpacity: railRef.current ? window.getComputedStyle(railRef.current).opacity : null,
             viewport: window.innerWidth,
           }
         }
