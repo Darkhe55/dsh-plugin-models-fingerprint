@@ -292,66 +292,91 @@ Windows Desktop / Web
 
 ## 发布到 npm
 
-> 当前仓库尚未登录 npm；下面是要执行的发布流程。
+本仓库使用 **tag 触发发布**，普通 `git push` 不会发布，也不会自动升版本。
 
-### 1. 检查包内容
+### 工作流
 
-```powershell
-npm pack --dry-run
-```
-
-确认包含：
+文件：
 
 ```text
-index.js
-client.js
-lib/
-public/
-cordis.patch.yml
-README.md
-package.json
+.github/workflows/publish.yml
 ```
 
-### 2. 登录
+触发条件：
 
-```powershell
-npm login
-npm whoami
-```
+- 推送 `v*` 标签；
+- 手动运行 `workflow_dispatch`，但仍要求从版本标签运行。
 
-### 3. 版本
+工作流会：
 
-首次发布：
+1. 检查 tag 与 `package.json.version` 完全一致；
+2. 查询 npm 上该版本是否已存在，存在则跳过；
+3. `npm run build && npm test && npm run check`；
+4. `npm publish --access public --provenance`。
 
-```text
-0.1.0
-```
+### 一次性配置
 
-后续修复：
+1. 在 npm 创建 Automation Token；
+2. 在 GitHub 仓库 **Settings → Secrets and variables → Actions** 添加：
+   ```text
+   NPM_TOKEN
+   ```
+3. 确认仓库是 public，`--provenance` 才能正常使用。
+
+### 发布新版本
+
+只在准备发版时执行：
 
 ```powershell
 npm version patch
+git push --follow-tags
 ```
 
-### 4. 发布
+或者手动指定标签：
 
 ```powershell
-npm publish --access public
+npm version 0.2.0
+git push --follow-tags
 ```
 
-### 5. 验证
+`npm version` 会：
+
+- 更新 `package.json` 版本；
+- 创建 `v0.2.0` 提交和 tag；
+- 推送 tag 后触发发布。
+
+如果只是普通代码提交：
+
+```powershell
+git add .
+git commit -m "..."
+git push
+```
+
+不会触发 npm 发布。
+
+### 验证
 
 ```powershell
 npm view dsh-plugin-model-fingerprint version
 ```
 
-### 6. 用户安装
+### 用户安装
 
 ```powershell
 dsh plugin --profile desktop add dsh-plugin-model-fingerprint
 ```
 
 发布前需确认包名未被占用。若使用 scoped 包名，命令相应改为 `@scope/name`。
+
+### 本地手动检查
+
+```powershell
+npm pack --dry-run
+npm publish --dry-run
+```
+
+`npm publish --dry-run` 会执行 `prepublishOnly` 的构建与测试，但不会真正上传。
 
 ---
 
