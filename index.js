@@ -12,6 +12,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildReport, buildTurns, fingerprintLabel, protocolLabel, shortId } from './lib/summary.mjs'
 import { buildSessionView } from './lib/session-view.mjs'
+import { listSessionTurns, normalizeTurnIndex, turnIndexFromObservations } from './lib/turn-index.mjs'
 import { buildEquivalence } from './lib/equivalence.mjs'
 import { runProbeSuite } from './lib/probe.mjs'
 import { SessionScanner, defaultSessionRoots, discoverProfileRoots } from './lib/scan.mjs'
@@ -428,6 +429,55 @@ export function apply(ctx) {
     view.nextBefore = windowTurns.length ? Number(windowTurns[windowTurns.length - 1].turn) : null
     return json(res, 200, view)
   })
+  route('/api/session-index', async (req, res) => {
+    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
+    if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
+    await init()
+    const url = new URL(req.url || '/', 'http://local')
+    const report = reportNow(50)
+    const sessionId = url.searchParams.get('id') || (report.latest && report.latest.observation && report.latest.observation.sessionId)
+    if (!sessionId) return json(res, 404, { error: 'no session id' })
+    let index = normalizeTurnIndex(scanner.turnIndex)
+    if (!index[sessionId]) {
+      index = turnIndexFromObservations([...scanner.observations.values()].filter((row) => row.sessionId === sessionId))
+    }
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
+    const before = Number(url.searchParams.get('before'))
+    const page = listSessionTurns(index, sessionId, {
+      before: Number.isFinite(before) && before > 0 ? before : null,
+      limit,
+    })
+    return json(res, 200, {
+      sessionId,
+      revision: scanner.version,
+      turns: page.turns,
+      hasMore: page.hasMore,
+      nextBefore: page.nextBefore,
+    })
+  })
+
+  route('/api/turn-view', async (req, res) => {
+    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
+    if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
+    await init()
+    const url = new URL(req.url || '/', 'http://local')
+    const sessionId = url.searchParams.get('id')
+    const turn = Number(url.searchParams.get('turn'))
+    if (!sessionId || !Number.isFinite(turn)) return json(res, 400, { error: 'id and turn required' })
+    const turns = buildTurns([...scanner.observations.values()], sessionId)
+    const found = turns.find((item) => Number(item.turn) === turn) || null
+    if (found) return json(res, 200, { sessionId, revision: scanner.version, turn: found })
+    const index = normalizeTurnIndex(scanner.turnIndex)
+    const row = index[sessionId] && index[sessionId][String(turn)] ? index[sessionId][String(turn)] : null
+    return json(res, 200, {
+      sessionId,
+      revision: scanner.version,
+      status: row ? 'no-data' : 'missing',
+      index: row,
+      turn: row ? { ...row, status: 'no-data', hasModelData: false, primaryFingerprint: '', fingerprints: [] } : null,
+    })
+  })
+
   route('/api/session', async (req, res) => {
     if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
     if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })

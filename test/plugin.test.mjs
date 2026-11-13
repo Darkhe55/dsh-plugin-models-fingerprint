@@ -89,6 +89,8 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.ok(routes.has('/model-fingerprint'))
   assert.ok(routes.has('/model-fingerprint/api/status'))
   assert.ok(routes.has('/model-fingerprint/api/session-view'))
+  assert.ok(routes.has('/model-fingerprint/api/session-index'))
+  assert.ok(routes.has('/model-fingerprint/api/turn-view'))
   const injectedIndex = indexTap('<html><body></body></html>')
   assert.match(injectedIndex, /__dshModelFingerprintApiBase="http:\/\/127\.0\.0\.1:7373"/)
   assert.match(injectedIndex, /src="http:\/\/127\.0\.0\.1:7373\/model-fingerprint\/widget\.js"/)
@@ -141,6 +143,27 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.equal(sessionViewBody.turns[0].status, 'observed')
   assert.equal(sessionViewBody.turns[0].anchors[0].value, '1')
   assert.ok(sessionViewBody.revision > 0)
+
+  const requestRoute = (pathName, query) => new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(pathName + ' timed out')), 5000)
+    const res = {
+      headersSent: false,
+      writeHead() { this.headersSent = true },
+      end(body) { clearTimeout(timer); resolve(JSON.parse(String(body))) },
+    }
+    Promise.resolve(routes.get('/model-fingerprint' + pathName)({
+      method: 'GET',
+      url: '/model-fingerprint' + pathName + query,
+      headers: { host: '127.0.0.1:5538' },
+    }, res)).catch(reject)
+  })
+  const indexBody = await requestRoute('/api/session-index', '?id=session-live&limit=1')
+  assert.equal(indexBody.turns.length, 1)
+  assert.equal(indexBody.turns[0].turn, 1)
+  assert.equal(indexBody.hasMore, false)
+  const turnBody = await requestRoute('/api/turn-view', '?id=session-live&turn=1')
+  assert.equal(turnBody.turn.turn, 1)
+  assert.equal(turnBody.turn.primaryModel, 'claimed-a')
 
   const fingerprintId = jsonBody.latest.fingerprint.id
   const labelResult = await registeredTool.execute({ action: 'label', fingerprintId, label: 'actual-model', note: 'test' }, {})
