@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-58'
+    const CLIENT_BUILD = '2026-11-13-59'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -645,6 +645,8 @@ window.__ModuleLoader__.load({
       const turnsKey = React.useRef('')
       const geometry = React.useRef({ ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 })
       const exitHoldRef = React.useRef(new Map())
+      const initialFadeRef = React.useRef(true)
+      const initialFadeAtRef = React.useRef(0)
 
       React.useEffect(() => {
         const latest = turns.length
@@ -662,6 +664,8 @@ window.__ModuleLoader__.load({
           positions.current.clear()
           lastKnownCard.current = null
           exitHoldRef.current.clear()
+          initialFadeRef.current = true
+          initialFadeAtRef.current = 0
           geometry.current = { ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 }
           sessionViewRevision = 0
           sessionViewStatus = 'loading'
@@ -884,7 +888,9 @@ window.__ModuleLoader__.load({
           const gap = flowRect.left - sidebarRight
           const cardWidth = 176
           const nextCompact = gap < cardWidth + 24 || (sidebarRight === 0 && flowRect.left < cardWidth * 2)
-          const left = nextCompact ? Math.max(safeLeft, flowRect.left - 62) : Math.max(safeLeft, flowRect.left - cardWidth - 10)
+          const activeWidth = nextCompact ? 56 : cardWidth
+          const maxLeft = Math.max(safeLeft, flowRect.right - activeWidth - 6)
+          const left = Math.min(maxLeft, nextCompact ? Math.max(safeLeft, flowRect.left - 62) : Math.max(safeLeft, flowRect.left - cardWidth - 10))
           const turnNodes = new Map()
           const renderedTurns = []
           const domRows = []
@@ -1051,6 +1057,9 @@ window.__ModuleLoader__.load({
           const laneBottom = bottomTurn ? bottomY - 6 : geo.clipBottom - 8
           const laneMax = Math.max(laneTop, laneBottom - cardH)
           const targets = new Map()
+          let entryOrdinal = 0
+          if (initialFadeRef.current && !initialFadeAtRef.current) initialFadeAtRef.current = now
+          const initialFade = initialFadeRef.current && now - (initialFadeAtRef.current || now) < 900
           let lastBottom = laneTop
           for (const entry of middle) {
             if (entry.held) {
@@ -1173,6 +1182,9 @@ window.__ModuleLoader__.load({
               } catch { /* older engine: settle immediately */ }
             }
             if (!previous || !previous.visible) {
+              const delay = initialFade ? Math.min(140, entryOrdinal * 35) : 0
+              entryOrdinal += 1
+              node.style.transitionDelay = delay ? delay + 'ms' : '0ms'
               node.style.opacity = '0'
               window.requestAnimationFrame(() => {
                 const current = positions.current.get(id)
@@ -1180,6 +1192,7 @@ window.__ModuleLoader__.load({
                 node.style.opacity = targetOpacity
               })
             } else {
+              node.style.transitionDelay = '0ms'
               node.style.opacity = targetOpacity
             }
           }
