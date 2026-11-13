@@ -1673,7 +1673,6 @@ window.__ModuleLoader__.load({
           commandError,
           build: CLIENT_BUILD,
           rail: railDebug,
-          ...railDebug,
         })
         const reportClientDebug = () => {
           try {

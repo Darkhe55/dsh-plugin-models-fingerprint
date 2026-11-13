@@ -50,7 +50,6 @@
           commandError,
           build: CLIENT_BUILD,
           rail: railDebug,
-          ...railDebug,
         })
         const reportClientDebug = () => {
           try {
