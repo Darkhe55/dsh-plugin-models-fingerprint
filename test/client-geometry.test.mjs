@@ -42,3 +42,20 @@ test('turn geometry excludes user bubbles when an assistant node is present', as
   assert.equal(measured.top, 150)
   assert.equal(measured.bottom, 180)
 })
+
+test('measureNormalized does not rescan subtrees', async () => {
+  const source = await fs.readFile(new URL('../client/geometry.js', import.meta.url), 'utf8')
+  const TurnGeometry = new Function(source + '\nreturn TurnGeometry')()
+  const node = {
+    kind: 'assistant',
+    getAttribute: (name) => name === 'data-chat-flow-kind' ? 'assistant' : null,
+    querySelectorAll: () => { throw new Error('must not rescan normalized nodes') },
+    querySelector: () => { throw new Error('must not rescan normalized nodes') },
+    getClientRects: () => [1],
+    getBoundingClientRect: () => ({ top: 50, bottom: 80, height: 30, left: 0, right: 100, width: 100 }),
+  }
+  const measured = TurnGeometry.measureNormalized([node], 0, 100)
+  assert.equal(measured.top, 50)
+  assert.equal(measured.bottom, 80)
+  assert.equal(measured.segments.length, 1)
+})

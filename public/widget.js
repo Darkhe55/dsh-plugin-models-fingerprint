@@ -367,6 +367,7 @@
 
   function watchComposer() {
     if (window.__dshModelFingerprintNative) {
+      window.removeEventListener('scroll', onWidgetScroll, true)
       if (timer) { clearInterval(timer); timer = null }
       if (composerTimer) { clearInterval(composerTimer); composerTimer = null }
       if (dockObserver) { dockObserver.disconnect(); dockObserver = null }
@@ -410,6 +411,7 @@
   }
 
   function scheduleRail() {
+    if (window.__dshModelFingerprintNativeRail) return
     if (railFrame) return
     railFrame = window.requestAnimationFrame(function () {
       railFrame = null
@@ -632,7 +634,11 @@
       panelOpen = Boolean(event.detail && event.detail.open)
       scheduleRail()
     })
-    window.addEventListener('scroll', scheduleRail, true)
+    function onWidgetScroll() {
+      if (window.__dshModelFingerprintNativeRail) return
+      scheduleRail()
+    }
+    window.addEventListener('scroll', onWidgetScroll, true)
     window.addEventListener('resize', scheduleRail)
     load()
     if (railOn) loadRail()

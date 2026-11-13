@@ -55,7 +55,9 @@
         return Number.isFinite(top) && Number.isFinite(bottom) ? { top, bottom } : null
       }
       static measure(rawNodes, clipTop, clipBottom) {
-        const nodes = TurnGeometry.responseNodes(rawNodes)
+        return TurnGeometry.measureNormalized(TurnGeometry.responseNodes(rawNodes), clipTop, clipBottom)
+      }
+      static measureNormalized(nodes, clipTop, clipBottom) {
         const union = TurnGeometry.box(nodes)
         if (!union) return null
         const visibleNodes = []

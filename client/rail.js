@@ -185,7 +185,6 @@
         let flowObserver = null
         let observedFlow = null
         let mutationTimer = 0
-        let jumpTimer = 0
         let tick = null
 
         const hideAll = () => {
@@ -381,14 +380,41 @@
         let lastScrollAt = 0
         let lastScrollTop = null
         let scrollVelocity = 0
+        let settlePending = false
         let lastActiveIds = new Set()
+        const rangeParts = (node) => {
+          if (!node) return { range: null, segments: [] }
+          const cached = node.__mfRangeParts
+          if (cached && cached.range && cached.range.isConnected) return cached
+          const range = node.querySelector('[data-mf-range]')
+          const segments = range ? [...range.querySelectorAll('[data-mf-range-segment]')] : []
+          const next = { range, segments }
+          node.__mfRangeParts = next
+          return next
+        }
+        const setTransition = (node, value) => {
+          if (!node || node.__mfTransition === value) return
+          node.__mfTransition = value
+          node.style.transition = value
+        }
+        const setStyle = (node, property, value) => {
+          if (!node) return
+          if (!node.__mfStyles) node.__mfStyles = {}
+          if (node.__mfStyles[property] === value) return
+          node.__mfStyles[property] = value
+          node.style[property] = value
+        }
         const reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
         const motionEase = reducedMotion ? 'ease-out' : 'cubic-bezier(.22,1.4,.36,1)'
         const spring = motionEase
         const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 280ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms cubic-bezier(.22,1,.36,1), padding 320ms cubic-bezier(.22,1,.36,1), border-radius 320ms cubic-bezier(.22,1,.36,1)'
         const animator = new SlotAnimator({ eased: spring, reduced: reducedMotion, cardWidth: 176 })
+        const scrollScheduler = new ScrollScheduler({
+          settleMs: 110,
+          onSettle: () => schedule(false, { settle: true }),
+        })
 
-        const update = (needsRebuild) => {
+        const update = (needsRebuild, settle = false) => {
           if (needsRebuild || !geometry.current.ready) rebuild()
           const geo = geometry.current
           if (!geo.ready) {
@@ -401,7 +427,7 @@
           for (const item of geo.renderedTurns) {
             const turn = item.turn
             const nodes = item.nodes
-            const geometryBox = TurnGeometry.measure(nodes, geo.clipTop, geo.clipBottom)
+            const geometryBox = TurnGeometry.measureNormalized(nodes, geo.clipTop, geo.clipBottom)
             if (!geometryBox) continue
             const { top, bottom, anchor, segments } = geometryBox
             const previousZone = positions.current.get(turn.id)?.zone
@@ -551,18 +577,9 @@
           for (const target of targets.values()) {
             if (target.turn && target.turn.id !== '__current__' && target.turn.primaryShort) lastKnownCard.current = target.turn
           }
-          const scrolling = performance.now() - lastScrollAt < 90
+          const scrolling = scrollScheduler.scrolling && !settle
           const activeVelocity = scrolling ? Math.abs(scrollVelocity) : 0
           const motionScale = reducedMotion ? 0.45 : activeVelocity > 6 ? 0.42 : activeVelocity > 2 ? 0.7 : 1
-          let layoutChanged = lastActiveIds.size !== targets.size
-          if (!layoutChanged) {
-            for (const id of targets.keys()) {
-              if (!lastActiveIds.has(id)) {
-                layoutChanged = true
-                break
-              }
-            }
-          }
           const previousActiveIds = lastActiveIds
           lastActiveIds = new Set(targets.keys())
           const CARD_POOL_LIMIT = 9
@@ -585,18 +602,23 @@
             setRenderIds(nextRenderIds)
             window.setTimeout(() => schedule(false), 0)
           }
+          const visualRects = new Map()
+          const visualOpacity = new Map()
+          for (const [id, node] of cardRefs.current) {
+            if (!node || node.isConnected === false) continue
+            const box = node.getBoundingClientRect()
+            if (box.height) visualRects.set(id, box)
+            visualOpacity.set(id, Number.isFinite(node.__mfOpacity) ? node.__mfOpacity : 1)
+          }
           for (const [id, target] of targets) {
             const previous = positions.current.get(id)
             const node = cardRefs.current.get(id)
             const targetScale = target.zone === 'middle' ? 1 : 0.88
             positions.current.set(id, { left: geo.left, top: target.top, visible: true, zone: target.zone, scale: targetScale })
             if (!node) continue
-            const reentryRect = previous && !previous.visible && node.getAnimations().some((animation) => animation.id === 'mf-eject')
-              ? node.getBoundingClientRect()
-              : null
-            for (const animation of node.getAnimations()) {
-              if (animation.id === 'mf-eject' || animation.id === 'mf-enter') animation.cancel()
-            }
+            const previousRect = visualRects.get(id) || null
+            const ejectAnimation = animator.animation(node, 'mf-eject')
+            const reentryRect = previous && !previous.visible && ejectAnimation ? previousRect : null
             const zoneChanged = Boolean(previous && previous.zone && previous.zone !== target.zone)
             const moved = Boolean(previous && Math.abs(previous.top - target.top) > 2)
             const role = !previous || !previous.visible
@@ -611,31 +633,29 @@
             if (role !== 'stable') transitionRoles.push({ id, role, from: previous ? previous.zone : null, to: target.zone })
             const previousScale = previous && Number.isFinite(previous.scale) ? previous.scale : targetScale
             const scaleChanged = Math.abs(previousScale - targetScale) > 0.01
-            const activeShift = node.getAnimations().some((animation) => animation.id === 'mf-shift')
+            const activeShift = animator.animation(node, 'mf-shift')
+            const enterActive = Boolean(animator.animation(node, 'mf-enter'))
             let fromTop = previous ? previous.top : target.top
-            if (activeShift) {
-              const box = node.getBoundingClientRect()
-              if (box.height) fromTop = box.top
-            }
-            const animateTransform = Boolean(previous && previous.visible && (moved || scaleChanged) && (zoneChanged || !scrolling || layoutChanged))
-            node.style.zIndex = target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2'
+            if (activeShift && previousRect) fromTop = previousRect.top
+            const animateTransform = Boolean(previous && previous.visible && (moved || scaleChanged) && !scrolling && !enterActive)
+            setStyle(node, 'zIndex', target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2')
             const targetOpacity = target.zone === 'middle' ? '1' : '0.5'
             const context = target.zone !== 'middle'
-            node.style.transition = scrolling ? 'none' : transitionFor(false)
-            node.style.pointerEvents = 'auto'
-            node.style.scale = '1'
+            setTransition(node, scrolling ? 'none' : transitionFor(false))
+            setStyle(node, 'pointerEvents', 'auto')
+            setStyle(node, 'scale', '1')
             node.style.transform = 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')'
-            node.style.filter = context ? 'grayscale(.45) saturate(.65)' : 'none'
-            node.style.boxShadow = context ? '0 1px 4px rgba(16,24,40,.06)' : '0 4px 12px rgba(16,24,40,.10)'
-            node.style.borderColor = context ? 'rgba(20,30,45,.08)' : 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))'
+            node.__mfOpacity = Number(targetOpacity)
+            setStyle(node, 'filter', context ? 'grayscale(.45) saturate(.65)' : 'none')
+            setStyle(node, 'boxShadow', context ? '0 1px 4px rgba(16,24,40,.06)' : '0 4px 12px rgba(16,24,40,.10)')
+            setStyle(node, 'borderColor', context ? 'rgba(20,30,45,.08)' : 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))')
             node.title = (target.zone === 'top' ? '上方 · ' : target.zone === 'bottom' ? '下方 · ' : '') + '第 ' + target.turn.turn + ' 轮 · ' + target.turn.verdictLabel + (target.lastKnown ? ' · 最后匹配轮次' : '') + (target.zone === 'middle' && Number.isFinite(target.rangeTop) ? ' · 右侧细线为可见区间' : '')
-            const rangeEl = node.querySelector('[data-mf-range]')
+            const { range: rangeEl, segments: segmentEls } = rangeParts(node)
             if (rangeEl) {
               const segments = target.zone === 'middle'
                 ? (Array.isArray(target.segments) ? target.segments : (Number.isFinite(target.rangeTop) && Number.isFinite(target.rangeBottom) ? [{ top: target.rangeTop, bottom: target.rangeBottom }] : [])).slice(0, 3)
                 : []
               rangeEl.style.opacity = segments.length ? '0.72' : '0'
-              const segmentEls = rangeEl.querySelectorAll('[data-mf-range-segment]')
               for (let index = 0; index < segmentEls.length; index += 1) {
                 const segmentEl = segmentEls[index]
                 const segment = segments[index]
@@ -674,25 +694,28 @@
               } catch { /* older engine: settle immediately */ }
             }
             if (role === 'incoming') {
-              const delay = reentryRect ? 0 : initialFade ? Math.min(140, entryOrdinal * 35) : 0
-              entryOrdinal += 1
-              node.style.transition = 'none'
               node.style.opacity = targetOpacity
-              const fromY = reentryRect ? reentryRect.top : initialFade ? target.top : target.top + (target.zone === 'top' ? -6 : 6)
-              const fromScale = reentryRect ? targetScale : initialFade ? targetScale : targetScale * 0.96
-              try {
-                animator.enter(node, {
-                  left: geo.left,
-                  fromTop: fromY,
-                  fromScale,
-                  toTop: target.top,
-                  toScale: targetScale,
-                  toOpacity: targetOpacity,
-                  delay,
-                  motionScale,
-                })
-              } catch {
-                node.style.opacity = targetOpacity
+              const existingEnter = animator.animation(node, 'mf-enter')
+              if (!existingEnter) {
+                const delay = reentryRect ? 0 : initialFade ? Math.min(140, entryOrdinal * 35) : 0
+                entryOrdinal += 1
+                setTransition(node, 'none')
+                const fromY = reentryRect ? reentryRect.top : initialFade ? target.top : target.top + (target.zone === 'top' ? -6 : 6)
+                const fromScale = reentryRect ? targetScale : initialFade ? targetScale : targetScale * 0.96
+                try {
+                  animator.enter(node, {
+                    left: geo.left,
+                    fromTop: fromY,
+                    fromScale,
+                    toTop: target.top,
+                    toScale: targetScale,
+                    toOpacity: targetOpacity,
+                    delay,
+                    motionScale,
+                  })
+                } catch {
+                  node.style.opacity = targetOpacity
+                }
               }
             } else {
               node.style.transitionDelay = '0ms'
@@ -706,7 +729,7 @@
               transitionRoles.push({ id, role: 'ejecting', from: previous.zone })
               const ejectDistance = Math.max(64, cardH * 1.2)
               const fromTransform = node.style.transform || 'translate3d(' + geo.left + 'px,' + previous.top + 'px,0) scale(0.88)'
-              const fromOpacity = Number(window.getComputedStyle(node).opacity) || 0.5
+              const fromOpacity = visualOpacity.has(id) ? visualOpacity.get(id) : 0.5
               let toTransform = fromTransform
               if (previous.zone === 'top') toTransform = 'translate3d(' + geo.left + 'px,' + Math.max(0, previous.top - ejectDistance) + 'px,0) scale(0.76)'
               else if (previous.zone === 'bottom') toTransform = 'translate3d(' + geo.left + 'px,' + (previous.top + ejectDistance) + 'px,0) scale(0.76)'
@@ -747,6 +770,7 @@
               zone: target.zone,
               top: Math.round(target.top),
             })),
+            cardAnimations: [...cardRefs.current.entries()].map(([id, node]) => ({ id, role: animator.state(node) ? animator.state(node).id : null })),
             middleCards: middle.length,
             placeholder: placeholderNeeded,
             lastKnownTurn: lastKnownCard.current ? lastKnownCard.current.turn : null,
@@ -783,9 +807,9 @@
           }
         }
 
-        const safeUpdate = (needsRebuild) => {
+        const safeUpdate = (needsRebuild, settle = false) => {
           try {
-            update(needsRebuild)
+            update(needsRebuild, settle)
           } catch (error) {
             const message = error && error.message ? error.message : String(error)
             lastFetchError = 'rail: ' + message.slice(0, 300)
@@ -793,14 +817,17 @@
           }
         }
 
-        const schedule = (needsRebuild) => {
+        const schedule = (needsRebuild, options = {}) => {
           if (needsRebuild) rebuildPending = true
+          if (options.settle) settlePending = true
           if (raf) return
           raf = window.requestAnimationFrame(() => {
             raf = 0
             const pending = rebuildPending
+            const doSettle = settlePending
             rebuildPending = false
-            safeUpdate(pending)
+            settlePending = false
+            safeUpdate(pending, doSettle)
           })
         }
 
@@ -817,22 +844,16 @@
           }
           lastScrollTop = top
           lastScrollAt = now
+          settlePending = false
+          scrollScheduler.noteScroll()
           if (top < 320 && hasMoreRef.current) loadOlderRef.current?.()
-          // Timeline ticks on the right jump the virtualized list. Rebuild the
-          // node map immediately, then once more after layout settles.
+          // Light follow while the wheel moves; one semantic settle after it stops.
           schedule(jumped)
-          if (jumped) {
-            if (jumpTimer) window.clearTimeout(jumpTimer)
-            jumpTimer = window.setTimeout(() => {
-              jumpTimer = 0
-              schedule(true)
-            }, 90)
-          }
         }
         const onResize = () => schedule(true)
         window.addEventListener('scroll', onScroll, { capture: true, passive: true })
         window.addEventListener('resize', onResize)
-        tick = window.setInterval(() => schedule(true), 1500)
+        tick = window.setInterval(() => schedule(false), 1500)
         return () => {
           if (raf) window.cancelAnimationFrame(raf)
           window.removeEventListener('scroll', onScroll, true)
@@ -840,7 +861,7 @@
           if (resizeObserver) resizeObserver.disconnect()
           if (flowObserver) flowObserver.disconnect()
           if (mutationTimer) clearTimeout(mutationTimer)
-          if (jumpTimer) clearTimeout(jumpTimer)
+          scrollScheduler.dispose()
           if (tick) clearInterval(tick)
         }
       }, [on, turns, sessionId])
