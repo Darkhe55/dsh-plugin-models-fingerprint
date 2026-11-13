@@ -101,3 +101,12 @@ test('degradation proxy separates stable and shifted recent behavior', async () 
   })), baseline)
   assert.equal(shifted.level, 'degrading')
 })
+
+test('calibration stays disabled for insufficient or overlapping samples', () => {
+  const few = Array.from({ length: 6 }, (_, index) => row(index))
+  const tooFew = buildCalibration(few, { provider: 'official', model: 'official-model' })
+  assert.equal(tooFew.calibrated, false)
+  const sameOther = Array.from({ length: 20 }, (_, index) => row(100 + index, 'third', 'clone'))
+  const overlap = buildCalibration([...few, ...sameOther], { provider: 'official', model: 'official-model' })
+  assert.equal(overlap.calibrated, false)
+})
