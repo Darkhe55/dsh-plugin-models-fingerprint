@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-57'
+    const CLIENT_BUILD = '2026-11-13-58'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -644,6 +644,7 @@ window.__ModuleLoader__.load({
       const loadedSessionRef = React.useRef(null)
       const turnsKey = React.useRef('')
       const geometry = React.useRef({ ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 })
+      const exitHoldRef = React.useRef(new Map())
 
       React.useEffect(() => {
         const latest = turns.length
@@ -660,6 +661,7 @@ window.__ModuleLoader__.load({
           setTurns([])
           positions.current.clear()
           lastKnownCard.current = null
+          exitHoldRef.current.clear()
           geometry.current = { ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 }
           sessionViewRevision = 0
           sessionViewStatus = 'loading'
@@ -933,7 +935,7 @@ window.__ModuleLoader__.load({
         let lastScrollAt = 0
         let lastActiveIds = new Set()
         const spring = 'cubic-bezier(.22,1.4,.36,1)'
-        const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 150ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms ' + spring + ', padding 320ms ' + spring + ', border-radius 320ms ' + spring
+        const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 220ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms ' + spring + ', padding 320ms ' + spring + ', border-radius 320ms ' + spring
 
         const update = (needsRebuild) => {
           if (needsRebuild || !geometry.current.ready) rebuild()
@@ -943,6 +945,8 @@ window.__ModuleLoader__.load({
             return
           }
           const measured = []
+          const now = performance.now()
+          const holdMap = exitHoldRef.current
           for (const item of geo.renderedTurns) {
             const turn = item.turn
             const nodes = item.nodes
@@ -971,9 +975,28 @@ window.__ModuleLoader__.load({
               .slice(0, 3)
               .map((entry) => ({ top: entry.visibleTop, bottom: entry.visibleBottom }))
             const previousZone = positions.current.get(turn.id)?.zone
-            const above = previousZone === 'top' ? bottom < geo.clipTop + 8 : bottom < geo.clipTop - 2
-            const below = previousZone === 'bottom' ? top > geo.clipBottom - 8 : top > geo.clipBottom + 2
-            measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, segments, above, below })
+            const aboveRaw = previousZone === 'top' ? bottom < geo.clipTop + 8 : bottom < geo.clipTop - 2
+            const belowRaw = previousZone === 'bottom' ? top > geo.clipBottom - 8 : top > geo.clipBottom + 2
+            const contactDir = aboveRaw ? 'top' : belowRaw ? 'bottom' : top <= geo.clipTop + 18 ? 'top' : bottom >= geo.clipBottom - 18 ? 'bottom' : null
+            let hold = holdMap.get(turn.id)
+            if (contactDir) {
+              if (!hold || hold.dir !== contactDir) {
+                hold = { at: now, dir: contactDir }
+                holdMap.set(turn.id, hold)
+              }
+            } else if (!aboveRaw && !belowRaw) {
+              holdMap.delete(turn.id)
+              hold = null
+            }
+            const wasContext = previousZone === 'top' || previousZone === 'bottom'
+            if (!wasContext && (aboveRaw || belowRaw) && (!hold || !hold.exiting)) {
+              hold = { at: now, dir: aboveRaw ? 'top' : 'bottom', exiting: true }
+              holdMap.set(turn.id, hold)
+            }
+            const held = !wasContext && Boolean(hold) && (aboveRaw || belowRaw) && now - hold.at < 120
+            const above = aboveRaw && !held
+            const below = belowRaw && !held
+            measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, segments, above, below, held, heldDir: held ? contactDir : null })
           }
           const above = measured
             .filter((entry) => entry.above)
@@ -1030,8 +1053,21 @@ window.__ModuleLoader__.load({
           const targets = new Map()
           let lastBottom = laneTop
           for (const entry of middle) {
-            const visibleTop = Number.isFinite(entry.anchorTop) ? entry.anchorTop : Math.max(entry.top, geo.clipTop + 4)
-            const visibleBottom = Number.isFinite(entry.anchorBottom) ? entry.anchorBottom : Math.min(entry.bottom, geo.clipBottom - 4)
+            if (entry.held) {
+              const heldTop = entry.heldDir === 'bottom' ? laneMax : laneTop
+              targets.set(entry.turn.id, {
+                top: heldTop,
+                zone: 'middle',
+                turn: entry.turn,
+                synthetic: Boolean(entry.synthetic),
+                lastKnown: Boolean(entry.lastKnown),
+                held: true,
+              })
+              lastBottom = Math.max(lastBottom, heldTop + cardH + 4)
+              continue
+            }
+            const visibleTop = Math.max(entry.top, geo.clipTop + 4)
+            const visibleBottom = Math.min(entry.bottom, geo.clipBottom - 4)
             if (visibleBottom <= visibleTop) continue
             const center = (visibleTop + visibleBottom) / 2
             let y = Math.min(Math.max(center - cardH / 2, laneTop), laneMax)
@@ -1151,16 +1187,17 @@ window.__ModuleLoader__.load({
             if (targets.has(id)) continue
             const previous = positions.current.get(id)
             if (previous && previous.visible) {
-              node.style.transition = 'opacity 150ms ease, scale 300ms ' + spring + ', transform 280ms ' + spring
+              const ejectDistance = Math.max(64, cardH * 1.2)
+              node.style.transition = 'opacity 220ms ease 60ms, transform 320ms ' + spring + ', filter 180ms ease'
               node.style.opacity = '0'
               node.style.scale = '1'
               node.style.pointerEvents = 'none'
-              if (previous.zone === 'top') node.style.transform = 'translate3d(' + geo.left + 'px,' + Math.max(0, previous.top - 40) + 'px,0)'
-              else if (previous.zone === 'bottom') node.style.transform = 'translate3d(' + geo.left + 'px,' + (previous.top + 64) + 'px,0)'
+              if (previous.zone === 'top') node.style.transform = 'translate3d(' + geo.left + 'px,' + Math.max(0, previous.top - ejectDistance) + 'px,0) scale(0.76)'
+              else if (previous.zone === 'bottom') node.style.transform = 'translate3d(' + geo.left + 'px,' + (previous.top + ejectDistance) + 'px,0) scale(0.76)'
               else if (previous.zone === 'middle') {
                 const direction = previous.top < (geo.clipTop + geo.clipBottom) / 2 ? -1 : 1
-                const outgoing = direction < 0 ? Math.max(0, geo.clipTop - 40) : geo.clipBottom + 40
-                node.style.transform = 'translate3d(' + geo.left + 'px,' + outgoing + 'px,0)'
+                const outgoing = direction < 0 ? Math.max(0, geo.clipTop - ejectDistance) : geo.clipBottom + ejectDistance
+                node.style.transform = 'translate3d(' + geo.left + 'px,' + outgoing + 'px,0) scale(0.76)'
               }
             }
             positions.current.set(id, { left: geo.left, top: previous ? previous.top : -9999, visible: false, zone: previous ? previous.zone : 'hidden' })
