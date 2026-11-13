@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-60'
+    const CLIENT_BUILD = '2026-11-13-61'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -941,7 +941,7 @@ window.__ModuleLoader__.load({
         let lastScrollAt = 0
         let lastActiveIds = new Set()
         const spring = 'cubic-bezier(.22,1.4,.36,1)'
-        const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 220ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms ' + spring + ', padding 320ms ' + spring + ', border-radius 320ms ' + spring
+        const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 280ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms ' + spring + ', padding 320ms ' + spring + ', border-radius 320ms ' + spring
 
         const update = (needsRebuild) => {
           if (needsRebuild || !geometry.current.ready) rebuild()
@@ -1122,14 +1122,20 @@ window.__ModuleLoader__.load({
             positions.current.set(id, { left: geo.left, top: target.top, visible: true, zone: target.zone, scale: targetScale })
             if (!node) continue
             for (const animation of node.getAnimations()) {
-              if (animation.id === 'mf-eject') animation.cancel()
+              if (animation.id === 'mf-eject' || animation.id === 'mf-enter') animation.cancel()
             }
             const zoneChanged = Boolean(previous && previous.zone && previous.zone !== target.zone)
             const moved = Boolean(previous && Math.abs(previous.top - target.top) > 2)
-            if (!previous || !previous.visible) transitionRoles.push({ id, role: 'incoming', zone: target.zone })
-            else if (zoneChanged && target.zone !== 'middle') transitionRoles.push({ id, role: 'squeeze', from: previous.zone, to: target.zone })
-            else if (zoneChanged) transitionRoles.push({ id, role: 'pushing', from: previous.zone, to: target.zone })
-            else if (moved) transitionRoles.push({ id, role: 'pushed', zone: target.zone })
+            const role = !previous || !previous.visible
+              ? 'incoming'
+              : zoneChanged && target.zone !== 'middle'
+                ? 'squeeze'
+                : zoneChanged
+                  ? 'pushing'
+                  : moved
+                    ? 'pushed'
+                    : 'stable'
+            if (role !== 'stable') transitionRoles.push({ id, role, from: previous ? previous.zone : null, to: target.zone })
             const previousScale = previous && Number.isFinite(previous.scale) ? previous.scale : targetScale
             const scaleChanged = Math.abs(previousScale - targetScale) > 0.01
             const animateTransform = Boolean(previous && previous.visible && (moved || scaleChanged) && (zoneChanged || !scrolling || layoutChanged))
@@ -1185,20 +1191,28 @@ window.__ModuleLoader__.load({
                     { transform: 'translate3d(' + geo.left + 'px,' + previous.top + 'px,0) scale(' + previousScale + ')' },
                     { transform: 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')' },
                   ],
-                  { duration: 380, easing: spring, id: 'mf-shift' },
+                  { duration: role === 'squeeze' ? 380 : 340, easing: spring, id: 'mf-shift' },
                 )
               } catch { /* older engine: settle immediately */ }
             }
-            if (!previous || !previous.visible) {
+            if (role === 'incoming') {
               const delay = initialFade ? Math.min(140, entryOrdinal * 35) : 0
               entryOrdinal += 1
-              node.style.transitionDelay = delay ? delay + 'ms' : '0ms'
-              node.style.opacity = '0'
-              window.requestAnimationFrame(() => {
-                const current = positions.current.get(id)
-                if (!current || !current.visible || !node.isConnected) return
+              node.style.transition = 'none'
+              node.style.opacity = targetOpacity
+              const fromY = initialFade ? target.top : target.top + (target.zone === 'top' ? -6 : 6)
+              const fromScale = initialFade ? targetScale : targetScale * 0.96
+              try {
+                node.animate(
+                  [
+                    { transform: 'translate3d(' + geo.left + 'px,' + fromY + 'px,0) scale(' + fromScale + ')', opacity: 0 },
+                    { transform: 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')', opacity: targetOpacity },
+                  ],
+                  { duration: 260, easing: spring, delay, fill: 'backwards', id: 'mf-enter' },
+                )
+              } catch {
                 node.style.opacity = targetOpacity
-              })
+              }
             } else {
               node.style.transitionDelay = '0ms'
               node.style.opacity = targetOpacity
