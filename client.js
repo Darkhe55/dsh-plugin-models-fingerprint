@@ -24,7 +24,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-63'
+    const CLIENT_BUILD = '2026-11-13-66'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -634,6 +634,8 @@ window.__ModuleLoader__.load({
       const sessionId = useRailSession()
       const canvasOpen = useCanvasOpen()
       const [turns, setTurns] = React.useState([])
+      const [hasMore, setHasMore] = React.useState(false)
+      const [renderIds, setRenderIds] = React.useState(new Set())
       const [compact, setCompact] = React.useState(false)
       const [clip, setClip] = React.useState({ top: 0, bottom: 0 })
       const [flowReady, setFlowReady] = React.useState(true)
@@ -647,6 +649,18 @@ window.__ModuleLoader__.load({
       const exitHoldRef = React.useRef(new Map())
       const initialFadeRef = React.useRef(true)
       const initialFadeAtRef = React.useRef(0)
+      const turnsRef = React.useRef([])
+      const hasMoreRef = React.useRef(false)
+      const renderIdsRef = React.useRef(new Set())
+      const autoPreloadRef = React.useRef(false)
+      const loadOlderRef = React.useRef(null)
+      const refreshRef = React.useRef(null)
+      const mergeTurns = (current, incoming) => {
+        const map = new Map()
+        for (const turn of current || []) map.set(turn.id, turn)
+        for (const turn of incoming || []) map.set(turn.id, turn)
+        return [...map.values()].sort((left, right) => Number(right.turn) - Number(left.turn))
+      }
 
       React.useEffect(() => {
         const latest = turns.length
@@ -660,6 +674,11 @@ window.__ModuleLoader__.load({
         if (loadedSessionRef.current !== targetSession) {
           loadedSessionRef.current = targetSession
           turnsKey.current = ''
+          turnsRef.current = []
+          hasMoreRef.current = false
+          setHasMore(false)
+          renderIdsRef.current = new Set()
+          setRenderIds(new Set())
           setTurns([])
           positions.current.clear()
           lastKnownCard.current = null
@@ -696,7 +715,7 @@ window.__ModuleLoader__.load({
             let response = null
             let legacy = false
             try {
-              response = await fetch(apiUrl('/model-fingerprint/api/session-view?id=' + encodeURIComponent(target) + '&limit=300'), { cache: 'no-store', signal })
+              response = await fetch(apiUrl('/model-fingerprint/api/session-view?id=' + encodeURIComponent(target) + '&limit=200'), { cache: 'no-store', signal })
             } catch (error) {
               if (cancelled || seq !== requestSeq) return
               response = null
@@ -712,11 +731,15 @@ window.__ModuleLoader__.load({
             sessionViewRevision = legacy ? 0 : Number(payload.revision) || 0
             sessionViewStatus = legacy ? 'legacy' : String(payload.status || 'unknown')
             const next = Array.isArray(payload.turns) ? payload.turns : []
-            const key = JSON.stringify(next)
+            const merged = mergeTurns(turnsRef.current, next)
+            const key = JSON.stringify(merged)
             if (key !== turnsKey.current) {
               turnsKey.current = key
-              setTurns(next)
+              turnsRef.current = merged
+              setTurns(merged)
             }
+            hasMoreRef.current = payload.hasMore === true
+            setHasMore(payload.hasMore === true)
           } catch (error) {
             if (!cancelled && seq === requestSeq) {
               lastFetchError = error && error.message ? error.message : String(error)
@@ -726,6 +749,34 @@ window.__ModuleLoader__.load({
           }
         }
         load()
+        let loadingOlder = false
+        const loadOlder = async () => {
+          if (loadingOlder || !hasMoreRef.current) return
+          const oldest = turnsRef.current[turnsRef.current.length - 1]
+          if (!oldest || !Number.isFinite(Number(oldest.turn))) return
+          loadingOlder = true
+          try {
+            const target = railSessionId || sessionId
+            if (!target) return
+            const response = await fetch(apiUrl('/model-fingerprint/api/session-view?id=' + encodeURIComponent(target) + '&limit=200&before=' + encodeURIComponent(String(oldest.turn))), { cache: 'no-store' })
+            if (!response.ok) return
+            const payload = await response.json()
+            const next = Array.isArray(payload.turns) ? payload.turns : []
+            if (next.length) {
+              const merged = mergeTurns(turnsRef.current, next)
+              turnsRef.current = merged
+              setTurns(merged)
+            }
+            hasMoreRef.current = payload.hasMore === true
+            setHasMore(payload.hasMore === true)
+          } catch (error) {
+            lastFetchError = error && error.message ? error.message : String(error)
+          } finally {
+            loadingOlder = false
+          }
+        }
+        loadOlderRef.current = loadOlder
+        refreshRef.current = () => { turnsKey.current = ''; load() }
         timer = setInterval(load, 4000)
         return () => {
           cancelled = true
@@ -734,6 +785,28 @@ window.__ModuleLoader__.load({
           if (timer) clearInterval(timer)
         }
       }, [sessionId])
+
+      React.useEffect(() => {
+        const refresh = () => refreshRef.current?.()
+        const preload = () => loadOlderRef.current?.()
+        window.addEventListener('dsh-mf-refresh', refresh)
+        window.addEventListener('dsh-mf-preload', preload)
+        return () => {
+          window.removeEventListener('dsh-mf-refresh', refresh)
+          window.removeEventListener('dsh-mf-preload', preload)
+        }
+      }, [])
+
+      React.useEffect(() => {
+        if (!on) {
+          autoPreloadRef.current = false
+          return
+        }
+        if (hasMore && !autoPreloadRef.current) {
+          autoPreloadRef.current = true
+          loadOlderRef.current?.()
+        }
+      }, [on, hasMore])
 
       React.useEffect(() => {
         if (!on) {
@@ -747,6 +820,7 @@ window.__ModuleLoader__.load({
         let flowObserver = null
         let observedFlow = null
         let mutationTimer = 0
+        let jumpTimer = 0
         let tick = null
 
         const hideAll = () => {
@@ -1003,9 +1077,9 @@ window.__ModuleLoader__.load({
               hold = { at: now, dir: aboveRaw ? 'top' : 'bottom', exiting: true }
               holdMap.set(turn.id, hold)
             }
-            const held = !wasContext && Boolean(hold) && (aboveRaw || belowRaw) && now - hold.at < 90
-            const above = aboveRaw && !held
-            const below = belowRaw && !held
+            const held = false
+            const above = aboveRaw
+            const below = belowRaw
             measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, segments, above, below, held, heldDir: held ? contactDir : null })
           }
           const above = measured
@@ -1019,6 +1093,7 @@ window.__ModuleLoader__.load({
             .sort((left, right) => left.top - right.top || Number(left.turn.turn) - Number(right.turn.turn))
           const topTurn = above[0] || null
           let bottomTurn = below[0] || null
+          const domWithoutMapping = measured.length === 0 && Array.isArray(geo.domTurns) && geo.domTurns.length > 0
           const latestTurn = [...turns]
             .filter((turn) => Number.isFinite(Number(turn.turn)))
             .sort((left, right) => Number(right.turn) - Number(left.turn))[0] || null
@@ -1027,7 +1102,7 @@ window.__ModuleLoader__.load({
             : false
           if (atBottom) {
             bottomTurn = null
-            if (latestTurn && !middle.some((entry) => entry.turn.id === latestTurn.id) && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
+            if (!domWithoutMapping && latestTurn && !middle.some((entry) => entry.turn.id === latestTurn.id) && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
               middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true })
             }
           }
@@ -1044,10 +1119,10 @@ window.__ModuleLoader__.load({
           const lastMeasuredBottom = measured.length ? Math.max(...measured.map((entry) => entry.bottom)) : null
           const estimatedLatestTop = lastMeasuredBottom === null ? null : lastMeasuredBottom + 16
           const latestLikelyVisible = atBottom || (estimatedLatestTop !== null && estimatedLatestTop >= geo.clipTop - 120 && estimatedLatestTop < geo.clipBottom - 20)
-          if (!atBottom && !bottomTurn && latestLikelyVisible && latestTurn && middle.length === 0 && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
+          if (!atBottom && !bottomTurn && latestLikelyVisible && latestTurn && middle.length === 0 && !domWithoutMapping && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
             middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true })
           }
-          if (middle.length === 0 && !topTurn && !bottomTurn) {
+          if (middle.length === 0 && !topTurn && !bottomTurn && !domWithoutMapping) {
             const known = lastKnownCard.current
             if (known && known.id) {
               middle.push({ turn: known, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true, lastKnown: true })
@@ -1138,7 +1213,24 @@ window.__ModuleLoader__.load({
               }
             }
           }
+          const previousActiveIds = lastActiveIds
           lastActiveIds = new Set(targets.keys())
+          const nextRenderIds = new Set(lastActiveIds)
+          for (const id of previousActiveIds) nextRenderIds.add(id)
+          let renderChanged = nextRenderIds.size !== renderIdsRef.current.size
+          if (!renderChanged) {
+            for (const id of nextRenderIds) {
+              if (!renderIdsRef.current.has(id)) {
+                renderChanged = true
+                break
+              }
+            }
+          }
+          if (renderChanged) {
+            renderIdsRef.current = nextRenderIds
+            setRenderIds(nextRenderIds)
+            window.setTimeout(() => schedule(false), 0)
+          }
           for (const [id, target] of targets) {
             const previous = positions.current.get(id)
             const node = cardRefs.current.get(id)
@@ -1361,13 +1453,25 @@ window.__ModuleLoader__.load({
           const now = performance.now()
           const scroller = geometry.current.scrollContainer
           const top = scroller ? scroller.scrollTop : window.scrollY
+          let jumped = false
           if (lastScrollTop !== null) {
             const dt = Math.max(1, now - lastScrollAt)
             scrollVelocity = Math.abs(top - lastScrollTop) / dt
+            jumped = Math.abs(top - lastScrollTop) > 180
           }
           lastScrollTop = top
           lastScrollAt = now
-          schedule(false)
+          if (top < 320 && hasMoreRef.current) loadOlderRef.current?.()
+          // Timeline ticks on the right jump the virtualized list. Rebuild the
+          // node map immediately, then once more after layout settles.
+          schedule(jumped)
+          if (jumped) {
+            if (jumpTimer) window.clearTimeout(jumpTimer)
+            jumpTimer = window.setTimeout(() => {
+              jumpTimer = 0
+              schedule(true)
+            }, 90)
+          }
         }
         const onResize = () => schedule(true)
         window.addEventListener('scroll', onScroll, { capture: true, passive: true })
@@ -1380,6 +1484,7 @@ window.__ModuleLoader__.load({
           if (resizeObserver) resizeObserver.disconnect()
           if (flowObserver) flowObserver.disconnect()
           if (mutationTimer) clearTimeout(mutationTimer)
+          if (jumpTimer) clearTimeout(jumpTimer)
           if (tick) clearInterval(tick)
         }
       }, [on, turns, sessionId])
@@ -1388,7 +1493,7 @@ window.__ModuleLoader__.load({
       const clipPath = clip.top > 0
         ? 'inset(' + Math.round(clip.top) + 'px 0 0 0)'
         : undefined
-      const children = turns.map((turn) => {
+      const children = turns.filter((turn) => renderIds.has(turn.id)).map((turn) => {
         const color = railColors[turn.verdict] || railColors.first
         const position = positions.current.get(turn.id) || { left: geometry.current.left || 0, top: -9999 }
         const base = {
@@ -1721,6 +1826,18 @@ window.__ModuleLoader__.load({
               h('span', { style: styles.track(visible) }, h('span', { style: styles.knob(visible) })),
             ),
           ),
+          visible ? h('div', { style: { display: 'flex', gap: 6, marginTop: 8 } },
+            h('button', {
+              type: 'button',
+              style: { ...styles.panelButton, flex: 1, padding: '5px 6px', textAlign: 'center' },
+              onClick: () => window.dispatchEvent(new CustomEvent('dsh-mf-refresh')),
+            }, '刷新'),
+            h('button', {
+              type: 'button',
+              style: { ...styles.panelButton, flex: 1, padding: '5px 6px', textAlign: 'center' },
+              onClick: () => window.dispatchEvent(new CustomEvent('dsh-mf-preload')),
+            }, '预加载'),
+          ) : null,
           h('button', {
             type: 'button',
             style: { ...styles.panelButton, width: '100%', marginTop: 9, padding: '6px 8px', textAlign: 'center' },

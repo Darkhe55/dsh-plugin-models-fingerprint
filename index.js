@@ -411,13 +411,22 @@ export function apply(ctx) {
       .sort((left, right) => right.time - left.time)
       .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 300))
     const turns = buildTurns([...scanner.observations.values()], sessionId)
-    return json(res, 200, buildSessionView({
+    const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
+    const before = Number(url.searchParams.get('before'))
+    const filtered = Number.isFinite(before) && before > 0
+      ? turns.filter((turn) => Number(turn.turn) < before)
+      : turns
+    const windowTurns = filtered.slice(0, limit)
+    const view = buildSessionView({
       sessionId,
       session,
-      turns,
+      turns: windowTurns,
       revision: scanner.version,
       observations: rows,
-    }))
+    })
+    view.hasMore = filtered.length > windowTurns.length
+    view.nextBefore = windowTurns.length ? Number(windowTurns[windowTurns.length - 1].turn) : null
+    return json(res, 200, view)
   })
   route('/api/session', async (req, res) => {
     if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
