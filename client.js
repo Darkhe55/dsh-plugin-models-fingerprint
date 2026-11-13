@@ -251,8 +251,7 @@ window.__ModuleLoader__.load({
       return canvasOpen
     }
     const detectCanvasOpen = () => {
-      try {
-        const nodes = document.querySelectorAll('.dshcv-root, .dshcv-head')
+      try {        const nodes = document.querySelectorAll('.dshcv-root, .dshcv-head')
         canvasProbe = []
         for (const node of nodes) {
           const rect = node.getBoundingClientRect()
