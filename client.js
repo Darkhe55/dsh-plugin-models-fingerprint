@@ -3,6 +3,15 @@ window.__ModuleLoader__.load({
   factory(require) {
     const React = require('react')
     const h = React.createElement
+    const apiBase = () => {
+      try {
+        const injected = String(window.__dshModelFingerprintApiBase || '').replace(/\/+$/, '')
+        if (injected) return injected
+        const transport = window.__DSH_TRANSPORT__
+        return transport && typeof transport.streamBaseUrl === 'string' ? transport.streamBaseUrl.replace(/\/+$/, '') : ''
+      } catch { return '' }
+    }
+    const apiUrl = (path) => apiBase() + path
     class SlotAnimator {
       constructor({ eased, reduced, cardWidth }) {
         this.eased = eased
@@ -139,15 +148,6 @@ window.__ModuleLoader__.load({
         return true
       }
     }
-    const apiBase = () => {
-      try {
-        const injected = String(window.__dshModelFingerprintApiBase || '').replace(/\/+$/, '')
-        if (injected) return injected
-        const transport = window.__DSH_TRANSPORT__
-        return transport && typeof transport.streamBaseUrl === 'string' ? transport.streamBaseUrl.replace(/\/+$/, '') : ''
-      } catch { return '' }
-    }
-    const apiUrl = (path) => apiBase() + path
     const listeners = new Set()
     let open = false
     let railOn = false
@@ -433,336 +433,6 @@ window.__ModuleLoader__.load({
       mixed: '#d97706',
       generation: '#2f6fed',
       first: '#98a2b3',
-    }
-
-    function TurnRail() {
-      const on = useRailOn()
-      const sessionId = useRailSession()
-      const [turns, setTurns] = React.useState([])
-      const [layout, setLayout] = React.useState([])
-      const [viewport, setViewport] = React.useState({ top: 0, bottom: 0 })
-      const viewportRef = React.useRef({ top: 0, bottom: 0 })
-      const lastSignature = React.useRef('')
-      const railRef = React.useRef(null)
-
-      React.useEffect(() => {
-        if (!on) {
-          setTurns([])
-          return undefined
-        }
-        let cancelled = false
-        let timer = null
-        const load = async () => {
-          let target = sessionId
-          if (!target) {
-            try {
-              const response = await fetch(apiUrl('/model-fingerprint/api/status?limit=1'), { cache: 'no-store' })
-              if (response.ok) {
-                const status = await response.json()
-                target = status && status.latest && status.latest.session ? status.latest.session.id : null
-                if (target) setRailSession(target)
-              }
-            } catch { /* status is best effort */ }
-          }
-          if (!target || cancelled) return
-          try {
-            const response = await fetch(apiUrl('/model-fingerprint/api/session?id=' + encodeURIComponent(target) + '&limit=200'), { cache: 'no-store' })
-            if (!response.ok) throw new Error('HTTP ' + response.status)
-            const payload = await response.json()
-            if (!cancelled) {
-              lastFetchError = null
-              setTurns(payload.turns || [])
-            }
-          } catch (error) {
-            if (!cancelled) {
-              lastFetchError = error && error.message ? error.message : String(error)
-              setTurns([])
-            }
-          }
-        }
-        load()
-        timer = setInterval(load, 6000)
-        return () => {
-          cancelled = true
-          if (timer) clearInterval(timer)
-        }
-      }, [on, sessionId])
-
-      React.useEffect(() => {
-        if (!on) {
-          railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'off' }
-          setLayout([])
-          return undefined
-        }
-        const measure = () => {          const candidates = [...document.querySelectorAll('[data-slot="conversation.chat.flow"], [data-chat-flow]')]
-          const usable = (node) => {
-            if (!node || !node.getBoundingClientRect) return false
-            const box = node.getBoundingClientRect()
-            if (box.width < 320 || box.height < 120) return false
-            if (node.closest('aside, nav, [data-slot*="sidebar"], [class*="sidebar"], [class*="workspace"]')) return false
-            return node.querySelectorAll('[data-chat-turn]').length > 0
-          }
-          let flow = candidates.find((node) => node.matches('[data-slot="conversation.chat.flow"]') && usable(node)) || null
-          let bestCount = flow ? flow.querySelectorAll('[data-chat-turn]').length : 0
-          let bestWidth = flow ? flow.getBoundingClientRect().width : Infinity
-          if (!flow) {
-            for (const candidate of candidates) {
-              if (!usable(candidate)) continue
-              const count = candidate.querySelectorAll('[data-chat-turn]').length
-              const width = candidate.getBoundingClientRect().width
-              if (count > bestCount || (count === bestCount && width < bestWidth)) {
-                bestCount = count
-                bestWidth = width
-                flow = candidate
-              }
-            }
-          }
-          if (!flow) {
-            let cursor = document.querySelector('[data-slot="conversation.chat.flow"] [data-chat-turn], main [data-chat-turn], [data-chat-turn]')
-            while (cursor && cursor !== document.body) {
-              if (!cursor.closest('aside, nav, [data-slot*="sidebar"], [class*="sidebar"], [class*="workspace"]') && cursor.querySelectorAll('[data-chat-turn]').length) {
-                flow = cursor
-                break
-              }
-              cursor = cursor.parentElement
-            }
-          }
-          if (!flow || !turns.length) {
-            railDebug = { flow: Boolean(flow), flowTurns: flow ? flow.querySelectorAll('[data-chat-turn]').length : 0, turns: turns.length, cards: 0, reason: flow ? 'no-turns' : 'no-flow' }
-            setLayout([])
-            return
-          }
-          const flowRect = flow.getBoundingClientRect()
-          if (flowRect.width < 120) {
-            railDebug = { flow: true, flowTurns: flow.querySelectorAll('[data-chat-turn]').length, turns: turns.length, cards: 0, reason: 'narrow-flow' }
-            setLayout([])
-            return
-          }
-          let clipTop = 0
-          let clipBottom = window.innerHeight
-          let container = flow.parentElement
-          while (container && container !== document.body) {
-            const style = window.getComputedStyle(container)
-            const box = container.getBoundingClientRect()
-            if (/(auto|scroll)/.test(style.overflowY) && box.height > 180) {
-              clipTop = Math.max(0, box.top)
-              clipBottom = Math.min(window.innerHeight, box.bottom)
-              break
-            }
-            container = container.parentElement
-          }
-          if (clipBottom - clipTop < 120) {
-            clipTop = Math.max(0, flowRect.top)
-            clipBottom = Math.min(window.innerHeight, flowRect.bottom)
-          }
-          if (clipBottom - clipTop < 120) {
-            clipTop = 0
-            clipBottom = window.innerHeight
-          }
-          if (Math.abs(viewportRef.current.top - clipTop) > 1 || Math.abs(viewportRef.current.bottom - clipBottom) > 1) {
-            viewportRef.current = { top: clipTop, bottom: clipBottom }
-            setViewport({ top: clipTop, bottom: clipBottom })
-          }
-          const domTurns = []
-          for (const node of flow.querySelectorAll('[data-chat-turn]')) {
-            const value = node.getAttribute('data-chat-turn')
-            if (value !== null && !domTurns.includes(value)) domTurns.push(value)
-          }
-          const apiTurns = turns.map((item) => Number(item.turn)).filter((value) => Number.isFinite(value))
-          const domNumeric = domTurns.map((value) => Number(value)).filter((value) => Number.isFinite(value))
-          let offset = 0
-          if (apiTurns.length && domNumeric.length) {
-            const candidate = Math.min(...domNumeric) - Math.min(...apiTurns)
-            if (turns.every((item) => domTurns.includes(String(Number(item.turn) + candidate)))) offset = candidate
-          }
-          let sidebarRight = 0
-          for (const node of document.querySelectorAll('aside, nav, [data-slot*="sidebar"], [class*="sidebar"]')) {
-            const box = node.getBoundingClientRect()
-            if (box.width >= 150 && box.height >= 280 && box.height <= window.innerHeight + 4 && box.right <= flowRect.left + 2) {
-              sidebarRight = Math.max(sidebarRight, box.right)
-            }
-          }
-          const safeLeft = sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64)
-          const gap = flowRect.left - sidebarRight
-          const cardWidth = 176
-          const compact = gap < cardWidth + 24 || (sidebarRight === 0 && flowRect.left < cardWidth * 2)
-          const left = compact
-            ? Math.max(safeLeft, flowRect.left - 62)
-            : Math.max(safeLeft, flowRect.left - cardWidth - 10)
-          const entries = []
-          for (const turn of turns) {
-            const nodes = flow.querySelectorAll('[data-chat-turn="' + String(Number(turn.turn) + offset) + '"]')
-            let top = Infinity
-            let bottom = -Infinity
-            for (const node of nodes) {
-              if (!node.getClientRects().length) continue
-              const box = node.getBoundingClientRect()
-              if (!box.height) continue
-              top = Math.min(top, box.top)
-              bottom = Math.max(bottom, box.bottom)
-            }
-            if (!Number.isFinite(top) || !Number.isFinite(bottom)) continue
-            if (bottom < clipTop - 20 || top > clipBottom + 20) continue
-            entries.push({ turn, top, bottom })
-          }
-          entries.sort((leftItem, rightItem) => leftItem.top - rightItem.top)
-          const result = []
-          let lastBottom = clipTop + 8
-          for (const entry of entries) {
-            const cardTop = Math.max(entry.top, lastBottom + 4, clipTop + 8)
-            if (cardTop > clipBottom - 38) continue
-            lastBottom = cardTop + 45
-            result.push({
-              id: entry.turn.id,
-              turn: entry.turn.turn,
-              verdict: entry.turn.verdict,
-              verdictLabel: entry.turn.verdictLabel,
-              tone: entry.turn.verdict || 'first',
-              compact,
-              left,
-              cardTop,
-              short: entry.turn.primaryShort,
-              model: entry.turn.primaryModel,
-            })
-          }
-          const signature = result.map((item) => item.id + ':' + item.left + ':' + item.cardTop + ':' + item.compact).join('|') + '@' + Math.round(clipTop) + ',' + Math.round(clipBottom)
-          if (signature !== lastSignature.current) {
-            lastSignature.current = signature
-            setLayout(result)
-          }
-          railDebug = {
-            flow: true,
-            flowTurns: domTurns.length,
-            turns: turns.length,
-            cards: result.length,
-            reason: result.length ? 'ok' : 'no-visible-turns',
-            flowLeft: Math.round(flowRect.left),
-            flowWidth: Math.round(flowRect.width),
-            sidebarRight: Math.round(sidebarRight),
-            left: Math.round(left),
-            compact,
-            clipTop: Math.round(clipTop),
-            clipBottom: Math.round(clipBottom),
-            viewport: window.innerWidth,
-          }
-        }
-        let timer = 0
-        const schedule = () => {
-          if (timer) return
-          timer = window.setTimeout(() => {
-            timer = 0
-            measure()
-          }, 60)
-        }
-        measure()
-        window.addEventListener('scroll', schedule, { capture: true, passive: true })
-        window.addEventListener('resize', schedule)
-        const resizeObserver = typeof ResizeObserver === 'function' ? new ResizeObserver(schedule) : null
-        const observedFlow = document.querySelector('[data-slot="conversation.chat.flow"]') || document.querySelector('[data-chat-flow]')
-        if (resizeObserver && observedFlow) resizeObserver.observe(observedFlow)
-        const tick = window.setInterval(schedule, 1500)
-        return () => {
-          if (timer) window.clearTimeout(timer)
-          window.removeEventListener('scroll', schedule, true)
-          window.removeEventListener('resize', schedule)
-          if (resizeObserver) resizeObserver.disconnect()
-          window.clearInterval(tick)
-        }
-      }, [on, turns, sessionId])
-
-      if (!on) return null
-      const children = layout.map((item) => {
-        const color = railColors[item.tone] || railColors.first
-        const card = item.compact
-          ? h('div', {
-              key: item.id + ':card',
-              style: {
-                position: 'absolute',
-                left: item.left,
-                top: item.cardTop,
-                pointerEvents: 'auto',
-                cursor: 'pointer',
-                padding: '3px 4px',
-                width: 56,
-                boxSizing: 'border-box',
-                textAlign: 'center',
-                borderRadius: 999,
-                background: 'var(--dsw-specific-menu, #fff)',
-                border: '1px solid var(--dsw-alias-border-l1, rgba(20,30,45,.14))',
-                boxShadow: '0 2px 8px rgba(16,24,40,.12)',
-                color,
-                fontSize: 10,
-                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
-              },
-              onClick: () => setOpen(true),
-              title: '第 ' + item.turn + ' 轮 · ' + item.verdictLabel,
-            }, 'FP-' + String(item.short || '').slice(0, 4))
-          : h('div', {
-              key: item.id + ':card',
-              style: {
-                position: 'absolute',
-                left: item.left,
-                top: item.cardTop,
-                width: 176,
-                boxSizing: 'border-box',
-                pointerEvents: 'auto',
-                cursor: 'pointer',
-                padding: '6px 8px 7px',
-                borderRadius: 10,
-                border: '1px solid var(--dsw-alias-border-l1, rgba(20,30,45,.14))',
-                background: 'var(--dsw-specific-menu, rgba(255,255,255,.94))',
-                boxShadow: '0 4px 16px rgba(16,24,40,.12)',
-                color: 'var(--dsw-alias-label-primary, #1b1f24)',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
-                lineHeight: 1.35,
-              },
-              onClick: () => setOpen(true),
-              title: '点击打开逐轮检测面板',
-            },
-              h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)' } },
-                h('span', null, '第 ' + item.turn + ' 轮'),
-                h('span', null, item.verdict === 'same' ? '一致' : item.verdict === 'changed' ? '变化' : item.verdict === 'mixed' ? '多指纹' : item.verdict === 'generation' ? '代际' : '基线'),
-              ),
-              h('div', { style: { marginTop: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: 12, fontWeight: 750, color } }, 'FP-' + String(item.short || '')),
-              h('div', { style: { marginTop: 1, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, String(item.model || '')),
-            )
-        return card
-      })
-      if (!layout.length) {
-        children.push(h('div', {
-          key: 'status',
-          style: {
-            position: 'absolute',
-            left: 8,
-            bottom: 96,
-            pointerEvents: 'auto',
-            cursor: 'pointer',
-            padding: '5px 9px',
-            borderRadius: 999,
-            background: 'var(--dsw-specific-menu, #fff)',
-            border: '1px solid var(--dsw-alias-border-l1, rgba(20,30,45,.14))',
-            boxShadow: '0 2px 8px rgba(16,24,40,.12)',
-            fontSize: 10,
-            color: 'var(--dsw-alias-label-tertiary, #667085)',
-          },
-          onClick: () => setOpen(true),
-          title: '点击打开完整逐轮面板',
-        }, sessionId ? '逐轮指纹：定位中…' : '逐轮指纹：已开启，等待会话…'))
-      }
-      const clipPath = viewport.bottom > viewport.top
-        ? 'inset(' + Math.round(viewport.top) + 'px 0 ' + Math.max(0, Math.round(window.innerHeight - viewport.bottom)) + 'px 0)'
-        : undefined
-      return h('div', {
-        ref: railRef,
-        style: {
-          position: 'fixed',
-          inset: 0,
-          zIndex: 8,
-          pointerEvents: 'none',
-          overflow: 'hidden',
-          clipPath,
-        },
-      }, children)
     }
 
     function TurnRailFast() {
@@ -1803,13 +1473,6 @@ window.__ModuleLoader__.load({
       }
     }
 
-    const guard = (Component) => function Guarded(props) {
-      return h(SlotBoundary, null, h(Component, props))
-    }
-    const GuardedTurnRail = guard(TurnRailFast)
-    const GuardedOverlay = guard(Overlay)
-    const GuardedComposerToggle = guard(ComposerToggle)
-
     function ComposerToggle(props) {
       const visible = useRailOn()
       const latest = useLatestTurn()
@@ -1959,6 +1622,13 @@ window.__ModuleLoader__.load({
         ) : null,
       )
     }
+    const guard = (Component) => function Guarded(props) {
+      return h(SlotBoundary, null, h(Component, props))
+    }
+    const GuardedTurnRail = guard(TurnRailFast)
+    const GuardedOverlay = guard(Overlay)
+    const GuardedComposerToggle = guard(ComposerToggle)
+
 
     return {
       inject: ['slots'],
