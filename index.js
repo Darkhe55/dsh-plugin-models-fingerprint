@@ -11,6 +11,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildReport, buildTurns, fingerprintLabel, protocolLabel, shortId } from './lib/summary.mjs'
+import { buildSessionView } from './lib/session-view.mjs'
 import { buildEquivalence } from './lib/equivalence.mjs'
 import { runProbeSuite } from './lib/probe.mjs'
 import { SessionScanner, defaultSessionRoots, discoverProfileRoots } from './lib/scan.mjs'
@@ -372,6 +373,8 @@ export function apply(ctx) {
       railOn: body.railOn === true,
       railSessionId: body.railSessionId || null,
       canvasOpen: body.canvasOpen === true,
+      sessionViewRevision: Number(body.sessionViewRevision) || 0,
+      sessionViewStatus: typeof body.sessionViewStatus === 'string' ? body.sessionViewStatus : null,
       widget: body.widget === true,
       nativeToggle: body.nativeToggle === true,
       lastFetchError: typeof body.lastFetchError === 'string' ? body.lastFetchError : null,
@@ -391,6 +394,28 @@ export function apply(ctx) {
     const url = new URL(req.url || '/', 'http://local')
     const report = reportNow(Math.min(500, Number(url.searchParams.get('limit')) || 200))
     return json(res, 200, report)
+  })
+  route('/api/session-view', async (req, res) => {
+    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
+    if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
+    await init()
+    const url = new URL(req.url || '/', 'http://local')
+    const report = reportNow(50)
+    const sessionId = url.searchParams.get('id') || (report.latest && report.latest.observation && report.latest.observation.sessionId)
+    if (!sessionId) return json(res, 404, { error: 'no session id' })
+    const session = (report.sessions || []).find((item) => item.id === sessionId) || null
+    const rows = [...scanner.observations.values()]
+      .filter((observation) => observation.sessionId === sessionId)
+      .sort((left, right) => right.time - left.time)
+      .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 300))
+    const turns = buildTurns([...scanner.observations.values()], sessionId)
+    return json(res, 200, buildSessionView({
+      sessionId,
+      session,
+      turns,
+      revision: scanner.version,
+      observations: rows,
+    }))
   })
   route('/api/session', async (req, res) => {
     if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })

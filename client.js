@@ -17,10 +17,12 @@ window.__ModuleLoader__.load({
     let railOn = false
     let railSessionId = null
     let canvasOpen = false
+    let sessionViewRevision = 0
+    let sessionViewStatus = 'unknown'
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-13-39'
+    const CLIENT_BUILD = '2026-11-13-43'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -600,6 +602,8 @@ window.__ModuleLoader__.load({
       const railRef = React.useRef(null)
       const cardRefs = React.useRef(new Map())
       const positions = React.useRef(new Map())
+      const lastKnownCard = React.useRef(null)
+      const loadedSessionRef = React.useRef(null)
       const turnsKey = React.useRef('')
       const geometry = React.useRef({ ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 })
 
@@ -607,39 +611,69 @@ window.__ModuleLoader__.load({
         if (!on) {
           setTurns([])
           turnsKey.current = ''
+          loadedSessionRef.current = null
           return undefined
+        }
+        const targetSession = sessionId || null
+        if (loadedSessionRef.current !== targetSession) {
+          loadedSessionRef.current = targetSession
+          turnsKey.current = ''
+          setTurns([])
+          positions.current.clear()
+          lastKnownCard.current = null
+          geometry.current = { ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 }
+          sessionViewRevision = 0
+          sessionViewStatus = 'loading'
         }
         let cancelled = false
         let timer = null
+        let requestSeq = 0
+        let controller = null
         const load = async () => {
+          if (controller) controller.abort()
+          controller = typeof AbortController === 'function' ? new AbortController() : null
+          const seq = ++requestSeq
+          const signal = controller ? controller.signal : undefined
           let target = sessionId
           if (!target) {
             try {
-              const response = await fetch(apiUrl('/model-fingerprint/api/status?limit=1'), { cache: 'no-store' })
+              const response = await fetch(apiUrl('/model-fingerprint/api/status?limit=1'), { cache: 'no-store', signal })
               if (response.ok) {
                 const status = await response.json()
-                if (cancelled) return
+                if (cancelled || seq !== requestSeq) return
                 target = status && status.latest && status.latest.session ? status.latest.session.id : null
                 if (target) setRailSession(target)
               }
             } catch { /* status is best effort */ }
           }
-          if (!target || cancelled) return
+          if (!target || cancelled || seq !== requestSeq) return
           try {
-            const response = await fetch(apiUrl('/model-fingerprint/api/session?id=' + encodeURIComponent(target) + '&limit=200'), { cache: 'no-store' })
+            let response = null
+            let legacy = false
+            try {
+              response = await fetch(apiUrl('/model-fingerprint/api/session-view?id=' + encodeURIComponent(target) + '&limit=300'), { cache: 'no-store', signal })
+            } catch (error) {
+              if (cancelled || seq !== requestSeq) return
+              response = null
+            }
+            if (!response || response.status === 404 || !response.ok) {
+              legacy = true
+              response = await fetch(apiUrl('/model-fingerprint/api/session?id=' + encodeURIComponent(target) + '&limit=200'), { cache: 'no-store', signal })
+            }
             if (!response.ok) throw new Error('HTTP ' + response.status)
             const payload = await response.json()
-            if (!cancelled) {
-              lastFetchError = null
-              const next = payload.turns || []
-              const key = JSON.stringify(next)
-              if (key !== turnsKey.current) {
-                turnsKey.current = key
-                setTurns(next)
-              }
+            if (cancelled || seq !== requestSeq) return
+            lastFetchError = null
+            sessionViewRevision = legacy ? 0 : Number(payload.revision) || 0
+            sessionViewStatus = legacy ? 'legacy' : String(payload.status || 'unknown')
+            const next = Array.isArray(payload.turns) ? payload.turns : []
+            const key = JSON.stringify(next)
+            if (key !== turnsKey.current) {
+              turnsKey.current = key
+              setTurns(next)
             }
           } catch (error) {
-            if (!cancelled) {
+            if (!cancelled && seq === requestSeq) {
               lastFetchError = error && error.message ? error.message : String(error)
               // Keep the last successful turn list. A transient fetch failure or
               // a history remount must not blank every already-rendered card.
@@ -650,6 +684,8 @@ window.__ModuleLoader__.load({
         timer = setInterval(load, 4000)
         return () => {
           cancelled = true
+          requestSeq += 1
+          if (controller) controller.abort()
           if (timer) clearInterval(timer)
         }
       }, [on, sessionId])
@@ -794,6 +830,15 @@ window.__ModuleLoader__.load({
             clipTop = 0
             clipBottom = window.innerHeight
           }
+          let composerTop = null
+          const composerSeat = document.querySelector('[data-composer-seat]')
+          if (composerSeat) {
+            const box = composerSeat.getBoundingClientRect()
+            if (box.height > 20 && box.top > clipTop + 60) {
+              composerTop = box.top
+              clipBottom = Math.min(clipBottom, box.top - 8)
+            }
+          }
           const safeLeft = sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64)
           const gap = flowRect.left - sidebarRight
           const cardWidth = 176
@@ -819,7 +864,7 @@ window.__ModuleLoader__.load({
             turnNodes.set(key, nodes)
             if (nodes.length) renderedTurns.push({ turn, nodes })
           }
-          geometry.current = { ready: true, left, turnNodes, renderedTurns, offset, clipTop, clipBottom, scrollContainer, flowTurns: domTurns.length, domTurns, apiTurns, domRows, compact: nextCompact, sidebarRight, flowLeft: flowRect.left, flowWidth: flowRect.width }
+          geometry.current = { ready: true, left, turnNodes, renderedTurns, offset, clipTop, clipBottom, composerTop, scrollContainer, flowTurns: domTurns.length, domTurns, apiTurns, domRows, compact: nextCompact, sidebarRight, flowLeft: flowRect.left, flowWidth: flowRect.width }
           setCompact((value) => value === nextCompact ? value : nextCompact)
           setClip((value) => Math.abs(value.top - clipTop) < 1 && Math.abs(value.bottom - clipBottom) < 1 ? value : { top: clipTop, bottom: clipBottom })
           setFlowReady(true)
@@ -881,10 +926,15 @@ window.__ModuleLoader__.load({
             if (!Number.isFinite(top) || !Number.isFinite(bottom)) continue
             const preferredNodes = visibleNodes.filter((entry) => entry.preferred)
             const anchor = (preferredNodes.length ? preferredNodes : visibleNodes).sort((left, right) => right.area - left.area)[0] || null
+            const segments = (preferredNodes.length ? preferredNodes : visibleNodes)
+              .slice()
+              .sort((left, right) => left.visibleTop - right.visibleTop)
+              .slice(0, 3)
+              .map((entry) => ({ top: entry.visibleTop, bottom: entry.visibleBottom }))
             const previousZone = positions.current.get(turn.id)?.zone
             const above = previousZone === 'top' ? bottom < geo.clipTop + 8 : bottom < geo.clipTop - 2
             const below = previousZone === 'bottom' ? top > geo.clipBottom - 8 : top > geo.clipBottom + 2
-            measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, above, below })
+            measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, segments, above, below })
           }
           const above = measured
             .filter((entry) => entry.above)
@@ -906,7 +956,7 @@ window.__ModuleLoader__.load({
           if (atBottom) {
             bottomTurn = null
             if (latestTurn && !middle.some((entry) => entry.turn.id === latestTurn.id) && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
-              middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom })
+              middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true })
             }
           }
           if (!atBottom && !bottomTurn && measured.length) {
@@ -923,7 +973,13 @@ window.__ModuleLoader__.load({
           const estimatedLatestTop = lastMeasuredBottom === null ? null : lastMeasuredBottom + 16
           const latestLikelyVisible = atBottom || (estimatedLatestTop !== null && estimatedLatestTop >= geo.clipTop - 120 && estimatedLatestTop < geo.clipBottom - 20)
           if (!atBottom && !bottomTurn && latestLikelyVisible && latestTurn && middle.length === 0 && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
-            middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom })
+            middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true })
+          }
+          if (middle.length === 0 && !topTurn && !bottomTurn) {
+            const known = lastKnownCard.current
+            if (known && known.id) {
+              middle.push({ turn: known, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true, lastKnown: true })
+            }
           }
           const placeholderNeeded = middle.length === 0 && !topTurn && !bottomTurn && turns.length > 0
           const topY = geo.clipTop + 8
@@ -939,7 +995,13 @@ window.__ModuleLoader__.load({
             const center = (visibleTop + visibleBottom) / 2
             let y = Math.min(Math.max(center - 22, laneTop), Math.max(laneTop, laneBottom - 45))
             y = Math.min(Math.max(y, lastBottom + 4), Math.max(laneTop, laneBottom - 45))
-            targets.set(entry.turn.id, { top: y, zone: 'middle', turn: entry.turn, rangeTop: visibleTop, rangeBottom: visibleBottom })
+            const target = { top: y, zone: 'middle', turn: entry.turn, synthetic: Boolean(entry.synthetic), lastKnown: Boolean(entry.lastKnown) }
+            if (!entry.synthetic) {
+              target.rangeTop = visibleTop
+              target.rangeBottom = visibleBottom
+              target.segments = entry.segments || []
+            }
+            targets.set(entry.turn.id, target)
             lastBottom = y + 45
           }
           if (placeholderNeeded) {
@@ -952,6 +1014,9 @@ window.__ModuleLoader__.load({
           }
           if (topTurn) targets.set(topTurn.turn.id, { top: topY, zone: 'top', turn: topTurn.turn })
           if (bottomTurn) targets.set(bottomTurn.turn.id, { top: bottomY, zone: 'bottom', turn: bottomTurn.turn })
+          for (const target of targets.values()) {
+            if (target.turn && target.turn.id !== '__current__' && target.turn.primaryShort) lastKnownCard.current = target.turn
+          }
           const scrolling = performance.now() - lastScrollAt < 90
           let layoutChanged = lastActiveIds.size !== targets.size
           if (!layoutChanged) {
@@ -979,27 +1044,36 @@ window.__ModuleLoader__.load({
             node.style.filter = context ? 'grayscale(.45) saturate(.65)' : 'none'
             node.style.boxShadow = context ? '0 1px 4px rgba(16,24,40,.06)' : '0 4px 12px rgba(16,24,40,.10)'
             node.style.borderColor = context ? 'rgba(20,30,45,.08)' : 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))'
-            node.title = (target.zone === 'top' ? '上方 · ' : target.zone === 'bottom' ? '下方 · ' : '') + '第 ' + target.turn.turn + ' 轮 · ' + target.turn.verdictLabel + (target.zone === 'middle' ? ' · 右侧细线为可见区间' : '')
+            node.title = (target.zone === 'top' ? '上方 · ' : target.zone === 'bottom' ? '下方 · ' : '') + '第 ' + target.turn.turn + ' 轮 · ' + target.turn.verdictLabel + (target.lastKnown ? ' · 最后匹配轮次' : '') + (target.zone === 'middle' && Number.isFinite(target.rangeTop) ? ' · 右侧细线为可见区间' : '')
             const rangeEl = node.querySelector('[data-mf-range]')
             if (rangeEl) {
-              if (target.zone === 'middle' && Number.isFinite(target.rangeTop) && Number.isFinite(target.rangeBottom) && target.rangeBottom - target.rangeTop > 12) {
-                rangeEl.style.opacity = '0.72'
-                rangeEl.style.top = Math.round(target.rangeTop - target.top) + 'px'
-                rangeEl.style.height = Math.round(target.rangeBottom - target.rangeTop) + 'px'
-                if (!rangeEl._mfRangeShown) {
-                  rangeEl._mfRangeShown = true
-                  rangeEl.style.transform = 'scaleY(0)'
-                  window.requestAnimationFrame(() => {
-                    if (!rangeEl.isConnected) return
-                    rangeEl.style.transform = 'scaleY(1)'
-                  })
+              const segments = target.zone === 'middle'
+                ? (Array.isArray(target.segments) ? target.segments : (Number.isFinite(target.rangeTop) && Number.isFinite(target.rangeBottom) ? [{ top: target.rangeTop, bottom: target.rangeBottom }] : [])).slice(0, 3)
+                : []
+              rangeEl.style.opacity = segments.length ? '0.72' : '0'
+              const segmentEls = rangeEl.querySelectorAll('[data-mf-range-segment]')
+              for (let index = 0; index < segmentEls.length; index += 1) {
+                const segmentEl = segmentEls[index]
+                const segment = segments[index]
+                if (segment && segment.bottom - segment.top > 12) {
+                  segmentEl.style.opacity = '1'
+                  segmentEl.style.top = Math.round(segment.top - target.top) + 'px'
+                  segmentEl.style.height = Math.round(segment.bottom - segment.top) + 'px'
+                  if (!segmentEl._mfRangeShown) {
+                    segmentEl._mfRangeShown = true
+                    segmentEl.style.transform = 'scaleY(0)'
+                    window.requestAnimationFrame(() => {
+                      if (!segmentEl.isConnected) return
+                      segmentEl.style.transform = 'scaleY(1)'
+                    })
+                  } else {
+                    segmentEl.style.transform = 'scaleY(1)'
+                  }
                 } else {
-                  rangeEl.style.transform = 'scaleY(1)'
+                  segmentEl.style.opacity = '0'
+                  segmentEl.style.transform = 'scaleY(0)'
+                  segmentEl._mfRangeShown = false
                 }
-              } else {
-                rangeEl.style.opacity = '0'
-                rangeEl.style.transform = 'scaleY(0)'
-                rangeEl._mfRangeShown = false
               }
             }
             if (previous && previous.visible && moved && (zoneChanged || !scrolling || layoutChanged) && typeof node.animate === 'function') {
@@ -1053,6 +1127,7 @@ window.__ModuleLoader__.load({
             cards: targets.size,
             middleCards: middle.length,
             placeholder: placeholderNeeded,
+            lastKnownTurn: lastKnownCard.current ? lastKnownCard.current.turn : null,
             offset: geo.offset,
             measured: measured.length,
             measuredTurns: measured.slice(0, 6).map((entry) => ({ turn: entry.turn.turn, top: Math.round(entry.top), bottom: Math.round(entry.bottom), above: entry.above, below: entry.below })),
@@ -1071,6 +1146,7 @@ window.__ModuleLoader__.load({
             compact: geo.compact,
             clipTop: Math.round(geo.clipTop),
             clipBottom: Math.round(geo.clipBottom),
+            composerTop: Number.isFinite(geo.composerTop) ? Math.round(geo.composerTop) : null,
             viewport: window.innerWidth,
           }
         }
@@ -1160,19 +1236,32 @@ window.__ModuleLoader__.load({
             right: -8,
             top: 0,
             width: 5,
-            height: 0,
+            height: '100%',
             opacity: 0,
             pointerEvents: 'none',
             color: 'rgba(91, 117, 145, .76)',
-            transform: 'scaleY(0)',
-            transformOrigin: 'top center',
-            transition: 'opacity 180ms ease, transform 620ms cubic-bezier(.22,1,.36,1)',
-            willChange: 'height, top, opacity',
+            transition: 'opacity 180ms ease',
           },
         },
-          h('span', { style: { position: 'absolute', left: 0, top: 0, width: 1.5, height: '100%', background: 'currentColor', borderRadius: 1 } }),
-          h('span', { style: { position: 'absolute', left: 0, top: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
-          h('span', { style: { position: 'absolute', left: 0, bottom: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
+          [0, 1, 2].map((index) => h('span', {
+            key: 'segment-' + index,
+            'data-mf-range-segment': String(index),
+            style: {
+              position: 'absolute',
+              left: 0,
+              top: 0,
+              width: 5,
+              height: 0,
+              opacity: 0,
+              transform: 'scaleY(0)',
+              transformOrigin: 'top center',
+              transition: 'opacity 180ms ease, transform 620ms cubic-bezier(.22,1,.36,1)',
+            },
+          },
+            h('span', { style: { position: 'absolute', left: 0, top: 0, width: 1.5, height: '100%', background: 'currentColor', borderRadius: 1 } }),
+            h('span', { style: { position: 'absolute', left: 0, top: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
+            h('span', { style: { position: 'absolute', left: 0, bottom: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
+          )),
         )
         if (compact) {
           base.style.width = 56
@@ -1365,6 +1454,8 @@ window.__ModuleLoader__.load({
           railOn,
           railSessionId,
           canvasOpen,
+          sessionViewRevision,
+          sessionViewStatus,
           open,
           apiBase: apiBase(),
           widget: Boolean(window.__dshModelFingerprintWidget),

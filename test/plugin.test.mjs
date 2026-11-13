@@ -88,6 +88,7 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.equal(registeredTool.name, 'model_fingerprint')
   assert.ok(routes.has('/model-fingerprint'))
   assert.ok(routes.has('/model-fingerprint/api/status'))
+  assert.ok(routes.has('/model-fingerprint/api/session-view'))
   const injectedIndex = indexTap('<html><body></body></html>')
   assert.match(injectedIndex, /__dshModelFingerprintApiBase="http:\/\/127\.0\.0\.1:7373"/)
   assert.match(injectedIndex, /src="http:\/\/127\.0\.0\.1:7373\/model-fingerprint\/widget\.js"/)
@@ -118,6 +119,28 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   })
   assert.equal(jsonBody.stats.observations, 1)
   assert.equal(jsonBody.latest.observation.model, 'claimed-a')
+
+  let sessionViewBody = null
+  await new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('session-view route timed out')), 5000)
+    const res = {
+      headersSent: false,
+      writeHead() { this.headersSent = true },
+      end(body) { clearTimeout(timer); sessionViewBody = JSON.parse(String(body)); resolve() },
+    }
+    Promise.resolve(routes.get('/model-fingerprint/api/session-view')({
+      method: 'GET',
+      url: '/model-fingerprint/api/session-view?id=session-live&limit=20',
+      headers: { host: '127.0.0.1:5538' },
+    }, res)).catch(reject)
+  })
+  assert.equal(sessionViewBody.version, 1)
+  assert.equal(sessionViewBody.sessionId, 'session-live')
+  assert.equal(sessionViewBody.status, 'ready')
+  assert.equal(sessionViewBody.turns.length, 1)
+  assert.equal(sessionViewBody.turns[0].status, 'observed')
+  assert.equal(sessionViewBody.turns[0].anchors[0].value, '1')
+  assert.ok(sessionViewBody.revision > 0)
 
   const fingerprintId = jsonBody.latest.fingerprint.id
   const labelResult = await registeredTool.execute({ action: 'label', fingerprintId, label: 'actual-model', note: 'test' }, {})

@@ -12,3 +12,6 @@ test/*.png
 state.json
 state.json.zst
 .state/
+docs/issue-records.md
+docs/task-list.md
+docs/final-report.md
