@@ -23,6 +23,14 @@
           intervals.push(id)
           return id
         }
+        window.__dshModelFingerprintRightbarExpanded = () => {
+          try {
+            const service = ctx.get ? ctx.get('sidebarRight') : ctx.sidebarRight
+            return Boolean(service && typeof service.isExpanded === 'function' && service.isExpanded())
+          } catch {
+            return false
+          }
+        }
         window.__dshModelFingerprintNative = true
         window.__dshModelFingerprintNativeRail = true
         window.__dshModelFingerprintOpen = () => setOpen(true)
@@ -165,6 +173,7 @@
               try { window.clearInterval(id) } catch { /* already gone */ }
             }
             if (window.__dshModelFingerprintIntervalIds === intervals) window.__dshModelFingerprintIntervalIds = []
+            if (window.__dshModelFingerprintRightbarExpanded) window.__dshModelFingerprintRightbarExpanded = null
           })
         }
       },

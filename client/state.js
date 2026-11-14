@@ -124,6 +124,18 @@
       }, [])
       return canvasOpen
     }
+    const readRightbarExpanded = () => {
+      try {
+        if (typeof window.__dshModelFingerprintRightbarExpanded === 'function'
+          && window.__dshModelFingerprintRightbarExpanded()) return true
+      } catch { /* service is optional */ }
+      try {
+        return Boolean(document.querySelector('[data-sidebar-right-open]'))
+      } catch {
+        return false
+      }
+    }
+
     const detectCanvasOpen = () => {
       try {        const nodes = document.querySelectorAll('.dshcv-root, .dshcv-head')
         canvasProbe = []

@@ -283,7 +283,8 @@ model_fingerprint action=backfill
 1. 用 `conversation.chat.turnTail` 注册零布局 probe，获得已完成轮次的官方挂载/卸载生命周期与轮次号；
 2. 用 `VisibleTurnAdapter` 封装 DOM 兼容读取；轨道组件不直接 querySelector 官方 Chat 子树；
 3. 每轮只选择一个 canonical anchor（最终 assistant/message，其次最后一个非工具 assistant-step，最后才回退轮次容器）；
-4. 只读取当前帧的 anchor rect，不跨帧保存节点。
+4. 只读取当前帧的 anchor rect，不跨帧保存节点；
+5. 右侧侧边栏展开时，通过 `ctx.sidebarRight.isExpanded()` 或稳定的 `[data-sidebar-right-open]` 状态自动隐藏轨道卡片，收起后恢复；不会销毁卡片状态，也不会与右侧面板争抢空间。
 
 ---
 

@@ -1194,6 +1194,18 @@ window.__ModuleLoader__.load({
       }, [])
       return canvasOpen
     }
+    const readRightbarExpanded = () => {
+      try {
+        if (typeof window.__dshModelFingerprintRightbarExpanded === 'function'
+          && window.__dshModelFingerprintRightbarExpanded()) return true
+      } catch { /* service is optional */ }
+      try {
+        return Boolean(document.querySelector('[data-sidebar-right-open]'))
+      } catch {
+        return false
+      }
+    }
+
     const detectCanvasOpen = () => {
       try {        const nodes = document.querySelectorAll('.dshcv-root, .dshcv-head')
         canvasProbe = []
@@ -1388,6 +1400,7 @@ window.__ModuleLoader__.load({
       const [compact, setCompact] = React.useState(false)
       const [clip, setClip] = React.useState({ top: 0, bottom: 0 })
       const [flowReady, setFlowReady] = React.useState(true)
+      const [rightbarOpen, setRightbarOpen] = React.useState(false)
       const railRef = React.useRef(null)
       const placeholderRef = React.useRef(null)
       const cardRefs = React.useRef(new Map())
@@ -1417,6 +1430,7 @@ window.__ModuleLoader__.load({
       const recovery = React.useRef({ timer: 0, attempt: 0, deadline: 0, reason: null })
       const recoveryEvent = React.useRef(null)
       const scrollDirection = React.useRef(1)
+      const rightbarOpenRef = React.useRef(false)
       const placeholderPosition = React.useRef({ right: 0, top: -9999, visible: false })
 
       const applyTurns = (next) => {
@@ -1462,6 +1476,8 @@ window.__ModuleLoader__.load({
           jump.current = { pending: false, generation: 0, at: 0 }
           recovery.current = { timer: 0, attempt: 0, deadline: 0, reason: null }
           placeholderPosition.current = { right: 0, top: -9999, visible: false }
+          rightbarOpenRef.current = false
+          setRightbarOpen(false)
           sessionViewRevision = 0
           sessionViewStatus = 'loading'
           const token = requestView.current
@@ -2166,7 +2182,20 @@ window.__ModuleLoader__.load({
             clipBottom: Math.round(geometry.current.clipBottom),
             viewport: window.innerWidth,
             canvasOpen,
+            rightbarOpen: rightbarOpenRef.current,
           }
+        }
+
+        const syncRightbar = () => {
+          const open = readRightbarExpanded()
+          const previous = rightbarOpenRef.current
+          if (open !== previous) {
+            rightbarOpenRef.current = open
+            railDebug = { ...railDebug, rightbarOpen: open }
+            setRightbarOpen(open)
+            if (!open) schedule(true)
+          }
+          return open
         }
 
         const requestVisibleTurns = (snapshot) => {
@@ -2197,6 +2226,7 @@ window.__ModuleLoader__.load({
         }
 
         const update = (needsRebuild) => {
+          syncRightbar()
           const flow = adapter.getFlow()
           if (!flow) {
             geometry.current = { ...geometry.current, ready: false }
@@ -2311,6 +2341,7 @@ window.__ModuleLoader__.load({
         window.addEventListener('scroll', onScroll, { capture: true, passive: true })
         window.addEventListener('resize', onResize)
         tick = window.setInterval(() => schedule(false), 1500)
+        const rightbarTimer = window.setInterval(syncRightbar, 200)
         return () => {
           disposed = true
           if (raf) window.cancelAnimationFrame(raf)
@@ -2324,6 +2355,7 @@ window.__ModuleLoader__.load({
           rebindScheduler.dispose()
           scrollScheduler.dispose()
           if (tick) clearInterval(tick)
+          if (rightbarTimer) clearInterval(rightbarTimer)
           scheduleRef.current = null
           recoveryEvent.current = null
           tracker.current = null
@@ -2486,7 +2518,7 @@ window.__ModuleLoader__.load({
           pointerEvents: 'none',
           overflow: 'hidden',
           clipPath,
-          opacity: canvasOpen ? 0 : 1,
+          opacity: canvasOpen || rightbarOpen ? 0 : 1,
           transition: 'opacity 160ms ease',
         },
       }, children)
@@ -2686,6 +2718,14 @@ window.__ModuleLoader__.load({
           intervals.push(id)
           return id
         }
+        window.__dshModelFingerprintRightbarExpanded = () => {
+          try {
+            const service = ctx.get ? ctx.get('sidebarRight') : ctx.sidebarRight
+            return Boolean(service && typeof service.isExpanded === 'function' && service.isExpanded())
+          } catch {
+            return false
+          }
+        }
         window.__dshModelFingerprintNative = true
         window.__dshModelFingerprintNativeRail = true
         window.__dshModelFingerprintOpen = () => setOpen(true)
@@ -2828,6 +2868,7 @@ window.__ModuleLoader__.load({
               try { window.clearInterval(id) } catch { /* already gone */ }
             }
             if (window.__dshModelFingerprintIntervalIds === intervals) window.__dshModelFingerprintIntervalIds = []
+            if (window.__dshModelFingerprintRightbarExpanded) window.__dshModelFingerprintRightbarExpanded = null
           })
         }
       },
