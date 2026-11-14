@@ -228,7 +228,7 @@ npm run probe:plan          # 只生成 6 类 × 5 prompt × 10 次 × 2 窗口�
 npm run probe:import -- path/to/probe-results.json  # 离线校验导入，不调用模型
 ```
 
-`probe:plan` 不调用任何模型，只写 `reports/minimax-probe-plan.json`；真实采集仍需显式 `confirm=true`。离线结果用 `probe:import` 校验后进入 `reports/probe-import-audit.json`。`benchmark:minimax` 写 `reports/minimax-m3-m27.json` / `.md`，`benchmark:official` 写 `reports/official-audit.json`。时间验证使用严格 rolling-origin，FPR 使用 nested session-level 阈值，AUC 明确为 session-paired verification AUC；报告明确禁止在无固定重复探针时声称识别出 MoE 专家。
+`probe:plan` 不调用任何模型，只写 `reports/minimax-probe-plan.json`；真实采集仍需显式 `confirm=true`。离线结果用 `probe:import` 校验后进入 `reports/probe-import-audit.json`。`benchmark:minimax` 写 `reports/minimax-m3-m27.json` / `.md`，`benchmark:official` 写 `reports/official-audit.json`。时间验证使用严格 rolling-origin，FPR 使用 nested session-level 阈值，AUC 明确为 session-paired verification AUC。FPR 报告区分 verification trial 与唯一底层 session cluster，正式上界使用单侧 95% Clopper–Pearson；session-block bootstrap 仅作探索性不确定性指标。报告明确禁止在无固定重复探针时声称识别出 MoE 专家。
 
 ---
 

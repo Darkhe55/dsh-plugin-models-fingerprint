@@ -9,7 +9,7 @@ import { normalizeOfficialModels, freshness, FEATURE_SCHEMA_VERSION, QUALITY_VER
 import { artifactContext, ensureOfficialArtifacts } from '../lib/lifecycle.mjs'
 import { buildOfficialProfile, SIMILARITY_VERSION, sourceForOfficial } from '../lib/similarity.mjs'
 import { assessModelIdentity, compareProtocol } from '../lib/identity.mjs'
-import { bootstrapSessionAuc, buildHardNegativeBenchmark, nestedSessionFpr, rollingTimeFolds, thresholdAtFpr } from '../lib/benchmark.mjs'
+import { bootstrapSessionAuc, buildHardNegativeBenchmark, clopperPearsonUpper, clusterBootstrapRate, clusterDecisionStats, evaluateFprGate, nestedSessionFpr, rollingTimeFolds, thresholdAtFpr, zeroEventConfidenceMinimum } from '../lib/benchmark.mjs'
 import { buildProbePlan, validateProbeResults } from '../lib/probe-plan.mjs'
 import { evaluateObservationQuality } from '../lib/quality.mjs'
 
@@ -285,8 +285,9 @@ test('nested FPR selects thresholds only from outer training sessions and report
   assert.equal(result.targets['0.05'].status, 'training-resolution-insufficient')
   assert.equal(result.targets['0.05'].fpr, null)
   assert.equal(result.targets['0.05'].minimumTrainNegativeTrials, 19)
-  assert.equal(result.targets['0.01'].fprConfidence.unit, 'session')
-  assert.equal(result.targets['0.01'].fprConfidence.clusterUnit, 'underlying-session-id')
+  assert.equal(result.targets['0.01'].exploratoryClusterBootstrap.clusterUnit, 'underlying-session-id')
+  assert.equal(result.targets['0.01'].formalUpperConfidenceBound.valid, false)
+  assert.equal(result.targets['0.01'].formalGateEligible, false)
   assert.equal(result.targets['0.01'].thresholdSource, 'outer-training-sessions-only')
   assert.equal(result.targets['0.01'].testDataUsedForThreshold, false)
   assert.equal(result.targets['0.01'].meetsTarget, false)
@@ -502,5 +503,118 @@ test('bootstrap groups shared model-session records by underlying session id', (
   assert.deepEqual(boot.blockSizes.sort((a, b) => a - b), [1, 1, 1, 2])
   assert.equal(boot.pairedDistancesPreserved, true)
   assert.equal(boot.pairTrials, 10)
+})
+
+test('Clopper-Pearson one-sided upper bound is non-degenerate at zero events', () => {
+  const n100 = clopperPearsonUpper({ events: 0, trials: 100 })
+  assert.equal(n100.valid, true)
+  assert.ok(Math.abs(n100.upper - 0.029513) < 0.0002, '0/100 upper is about 2.95%')
+  assert.ok(n100.upper > 0.01, '0/100 cannot establish 1%')
+  const n299 = clopperPearsonUpper({ events: 0, trials: 299 })
+  assert.ok(n299.upper <= 0.01 + 1e-6, '0/299 meets the 1% upper bound')
+  const n298 = clopperPearsonUpper({ events: 0, trials: 298 })
+  assert.ok(n298.upper > 0.01, '0/298 does not meet 1%')
+  const n59 = clopperPearsonUpper({ events: 0, trials: 59 })
+  assert.ok(n59.upper <= 0.05 + 1e-6, '0/59 meets the 5% upper bound')
+  const n58 = clopperPearsonUpper({ events: 0, trials: 58 })
+  assert.ok(n58.upper > 0.05, '0/58 does not meet 5%')
+  assert.equal(zeroEventConfidenceMinimum(0.01), 299)
+  assert.equal(zeroEventConfidenceMinimum(0.05), 59)
+  const one = clopperPearsonUpper({ events: 1, trials: 100 })
+  assert.ok(one.upper > one.point)
+  const all = clopperPearsonUpper({ events: 100, trials: 100 })
+  assert.equal(all.upper, 1)
+  const empty = clopperPearsonUpper({ events: 0, trials: 0 })
+  assert.equal(empty.valid, false)
+  assert.equal(empty.upper, null)
+})
+
+test('cluster false accept is one event when any model record in a shared session fails', () => {
+  const records = [
+    { sessionId: 'shared', model: 'M3', sameDistance: 0.2, otherDistance: 0.9, thresholds: { '0.05': 1 } },
+    { sessionId: 'shared', model: 'M2.7', sameDistance: 0.3, otherDistance: 2.1, thresholds: { '0.05': 1 } },
+    { sessionId: 'clean', model: 'M3', sameDistance: 0.1, otherDistance: 2.0, thresholds: { '0.05': 1 } },
+  ]
+  const stats = clusterDecisionStats(records, '0.05')
+  assert.equal(stats.verificationTrialCount, 3)
+  assert.equal(stats.uniqueUnderlyingSessions, 2)
+  assert.equal(stats.falseAcceptTrials, 1)
+  assert.equal(stats.falseAcceptClusters, 1)
+  assert.equal(stats.clusterFalseAcceptRate, 0.5)
+})
+
+test('verification trials and underlying session clusters are counted separately', () => {
+  const two = [
+    { sessionId: 'shared', model: 'M3', sameDistance: 0.1, otherDistance: 0.8, thresholds: { '0.05': 1 } },
+    { sessionId: 'shared', model: 'M2.7', sameDistance: 0.2, otherDistance: 2, thresholds: { '0.05': 1 } },
+  ]
+  const stats = clusterDecisionStats(two, '0.05')
+  assert.equal(stats.verificationTrialCount, 2)
+  assert.equal(stats.uniqueUnderlyingSessions, 1)
+  assert.equal(stats.falseAcceptTrials, 1)
+  assert.equal(stats.falseAcceptClusters, 1)
+
+  const records = Array.from({ length: 23 }, (_, index) => ({
+    sessionId: index === 0 ? 'shared' : 's' + index,
+    model: index === 0 ? 'M3' : 'M3',
+    sameDistance: 0.2 + index * 0.01,
+    otherDistance: 2 + index * 0.01,
+  }))
+  records.push({ sessionId: 'shared', model: 'M2.7', sameDistance: 0.3, otherDistance: 2.1 })
+  const boot = bootstrapSessionAuc(records, { reps: 5, seed: 3 })
+  assert.equal(boot.modelSessionRecords, 24)
+  assert.equal(boot.uniqueUnderlyingSessions, 23)
+  assert.equal(boot.sharedModelSessionCount, 1)
+  assert.equal(boot.blockSizes.filter((size) => size === 2).length, 1)
+})
+
+test('formal gate requires exact confidence bound, not zero trial FPR or bootstrap zero', () => {
+  const base = {
+    trainingResolutionSufficient: true,
+    testResolutionSufficient: true,
+    thresholdResolvable: true,
+    allOuterFoldsEvaluable: true,
+    falseAcceptClusters: 0,
+    targetFpr: 0.01,
+  }
+  const insufficient100 = evaluateFprGate({ ...base, uniqueUnderlyingSessions: 100 })
+  assert.equal(insufficient100.meetsTarget, false)
+  assert.equal(insufficient100.formalGateEligible, false)
+  assert.equal(insufficient100.status, 'confidence-upper-bound-too-high')
+  assert.ok(insufficient100.formalUpperConfidenceBound.upper > 0.01)
+
+  const sufficient299 = evaluateFprGate({ ...base, uniqueUnderlyingSessions: 299 })
+  assert.equal(sufficient299.formalGateEligible, true)
+  assert.equal(sufficient299.meetsTarget, true)
+  assert.equal(sufficient299.status, 'target-met')
+  assert.ok(sufficient299.formalUpperConfidenceBound.upper <= 0.01)
+
+  const fivePercent59 = evaluateFprGate({ ...base, targetFpr: 0.05, uniqueUnderlyingSessions: 59 })
+  assert.equal(fivePercent59.meetsTarget, true)
+  const fivePercent20 = evaluateFprGate({ ...base, targetFpr: 0.05, uniqueUnderlyingSessions: 20 })
+  assert.equal(fivePercent20.meetsTarget, false)
+
+  const leaked = evaluateFprGate({ ...base, uniqueUnderlyingSessions: 299, leakage: true })
+  assert.equal(leaked.meetsTarget, false)
+  assert.ok(leaked.formalGateReasons.includes('data-leakage'))
+
+  const noClusters = evaluateFprGate({ ...base, uniqueUnderlyingSessions: 0 })
+  assert.equal(noClusters.formalUpperConfidenceBound.valid, false)
+  assert.equal(noClusters.meetsTarget, false)
+
+  const records = Array.from({ length: 100 }, (_, index) => ({
+    sessionId: 'cluster-' + index,
+    model: 'M3',
+    sameDistance: 0.2,
+    otherDistance: 2,
+    thresholds: { '0.01': 1 },
+  }))
+  const bootstrap = clusterBootstrapRate(records, (sample) => {
+    const stats = clusterDecisionStats(sample, '0.01')
+    return stats.uniqueUnderlyingSessions ? stats.clusterFalseAcceptRate : null
+  }, { reps: 100, seed: 4 })
+  assert.equal(bootstrap.upper, 0, 'zero events make percentile bootstrap degenerate')
+  assert.ok(insufficient100.formalUpperConfidenceBound.upper > 0, 'formal CP upper is non-zero')
+  assert.equal(insufficient100.status, 'confidence-upper-bound-too-high')
 })
 

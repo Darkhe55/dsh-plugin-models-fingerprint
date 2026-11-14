@@ -86,16 +86,38 @@ function markdown(report) {
     '',
     '阈值在每折只由外层训练 session 确定；测试 session 不参与阈值、特征选择、标准化或中位数/MAD 计算。',
     '有限样本规则：接受规则为 `distance <= threshold`；仅当 `accepted / trainNegativeTrials <= targetFpr` 时返回有限阈值，否则阈值为 `null`。',
+    '正式置信上界：单侧 95% Clopper–Pearson；零误报时 `upper = 1 - 0.05^(1/n)`，不使用 bootstrap 的退化 0 上界。',
     '',
-    '| 目标 FPR | 训练分辨率 | 最小训练负例 | 最大训练分辨率 | 可用/跳过外层折 | 测试负例 | 阈值范围 | 点估计 FPR | 召回 | FPR upper95 | 状态 |',
-    '|---:|---|---:|---:|---:|---:|---|---:|---:|---:|---|',
-    ...Object.entries(report.fpr.targets || {}).map(([rate, value]) => '| ' + rate + ' | ' + value.trainingResolutionSufficient + ' | ' + value.minimumTrainNegativeTrials + ' | ' + value.maximumTrainResolution + ' | ' + value.eligibleOuterFolds + ' / ' + value.skippedOuterFolds + ' | ' + value.testNegativeTrials + ' | ' + JSON.stringify(value.thresholdRange) + ' | ' + (value.pointEstimateReliable ? value.fpr : '无法验证') + ' | ' + (value.pointEstimateReliable ? value.recall : '无法验证') + ' | ' + (value.fprConfidence && value.fprConfidence.meaningful ? value.fprConfidence.upper95 : '—（训练/测试分辨率不足）') + ' | ' + value.status + ' |'),
+    '| 目标 FPR | verification trials | unique sessions | trial FA | cluster FA | trial FPR | cluster FA rate | exploratory session-block CI | formal one-sided 95% upper | empirical min | zero-event 95% min | train resolution | test cluster resolution | formal gate | status / reasons |',
+    '|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---|---|---|---|',
+    ...Object.entries(report.fpr.targets || {}).map(([rate, value]) => {
+      const boot = value.exploratoryClusterBootstrap || {}
+      const cp = value.formalUpperConfidenceBound || {}
+      return '| ' + rate
+        + ' | ' + value.verificationTrialCount
+        + ' | ' + value.uniqueUnderlyingSessions
+        + ' | ' + (value.falseAcceptTrials == null ? '—' : value.falseAcceptTrials)
+        + ' | ' + (value.falseAcceptClusters == null ? '—' : value.falseAcceptClusters)
+        + ' | ' + (value.trialFpr == null ? '—' : value.trialFpr)
+        + ' | ' + (value.clusterFalseAcceptRate == null ? '—' : value.clusterFalseAcceptRate)
+        + ' | ' + (boot.upper == null ? '—' : boot.lower + '–' + boot.upper)
+        + ' | ' + (cp.valid ? cp.upper : '—(' + cp.reason + ')')
+        + ' | ' + value.empiricalResolutionMinimum
+        + ' | ' + value.zeroEventConfidenceMinimum
+        + ' | ' + value.trainingResolutionSufficient
+        + ' | ' + value.testResolutionSufficient
+        + ' | ' + value.formalGateEligible
+        + ' | ' + value.status + (value.formalGateReasons.length ? '：' + value.formalGateReasons.join(',') : '')
+        + ' |'
+    }),
     ...Object.entries(report.fpr.targets || {}).map(([rate, value]) => '- ' + rate + ' skippedReasons：' + JSON.stringify(value.skippedReasons)),
-    '- 依赖说明：外层测试 session 的 same/other 决策成对；bootstrap 以唯一底层 sessionId 为 block，同时带入该 session 的所有模型记录，保持 same/other 配对。',
-    '- 1% 目标：' + ((report.fpr.targets && report.fpr.targets['0.01'] && report.fpr.targets['0.01'].resolutionInsufficient) ? '训练分辨率不足，无法验证，不能称为达到 1% FPR。' : '已按上置信界检查。'),
-    '- 5% 目标：' + ((report.fpr.targets && report.fpr.targets['0.05'] && report.fpr.targets['0.05'].resolutionInsufficient) ? '训练分辨率不足，无法验证，不能称为达到 5% FPR。' : '已按上置信界检查。'),
-    '- 1% 需要每折至少 100 个训练负例；当前最小训练负例数为 ' + ((report.fpr.targets && report.fpr.targets['0.01'] && report.fpr.targets['0.01'].minimumTrainNegativeTrials) ?? '—') + '。',
-    '- 5% 需要每折至少 20 个训练负例；当前最小训练负例数为 ' + ((report.fpr.targets && report.fpr.targets['0.05'] && report.fpr.targets['0.05'].minimumTrainNegativeTrials) ?? '—') + '。',
+    ...Object.entries(report.fpr.targets || {}).map(([rate, value]) => '- ' + rate + ' 阈值诊断：minTrainNegativeTrials=' + value.minimumTrainNegativeTrials + '，maximumTrainResolution=' + value.maximumTrainResolution + '，thresholdRange=' + JSON.stringify(value.thresholdRange) + '，eligibleOuterFolds=' + value.eligibleOuterFolds + '/24。'),
+    '- 依赖说明：验证 trial 是 model-session record；独立 cluster 是唯一底层 sessionId。cluster FPR 表示“一个独立会话中至少一次错误接纳”的比例，是正式、更保守的闸门。',
+    '- exploratoryClusterBootstrap 只作为探索性不确定性指标；正式判定只使用 `formalUpperConfidenceBound`（单侧 95% Clopper–Pearson）。',
+    '- trialFpr 只是描述指标，不能单独触发 target-met。',
+    '- 1% 目标：' + ((report.fpr.targets && report.fpr.targets['0.01'] && report.fpr.targets['0.01'].formalGateEligible) ? '形式闸门通过；仍需复核其他上线条件。' : '未达标；' + (report.fpr.targets['0.01'].formalGateReasons || []).join(', ')),
+    '- 5% 目标：' + ((report.fpr.targets && report.fpr.targets['0.05'] && report.fpr.targets['0.05'].formalGateEligible) ? '形式闸门通过；仍需复核其他上线条件。' : '未达标；' + (report.fpr.targets['0.05'].formalGateReasons || []).join(', ')),
+    '- 100 个零误报独立 session 的 95% 单侧上界约 2.95%，不能验证 1%；20 个零误报 session 的上界约 13.9%，不能验证 5%。',
     '',
     '## 距离分布',
     '',

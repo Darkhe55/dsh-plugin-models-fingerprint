@@ -1,6 +1,6 @@
 # MiniMax M3 vs M2.7 离线困难负样本评估
 
-生成时间：2026-11-14T14:36:41.927Z
+生成时间：2026-11-14T15:02:49.627Z
 
 ## 数据量
 
@@ -58,18 +58,22 @@
 
 阈值在每折只由外层训练 session 确定；测试 session 不参与阈值、特征选择、标准化或中位数/MAD 计算。
 有限样本规则：接受规则为 `distance <= threshold`；仅当 `accepted / trainNegativeTrials <= targetFpr` 时返回有限阈值，否则阈值为 `null`。
+正式置信上界：单侧 95% Clopper–Pearson；零误报时 `upper = 1 - 0.05^(1/n)`，不使用 bootstrap 的退化 0 上界。
 
-| 目标 FPR | 训练分辨率 | 最小训练负例 | 最大训练分辨率 | 可用/跳过外层折 | 测试负例 | 阈值范围 | 点估计 FPR | 召回 | FPR upper95 | 状态 |
-|---:|---|---:|---:|---:|---:|---|---:|---:|---:|---|
-| 0.01 | false | 4 | 0.25 | 0 / 24 | 24 | {"min":null,"median":null,"max":null} | 无法验证 | 无法验证 | —（训练/测试分辨率不足） | training-resolution-insufficient |
-| 0.05 | false | 4 | 0.25 | 0 / 24 | 24 | {"min":null,"median":null,"max":null} | 无法验证 | 无法验证 | —（训练/测试分辨率不足） | training-resolution-insufficient |
+| 目标 FPR | verification trials | unique sessions | trial FA | cluster FA | trial FPR | cluster FA rate | exploratory session-block CI | formal one-sided 95% upper | empirical min | zero-event 95% min | train resolution | test cluster resolution | formal gate | status / reasons |
+|---:|---:|---:|---:|---:|---:|---:|---|---:|---:|---:|---|---|---|---|
+| 0.01 | 24 | 23 | — | — | — | — | — | —(no eligible verification trials; formal upper bound unavailable) | 100 | 299 | false | false | false | training-resolution-insufficient：training-resolution-insufficient,outer-fold-not-evaluable,test-cluster-resolution-insufficient,confidence-bound-unavailable |
+| 0.05 | 24 | 23 | — | — | — | — | — | —(no eligible verification trials; formal upper bound unavailable) | 20 | 59 | false | true | false | training-resolution-insufficient：training-resolution-insufficient,outer-fold-not-evaluable,confidence-bound-unavailable |
 - 0.01 skippedReasons：{"training-resolution-insufficient":24}
 - 0.05 skippedReasons：{"training-resolution-insufficient":24}
-- 依赖说明：外层测试 session 的 same/other 决策成对；bootstrap 以唯一底层 sessionId 为 block，同时带入该 session 的所有模型记录，保持 same/other 配对。
-- 1% 目标：训练分辨率不足，无法验证，不能称为达到 1% FPR。
-- 5% 目标：训练分辨率不足，无法验证，不能称为达到 5% FPR。
-- 1% 需要每折至少 100 个训练负例；当前最小训练负例数为 4。
-- 5% 需要每折至少 20 个训练负例；当前最小训练负例数为 4。
+- 0.01 阈值诊断：minTrainNegativeTrials=4，maximumTrainResolution=0.25，thresholdRange={"min":null,"median":null,"max":null}，eligibleOuterFolds=0/24。
+- 0.05 阈值诊断：minTrainNegativeTrials=4，maximumTrainResolution=0.25，thresholdRange={"min":null,"median":null,"max":null}，eligibleOuterFolds=0/24。
+- 依赖说明：验证 trial 是 model-session record；独立 cluster 是唯一底层 sessionId。cluster FPR 表示“一个独立会话中至少一次错误接纳”的比例，是正式、更保守的闸门。
+- exploratoryClusterBootstrap 只作为探索性不确定性指标；正式判定只使用 `formalUpperConfidenceBound`（单侧 95% Clopper–Pearson）。
+- trialFpr 只是描述指标，不能单独触发 target-met。
+- 1% 目标：未达标；training-resolution-insufficient, outer-fold-not-evaluable, test-cluster-resolution-insufficient, confidence-bound-unavailable
+- 5% 目标：未达标；training-resolution-insufficient, outer-fold-not-evaluable, confidence-bound-unavailable
+- 100 个零误报独立 session 的 95% 单侧上界约 2.95%，不能验证 1%；20 个零误报 session 的上界约 13.9%，不能验证 5%。
 
 ## 距离分布
 
