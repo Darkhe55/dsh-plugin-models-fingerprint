@@ -1,6 +1,6 @@
 # MiniMax M3 vs M2.7 离线困难负样本评估
 
-生成时间：2026-11-14T14:09:00.613Z
+生成时间：2026-11-14T14:36:41.927Z
 
 ## 数据量
 
@@ -50,19 +50,26 @@
 - 正确：20 / 24
 - 误判：4
 - 不确定：0
-- session-paired verification AUC：0.724（双向 session cluster bootstrap 95% CI 0.656–0.814，2000 次，seed 17）
+- session-paired verification AUC：0.724（session-block bootstrap 95% CI 0.611–0.864，2000 次，seed 17）
+- bootstrap clusterUnit：underlying-session-id；model-session records：24；唯一底层 session：23；共享 session：1
 - 这是同一测试会话的 same/other 距离配对验证，不是独立观测分类 AUC。
 
 ## Nested session-level FPR / Recall
 
 阈值在每折只由外层训练 session 确定；测试 session 不参与阈值、特征选择、标准化或中位数/MAD 计算。
+有限样本规则：接受规则为 `distance <= threshold`；仅当 `accepted / trainNegativeTrials <= targetFpr` 时返回有限阈值，否则阈值为 `null`。
 
-| 目标 FPR | 阈值范围 | 点估计 FPR | 点估计召回 | false accepts / negatives | true accepts / positives | FPR upper95 | 最小可观测非零 FPR | 分辨率 | 状态 |
-|---:|---|---:|---:|---:|---:|---:|---:|---|---|
-| 0.01 | {"min":0.576,"median":1.69,"max":2.995} | 0.083（不可验证） | 0.667 | 2 / 24 | 16 / 24 | —（分辨率不足） | 0.042 | true | resolution-insufficient |
-| 0.05 | {"min":0.576,"median":1.69,"max":2.995} | 0.083 | 0.667 | 2 / 24 | 16 / 24 | 0.167 | 0.042 | false | not-verified |
-- 依赖说明：外层测试 session 的 same/other 决策成对；bootstrap 对 M3 与 M2.7 的 session 分别重采样（双向 cluster bootstrap），不会拆散同一 session 的配对。
-- 1% 目标：负例数不足，无法验证，不能称为达到 1% FPR。
+| 目标 FPR | 训练分辨率 | 最小训练负例 | 最大训练分辨率 | 可用/跳过外层折 | 测试负例 | 阈值范围 | 点估计 FPR | 召回 | FPR upper95 | 状态 |
+|---:|---|---:|---:|---:|---:|---|---:|---:|---:|---|
+| 0.01 | false | 4 | 0.25 | 0 / 24 | 24 | {"min":null,"median":null,"max":null} | 无法验证 | 无法验证 | —（训练/测试分辨率不足） | training-resolution-insufficient |
+| 0.05 | false | 4 | 0.25 | 0 / 24 | 24 | {"min":null,"median":null,"max":null} | 无法验证 | 无法验证 | —（训练/测试分辨率不足） | training-resolution-insufficient |
+- 0.01 skippedReasons：{"training-resolution-insufficient":24}
+- 0.05 skippedReasons：{"training-resolution-insufficient":24}
+- 依赖说明：外层测试 session 的 same/other 决策成对；bootstrap 以唯一底层 sessionId 为 block，同时带入该 session 的所有模型记录，保持 same/other 配对。
+- 1% 目标：训练分辨率不足，无法验证，不能称为达到 1% FPR。
+- 5% 目标：训练分辨率不足，无法验证，不能称为达到 5% FPR。
+- 1% 需要每折至少 100 个训练负例；当前最小训练负例数为 4。
+- 5% 需要每折至少 20 个训练负例；当前最小训练负例数为 4。
 
 ## 距离分布
 
@@ -76,16 +83,17 @@
 - 有效折：1；跳过：4
 - 每折训练只使用 testStart 之前开始的 session；未来 session 数量单独记录。
 
-| 窗口 | 状态 | 训练会话 M3/M2.7 | 测试会话 M3/M2.7 | 测试起点 | 测试终点 | 距离 |
-|---:|---|---:|---:|---|---|---|
-| 0 | insufficient-training-history（need at least 2 sessions per model before testStart） | 0/0 | 4/0 | 2026-08-27T09:23:45.379Z | 2026-10-23T14:37:26.273Z | — |
-| 1 | insufficient-training-history（need at least 2 sessions per model before testStart） | 4/0 | 5/0 | 2026-10-23T14:44:03.945Z | 2026-10-23T15:46:16.827Z | — |
-| 2 | insufficient-training-history（need at least 2 sessions per model before testStart） | 9/0 | 4/0 | 2026-10-23T18:23:10.489Z | 2026-10-24T05:43:36.699Z | — |
-| 3 | insufficient-training-history（need at least 2 sessions per model before testStart） | 13/0 | 3/2 | 2026-10-24T08:04:16.303Z | 2026-10-29T11:11:13.800Z | — |
-| 4 | ok | 16/2 | 3/2 | 2026-10-29T11:14:47.505Z | 2026-11-05T11:23:32.669Z | {"MiniMax-M3ToOwn":2.627,"MiniMax-M2.7ToOwn":2.423,"MiniMax-M3ToOther":5.488,"MiniMax-M2.7ToOther":0.581} |
+| 窗口 | 状态 | 训练/测试唯一 session | 训练会话 M3/M2.7 | 测试会话 M3/M2.7 | 混合模型 session | boundary overlap | trainEnd | testStart | 距离 |
+|---:|---|---:|---:|---:|---:|---:|---|---|---|
+| 0 | insufficient-training-history（need at least 2 sessions per model with sessionEnd < testStart） | 0/4 | 0/0 | 4/0 | 0 | 0 | — | 2026-08-27T09:23:45.379Z | — |
+| 1 | insufficient-training-history（need at least 2 sessions per model with sessionEnd < testStart） | 4/5 | 4/0 | 5/0 | 0 | 0 | 2026-10-23T14:42:38.976Z | 2026-10-23T14:44:03.945Z | — |
+| 2 | insufficient-training-history（need at least 2 sessions per model with sessionEnd < testStart） | 9/4 | 9/0 | 4/0 | 0 | 0 | 2026-10-23T16:00:48.506Z | 2026-10-23T18:23:10.489Z | — |
+| 3 | insufficient-training-history（need at least 2 sessions per model with sessionEnd < testStart） | 13/5 | 13/0 | 3/2 | 0 | 0 | 2026-10-24T05:47:12.036Z | 2026-10-24T08:04:16.303Z | — |
+| 4 | ok | 18/5 | 16/2 | 3/3 | 1 | 0 | 2026-10-29T11:12:33.606Z | 2026-10-29T11:14:47.505Z | {"MiniMax-M3ToOwn":2.608,"MiniMax-M2.7ToOwn":2.488,"MiniMax-M3ToOther":5.473,"MiniMax-M2.7ToOther":0.614} |
 
-- 无法验证的窗口不输出距离或 AUC；只有满足两个模型至少各 2 个历史 session 的窗口才可评估。
-- 有效窗口 4：训练 M3/M2.7=16/2，测试 M3/M2.7=3/2；距离={"MiniMax-M3ToOwn":2.627,"MiniMax-M2.7ToOwn":2.423,"MiniMax-M3ToOther":5.488,"MiniMax-M2.7ToOther":0.581}。
+- 一个底层 session 只能整体进入 train/test/excluded；同一 session 的 M3/M2.7 行分别进入各自 profile，不按 rows[0] 归属。
+- 无法验证的窗口不输出距离或 AUC；只有 trainEnd < testStart 且两个模型至少各 2 个历史 session 的窗口才可评估。
+- 有效窗口 4：trainEnd=2026-10-29T11:12:33.606Z < testStart=2026-10-29T11:14:47.505Z；训练 M3/M2.7=16/2，测试 M3/M2.7=3/3；距离={"MiniMax-M3ToOwn":2.608,"MiniMax-M2.7ToOwn":2.488,"MiniMax-M3ToOther":5.473,"MiniMax-M2.7ToOther":0.614}。
 
 ## 特征消融（exploratory-only）
 

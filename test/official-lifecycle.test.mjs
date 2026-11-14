@@ -9,7 +9,7 @@ import { normalizeOfficialModels, freshness, FEATURE_SCHEMA_VERSION, QUALITY_VER
 import { artifactContext, ensureOfficialArtifacts } from '../lib/lifecycle.mjs'
 import { buildOfficialProfile, SIMILARITY_VERSION, sourceForOfficial } from '../lib/similarity.mjs'
 import { assessModelIdentity, compareProtocol } from '../lib/identity.mjs'
-import { bootstrapSessionAuc, buildHardNegativeBenchmark, nestedSessionFpr, rollingTimeFolds } from '../lib/benchmark.mjs'
+import { bootstrapSessionAuc, buildHardNegativeBenchmark, nestedSessionFpr, rollingTimeFolds, thresholdAtFpr } from '../lib/benchmark.mjs'
 import { buildProbePlan, validateProbeResults } from '../lib/probe-plan.mjs'
 import { evaluateObservationQuality } from '../lib/quality.mjs'
 
@@ -206,8 +206,9 @@ test('session bootstrap uses sessions and hard-negative folds do not leak rows',
   const boot = bootstrapSessionAuc(records, { reps: 100, seed: 3 })
   assert.equal(boot.unit, 'session')
   assert.equal(boot.paired, true)
-  assert.equal(boot.twoWay, true)
-  assert.equal(boot.sessions, 4)
+  assert.equal(boot.method, 'session-block-bootstrap')
+  assert.equal(boot.clusterUnit, 'underlying-session-id')
+  assert.equal(boot.uniqueUnderlyingSessions, 4)
   assert.equal(boot.pairTrials, 8)
   assert.ok(boot.auc >= 0.9)
   assert.ok(boot.lower <= boot.auc && boot.auc <= boot.upper)
@@ -280,9 +281,12 @@ test('nested FPR selects thresholds only from outer training sessions and report
   assert.equal(result.unit, 'session')
   assert.equal(result.targets['0.01'].resolutionInsufficient, true)
   assert.equal(result.targets['0.01'].minimumObservableNonzeroFpr, 0.025)
-  assert.equal(result.targets['0.05'].resolutionInsufficient, false)
+  assert.equal(result.targets['0.05'].resolutionInsufficient, true)
+  assert.equal(result.targets['0.05'].status, 'training-resolution-insufficient')
+  assert.equal(result.targets['0.05'].fpr, null)
+  assert.equal(result.targets['0.05'].minimumTrainNegativeTrials, 19)
   assert.equal(result.targets['0.01'].fprConfidence.unit, 'session')
-  assert.equal(result.targets['0.01'].fprConfidence.twoWayCluster, true)
+  assert.equal(result.targets['0.01'].fprConfidence.clusterUnit, 'underlying-session-id')
   assert.equal(result.targets['0.01'].thresholdSource, 'outer-training-sessions-only')
   assert.equal(result.targets['0.01'].testDataUsedForThreshold, false)
   assert.equal(result.targets['0.01'].meetsTarget, false)
@@ -366,6 +370,14 @@ test('source digest ignores generation and input order but changes with behavior
     context: artifactContext({ dataVersion: 2, scannerGeneration: 'g1', observationRevision: 1, similarityVersion: SIMILARITY_VERSION, featureSchemaVersion: 'behavior-v0' }),
   })
   assert.equal(schemaRebuilt.baseline.rebuilt, true)
+  const qualityRebuilt = ensureOfficialArtifacts({
+    model: official,
+    observations: rows,
+    existingBaseline: first.baseline.artifact,
+    existingCalibration: first.calibration.artifact,
+    context: artifactContext({ dataVersion: 2, scannerGeneration: 'g1', observationRevision: 1, similarityVersion: SIMILARITY_VERSION, qualityVersion: 999 }),
+  })
+  assert.equal(qualityRebuilt.baseline.rebuilt, true)
 })
 
 test('cache rebuild failure keeps the last valid object and empty cache failure is explicitly unavailable', () => {
@@ -395,5 +407,100 @@ test('cache rebuild failure keeps the last valid object and empty cache failure 
   assert.equal(unavailable.baseline.artifact, null)
   assert.equal(unavailable.baseline.stale, true)
   assert.equal(unavailable.baseline.rebuilt, false)
+})
+
+test('thresholdAtFpr honors the closed <= rule and rejects unattainable FPR targets', () => {
+  const four = [0.1, 0.2, 0.3, 0.4]
+  const one = thresholdAtFpr(four, 0.01)
+  assert.equal(one.threshold, null)
+  assert.equal(one.resolutionSufficient, false)
+  assert.equal(one.negativeTrials, 4)
+  const fiveFour = thresholdAtFpr(four, 0.05)
+  assert.equal(fiveFour.threshold, null)
+  assert.equal(fiveFour.minimumObservableNonzeroFpr, 0.25)
+  const eighteen = Array.from({ length: 18 }, (_, index) => 0.1 + index)
+  assert.equal(thresholdAtFpr(eighteen, 0.05).threshold, null)
+  assert.equal(thresholdAtFpr(eighteen, 0.05).resolutionSufficient, false)
+  const nineteen = Array.from({ length: 19 }, (_, index) => 0.1 + index)
+  assert.equal(thresholdAtFpr(nineteen, 0.05).threshold, null)
+  const twenty = Array.from({ length: 20 }, (_, index) => 0.1 + index)
+  const fiveTwenty = thresholdAtFpr(twenty, 0.05)
+  assert.equal(fiveTwenty.threshold, 0.1)
+  assert.equal(fiveTwenty.falseAcceptsAtThreshold, 1)
+  assert.equal(fiveTwenty.empiricalTrainFpr, 0.05)
+  assert.equal(fiveTwenty.resolutionSufficient, true)
+  // Closed boundary: threshold 0.1 accepts exactly 0.1, not 0.1001.
+  assert.equal(0.1 <= fiveTwenty.threshold, true)
+  assert.equal(0.1000001 <= fiveTwenty.threshold, false)
+  const duplicateValues = [0.1, 0.1, 0.1].concat(Array.from({ length: 37 }, (_, index) => 0.2 + index))
+  const duplicate = thresholdAtFpr(duplicateValues, 0.05)
+  assert.equal(duplicate.threshold, null)
+  assert.equal(duplicate.reason.includes('duplicate'), true)
+})
+
+test('mixed-model sessions remain atomic and contribute each model rows to its own profile', () => {
+  const shared = 'shared-session'
+  const rowsA = [
+    ...Array.from({ length: 17 }, (_, index) => row(index, 'MiniMax-M3', shared, { time: 100 })),
+    ...Array.from({ length: 2 }, (_, index) => row(100 + index, 'MiniMax-M3', 'm3-' + index, { time: 10 + index })),
+    ...Array.from({ length: 2 }, (_, index) => row(200 + index, 'MiniMax-M3', 'm3-test-' + index, { time: 200 + index })),
+  ]
+  const rowsB = [
+    row(500, 'MiniMax-M2.7', shared, { time: 100 }),
+    ...Array.from({ length: 2 }, (_, index) => row(500 + index, 'MiniMax-M2.7', 'm27-' + index, { time: 15 + index })),
+    ...Array.from({ length: 2 }, (_, index) => row(600 + index, 'MiniMax-M2.7', 'm27-test-' + index, { time: 210 + index })),
+  ]
+  const result = rollingTimeFolds(rowsA, rowsB, { provider: 'minimax-cn', model: 'MiniMax-M3' }, { provider: 'minimax-cn', model: 'MiniMax-M2.7' }, { windows: 5, minTrainSessionsPerModel: 2 })
+  assert.ok(result.folds.some((fold) => fold.trainSessionIds.includes(shared)), 'shared session must be atomic and trainable as one unit')
+  const mixed = result.folds.find((fold) => fold.trainSessionIds.includes(shared))
+  assert.equal(mixed.trainSessionsByModel['MiniMax-M3'] >= 3, true)
+  assert.equal(mixed.trainSessionsByModel['MiniMax-M2.7'] >= 2, true)
+  assert.equal(mixed.trainSamplesByModel['MiniMax-M3'] >= 17, true)
+  assert.equal(mixed.trainSamplesByModel['MiniMax-M2.7'] >= 1, true)
+  assert.ok(mixed.mixedModelSessions >= 1)
+  for (const fold of result.folds) {
+    const overlap = fold.trainSessionIds.filter((id) => fold.testSessionIds.includes(id))
+    assert.deepEqual(overlap, [], 'no session may be split across train/test')
+  }
+})
+
+test('rolling-origin excludes sessions whose end crosses testStart and uses true train end', () => {
+  const rowsA = [
+    row(1, 'MiniMax-M3', 'a0', { time: 10 }), row(2, 'MiniMax-M3', 'a1', { time: 20 }),
+    row(3, 'MiniMax-M3', 'boundary', { time: 50 }), row(4, 'MiniMax-M3', 'boundary', { time: 200 }),
+    row(5, 'MiniMax-M3', 'test-a', { time: 100 }),
+  ]
+  const rowsB = [
+    row(11, 'MiniMax-M2.7', 'b0', { time: 15 }), row(12, 'MiniMax-M2.7', 'b1', { time: 25 }),
+    row(13, 'MiniMax-M2.7', 'test-b', { time: 110 }),
+  ]
+  const result = rollingTimeFolds(rowsA, rowsB, { provider: 'minimax-cn', model: 'MiniMax-M3' }, { provider: 'minimax-cn', model: 'MiniMax-M2.7' }, { windows: 5, minTrainSessionsPerModel: 2 })
+  const fold = result.folds.find((item) => item.boundaryOverlapSessionIds.includes('boundary'))
+  assert.ok(fold)
+  assert.equal(fold.trainSessionIds.includes('boundary'), false)
+  assert.equal(fold.testSessionIds.includes('boundary'), false)
+  assert.equal(fold.boundaryOverlapSessions >= 1, true)
+  assert.ok(Date.parse(fold.trainEnd) < Date.parse(fold.testStart))
+  assert.deepEqual(fold.trainSessionIds.filter((id) => fold.testSessionIds.includes(id)), [])
+})
+
+test('bootstrap groups shared model-session records by underlying session id', () => {
+  const records = [
+    { sessionId: 'a', model: 'A', sameDistance: 0.2, otherDistance: 2 },
+    { sessionId: 'b', model: 'A', sameDistance: 0.3, otherDistance: 2.2 },
+    { sessionId: 'c', model: 'A', sameDistance: 0.4, otherDistance: 2.4 },
+    { sessionId: 'shared', model: 'A', sameDistance: 0.5, otherDistance: 2.5 },
+    { sessionId: 'shared', model: 'B', sameDistance: 0.6, otherDistance: 2.6 },
+  ]
+  const boot = bootstrapSessionAuc(records, { reps: 20, seed: 9 })
+  assert.equal(boot.method, 'session-block-bootstrap')
+  assert.equal(boot.clusterUnit, 'underlying-session-id')
+  assert.equal(boot.stratifiedByModel, false)
+  assert.equal(boot.modelSessionRecords, 5)
+  assert.equal(boot.uniqueUnderlyingSessions, 4)
+  assert.equal(boot.sharedModelSessionCount, 1)
+  assert.deepEqual(boot.blockSizes.sort((a, b) => a - b), [1, 1, 1, 2])
+  assert.equal(boot.pairedDistancesPreserved, true)
+  assert.equal(boot.pairTrials, 10)
 })
 

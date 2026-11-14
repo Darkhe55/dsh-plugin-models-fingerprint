@@ -1,6 +1,6 @@
 {
   "schema": "model-fingerprint-hard-negative/v2",
-  "generatedAt": "2026-11-14T14:09:00.613Z",
+  "generatedAt": "2026-11-14T14:36:41.927Z",
   "statisticalMethods": {
     "timeHeldOut": "rolling-origin-forward-chaining",
     "fpr": "nested-session-level",
@@ -1489,13 +1489,44 @@
         "metric": "session-paired-verification-auc",
         "paired": true,
         "auc": 0.724,
-        "lower": 0.656,
-        "upper": 0.814,
+        "lower": 0.611,
+        "upper": 0.864,
         "reps": 2000,
         "unit": "session",
-        "twoWay": true,
-        "sessions": 24,
+        "sessions": 23,
         "pairTrials": 48,
+        "modelSessionRecords": 24,
+        "uniqueUnderlyingSessions": 23,
+        "sharedModelSessionCount": 1,
+        "blockSizes": [
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          1,
+          2,
+          1,
+          1,
+          1,
+          1,
+          1
+        ],
+        "clusterUnit": "underlying-session-id",
+        "method": "session-block-bootstrap",
+        "stratifiedByModel": false,
+        "pairedDistancesPreserved": true,
         "sessionsByModel": {
           "MiniMax-M3": 19,
           "MiniMax-M2.7": 5
@@ -1552,7 +1583,16 @@
         "trainStart": null,
         "trainEnd": null,
         "testStart": "2026-08-27T09:23:45.379Z",
-        "testEnd": "2026-10-23T14:37:26.273Z",
+        "testEnd": "2026-10-23T14:42:38.976Z",
+        "trainUniqueSessions": 0,
+        "testUniqueSessions": 4,
+        "trainSessionIds": [],
+        "testSessionIds": [
+          "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+          "f1fcc889-1a92-41c0-858a-191579b3c995",
+          "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+          "e2d97cbf-53ad-4465-9e35-1397c2ee5bde"
+        ],
         "trainSessionsByModel": {
           "MiniMax-M3": 0,
           "MiniMax-M2.7": 0
@@ -1560,6 +1600,11 @@
         "testSessionsByModel": {
           "MiniMax-M3": 4,
           "MiniMax-M2.7": 0
+        },
+        "mixedModelSessions": 0,
+        "mixedModelSessionsBySplit": {
+          "train": 0,
+          "test": 0
         },
         "trainSamplesByModel": {
           "MiniMax-M3": 0,
@@ -1569,10 +1614,12 @@
           "MiniMax-M3": 499,
           "MiniMax-M2.7": 0
         },
+        "boundaryOverlapSessions": 0,
+        "boundaryOverlapSessionIds": [],
         "futureSessionsExcluded": 19,
         "leakage": false,
         "status": "insufficient-training-history",
-        "skipReason": "need at least 2 sessions per model before testStart",
+        "skipReason": "need at least 2 sessions per model with sessionEnd < testStart",
         "distances": null,
         "auc": null
       },
@@ -1580,9 +1627,24 @@
         "window": 1,
         "method": "rolling-origin",
         "trainStart": "2026-08-27T09:23:45.379Z",
-        "trainEnd": "2026-10-23T14:37:26.273Z",
+        "trainEnd": "2026-10-23T14:42:38.976Z",
         "testStart": "2026-10-23T14:44:03.945Z",
-        "testEnd": "2026-10-23T15:46:16.827Z",
+        "testEnd": "2026-10-23T16:00:48.506Z",
+        "trainUniqueSessions": 4,
+        "testUniqueSessions": 5,
+        "trainSessionIds": [
+          "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+          "f1fcc889-1a92-41c0-858a-191579b3c995",
+          "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+          "e2d97cbf-53ad-4465-9e35-1397c2ee5bde"
+        ],
+        "testSessionIds": [
+          "268f040b-0981-47a1-8396-0e58d5defa8c",
+          "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+          "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+          "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+          "8d872ea4-832a-44d9-9483-994b400dc48d"
+        ],
         "trainSessionsByModel": {
           "MiniMax-M3": 4,
           "MiniMax-M2.7": 0
@@ -1590,6 +1652,11 @@
         "testSessionsByModel": {
           "MiniMax-M3": 5,
           "MiniMax-M2.7": 0
+        },
+        "mixedModelSessions": 0,
+        "mixedModelSessionsBySplit": {
+          "train": 0,
+          "test": 0
         },
         "trainSamplesByModel": {
           "MiniMax-M3": 499,
@@ -1599,10 +1666,12 @@
           "MiniMax-M3": 288,
           "MiniMax-M2.7": 0
         },
+        "boundaryOverlapSessions": 0,
+        "boundaryOverlapSessionIds": [],
         "futureSessionsExcluded": 14,
         "leakage": false,
         "status": "insufficient-training-history",
-        "skipReason": "need at least 2 sessions per model before testStart",
+        "skipReason": "need at least 2 sessions per model with sessionEnd < testStart",
         "distances": null,
         "auc": null
       },
@@ -1610,9 +1679,28 @@
         "window": 2,
         "method": "rolling-origin",
         "trainStart": "2026-08-27T09:23:45.379Z",
-        "trainEnd": "2026-10-23T15:46:16.827Z",
+        "trainEnd": "2026-10-23T16:00:48.506Z",
         "testStart": "2026-10-23T18:23:10.489Z",
-        "testEnd": "2026-10-24T05:43:36.699Z",
+        "testEnd": "2026-10-24T05:47:12.036Z",
+        "trainUniqueSessions": 9,
+        "testUniqueSessions": 4,
+        "trainSessionIds": [
+          "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+          "f1fcc889-1a92-41c0-858a-191579b3c995",
+          "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+          "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+          "268f040b-0981-47a1-8396-0e58d5defa8c",
+          "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+          "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+          "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+          "8d872ea4-832a-44d9-9483-994b400dc48d"
+        ],
+        "testSessionIds": [
+          "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+          "08249cbf-b1b5-450b-902d-bda24f326fb9",
+          "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+          "33b85c89-3b9c-4ca2-9e1d-c4743db25da9"
+        ],
         "trainSessionsByModel": {
           "MiniMax-M3": 9,
           "MiniMax-M2.7": 0
@@ -1620,6 +1708,11 @@
         "testSessionsByModel": {
           "MiniMax-M3": 4,
           "MiniMax-M2.7": 0
+        },
+        "mixedModelSessions": 0,
+        "mixedModelSessionsBySplit": {
+          "train": 0,
+          "test": 0
         },
         "trainSamplesByModel": {
           "MiniMax-M3": 787,
@@ -1629,10 +1722,12 @@
           "MiniMax-M3": 226,
           "MiniMax-M2.7": 0
         },
+        "boundaryOverlapSessions": 0,
+        "boundaryOverlapSessionIds": [],
         "futureSessionsExcluded": 10,
         "leakage": false,
         "status": "insufficient-training-history",
-        "skipReason": "need at least 2 sessions per model before testStart",
+        "skipReason": "need at least 2 sessions per model with sessionEnd < testStart",
         "distances": null,
         "auc": null
       },
@@ -1640,9 +1735,33 @@
         "window": 3,
         "method": "rolling-origin",
         "trainStart": "2026-08-27T09:23:45.379Z",
-        "trainEnd": "2026-10-24T05:43:36.699Z",
+        "trainEnd": "2026-10-24T05:47:12.036Z",
         "testStart": "2026-10-24T08:04:16.303Z",
-        "testEnd": "2026-10-29T11:11:13.800Z",
+        "testEnd": "2026-10-29T11:12:33.606Z",
+        "trainUniqueSessions": 13,
+        "testUniqueSessions": 5,
+        "trainSessionIds": [
+          "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+          "f1fcc889-1a92-41c0-858a-191579b3c995",
+          "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+          "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+          "268f040b-0981-47a1-8396-0e58d5defa8c",
+          "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+          "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+          "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+          "8d872ea4-832a-44d9-9483-994b400dc48d",
+          "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+          "08249cbf-b1b5-450b-902d-bda24f326fb9",
+          "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+          "33b85c89-3b9c-4ca2-9e1d-c4743db25da9"
+        ],
+        "testSessionIds": [
+          "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+          "6fb39571-682d-445c-ad37-12e8504024b4",
+          "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+          "752a7d48-574b-44cb-a572-60ade02fa907",
+          "89b29a97-136f-49a4-abcc-68175bb9460b"
+        ],
         "trainSessionsByModel": {
           "MiniMax-M3": 13,
           "MiniMax-M2.7": 0
@@ -1650,6 +1769,11 @@
         "testSessionsByModel": {
           "MiniMax-M3": 3,
           "MiniMax-M2.7": 2
+        },
+        "mixedModelSessions": 0,
+        "mixedModelSessionsBySplit": {
+          "train": 0,
+          "test": 0
         },
         "trainSamplesByModel": {
           "MiniMax-M3": 1013,
@@ -1659,10 +1783,12 @@
           "MiniMax-M3": 157,
           "MiniMax-M2.7": 64
         },
+        "boundaryOverlapSessions": 0,
+        "boundaryOverlapSessionIds": [],
         "futureSessionsExcluded": 5,
         "leakage": false,
         "status": "insufficient-training-history",
-        "skipReason": "need at least 2 sessions per model before testStart",
+        "skipReason": "need at least 2 sessions per model with sessionEnd < testStart",
         "distances": null,
         "auc": null
       },
@@ -1670,34 +1796,70 @@
         "window": 4,
         "method": "rolling-origin",
         "trainStart": "2026-08-27T09:23:45.379Z",
-        "trainEnd": "2026-10-29T11:11:13.800Z",
+        "trainEnd": "2026-10-29T11:12:33.606Z",
         "testStart": "2026-10-29T11:14:47.505Z",
-        "testEnd": "2026-11-05T11:23:32.669Z",
+        "testEnd": "2026-11-05T11:56:04.428Z",
+        "trainUniqueSessions": 18,
+        "testUniqueSessions": 5,
+        "trainSessionIds": [
+          "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+          "f1fcc889-1a92-41c0-858a-191579b3c995",
+          "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+          "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+          "268f040b-0981-47a1-8396-0e58d5defa8c",
+          "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+          "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+          "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+          "8d872ea4-832a-44d9-9483-994b400dc48d",
+          "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+          "08249cbf-b1b5-450b-902d-bda24f326fb9",
+          "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+          "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+          "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+          "6fb39571-682d-445c-ad37-12e8504024b4",
+          "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+          "752a7d48-574b-44cb-a572-60ade02fa907",
+          "89b29a97-136f-49a4-abcc-68175bb9460b"
+        ],
+        "testSessionIds": [
+          "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+          "74e9b039-aaea-80fb-2f32-751578897fef",
+          "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+          "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+          "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+        ],
         "trainSessionsByModel": {
           "MiniMax-M3": 16,
           "MiniMax-M2.7": 2
         },
         "testSessionsByModel": {
           "MiniMax-M3": 3,
-          "MiniMax-M2.7": 2
+          "MiniMax-M2.7": 3
+        },
+        "mixedModelSessions": 1,
+        "mixedModelSessionsBySplit": {
+          "train": 0,
+          "test": 1
         },
         "trainSamplesByModel": {
           "MiniMax-M3": 1170,
           "MiniMax-M2.7": 64
         },
         "testSamplesByModel": {
-          "MiniMax-M3": 20,
-          "MiniMax-M2.7": 40
+          "MiniMax-M3": 19,
+          "MiniMax-M2.7": 41
         },
+        "boundaryOverlapSessions": 0,
+        "boundaryOverlapSessionIds": [],
         "futureSessionsExcluded": 0,
         "leakage": false,
         "status": "ok",
         "skipReason": null,
         "distances": {
-          "MiniMax-M3ToOwn": 2.627,
-          "MiniMax-M2.7ToOwn": 2.423,
-          "MiniMax-M3ToOther": 5.488,
-          "MiniMax-M2.7ToOther": 0.581
+          "MiniMax-M3ToOwn": 2.608,
+          "MiniMax-M2.7ToOwn": 2.488,
+          "MiniMax-M3ToOther": 5.473,
+          "MiniMax-M2.7ToOther": 0.614
         },
         "auc": null
       }
@@ -1728,8 +1890,34 @@
         "sameDistance": 0.475,
         "otherDistance": 1.736,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1746,8 +1934,34 @@
         "sameDistance": 3.538,
         "otherDistance": 5.691,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1764,8 +1978,34 @@
         "sameDistance": 0.112,
         "otherDistance": 1.723,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1782,8 +2022,34 @@
         "sameDistance": 0.184,
         "otherDistance": 1.69,
         "thresholds": {
-          "0.01": 1.723,
-          "0.05": 1.723
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1800,8 +2066,34 @@
         "sameDistance": 0.05,
         "otherDistance": 1.754,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1818,8 +2110,34 @@
         "sameDistance": 1.329,
         "otherDistance": 2.573,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1836,8 +2154,34 @@
         "sameDistance": 1.092,
         "otherDistance": 2.863,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1854,8 +2198,34 @@
         "sameDistance": 0.958,
         "otherDistance": 2.893,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1872,8 +2242,34 @@
         "sameDistance": 0.62,
         "otherDistance": 2.149,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1890,8 +2286,34 @@
         "sameDistance": 0.602,
         "otherDistance": 1.894,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1908,8 +2330,34 @@
         "sameDistance": 1.402,
         "otherDistance": 2.949,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1926,8 +2374,34 @@
         "sameDistance": 0.301,
         "otherDistance": 2.359,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1944,8 +2418,34 @@
         "sameDistance": 0.245,
         "otherDistance": 2.379,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1962,8 +2462,34 @@
         "sameDistance": 0.338,
         "otherDistance": 2.575,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1980,8 +2506,34 @@
         "sameDistance": 0.26,
         "otherDistance": 2.51,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -1998,8 +2550,34 @@
         "sameDistance": 0.236,
         "otherDistance": 2.481,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -2016,8 +2594,34 @@
         "sameDistance": 3.621,
         "otherDistance": 5.646,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -2034,8 +2638,34 @@
         "sameDistance": 2.601,
         "otherDistance": 5.32,
         "thresholds": {
-          "0.01": 1.655,
-          "0.05": 1.655
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -2052,8 +2682,34 @@
         "sameDistance": 3.543,
         "otherDistance": 5.599,
         "thresholds": {
-          "0.01": 1.69,
-          "0.05": 1.69
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 18,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.056,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 18
       },
@@ -2070,8 +2726,34 @@
         "sameDistance": 2.389,
         "otherDistance": 2.995,
         "thresholds": {
-          "0.01": 0.577,
-          "0.05": 0.577
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 4
       },
@@ -2088,8 +2770,34 @@
         "sameDistance": 5.442,
         "otherDistance": 3.381,
         "thresholds": {
-          "0.01": 0.577,
-          "0.05": 0.577
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 4
       },
@@ -2106,8 +2814,34 @@
         "sameDistance": 5.6,
         "otherDistance": 4.575,
         "thresholds": {
-          "0.01": 0.577,
-          "0.05": 0.577
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 4
       },
@@ -2124,8 +2858,34 @@
         "sameDistance": 5.679,
         "otherDistance": 3.449,
         "thresholds": {
-          "0.01": 0.576,
-          "0.05": 0.576
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 4
       },
@@ -2142,8 +2902,34 @@
         "sameDistance": 2.367,
         "otherDistance": 0.577,
         "thresholds": {
-          "0.01": 2.995,
-          "0.05": 2.995
+          "0.01": null,
+          "0.05": null
+        },
+        "thresholdDetails": {
+          "0.01": {
+            "targetFpr": 0.01,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 100,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          },
+          "0.05": {
+            "targetFpr": 0.05,
+            "negativeTrials": 4,
+            "falseAcceptsAtThreshold": 0,
+            "empiricalTrainFpr": 0,
+            "resolutionSufficient": false,
+            "minimumObservableNonzeroFpr": 0.25,
+            "requiredNegativeTrials": 20,
+            "orderStatisticIndex": null,
+            "threshold": null,
+            "reason": "target FPR is below 1/negativeTrials; no finite observed threshold can resolve it"
+          }
         },
         "trainCrossSessions": 4
       }
@@ -2155,275 +2941,314 @@
         "thresholdSource": "outer-training-sessions-only",
         "testDataUsedForThreshold": false,
         "featureSelectionUsedTest": false,
+        "finiteSampleRule": "closed interval distance <= threshold; threshold only chosen when accepted/negativeTrials <= targetFpr",
         "thresholdRange": {
-          "min": 0.576,
-          "median": 1.69,
-          "max": 2.995
+          "min": null,
+          "median": null,
+          "max": null
         },
         "point": {
-          "fpr": 0.083,
-          "recall": 0.667,
-          "falseAccepts": 2,
-          "negativeTrials": 24,
-          "trueAccepts": 16,
-          "positiveTrials": 24
+          "fpr": null,
+          "recall": null,
+          "falseAccepts": 0,
+          "negativeTrials": 0,
+          "trueAccepts": 0,
+          "positiveTrials": 0,
+          "formal": false
         },
-        "fpr": 0.083,
-        "recall": 0.667,
+        "exploratoryPoint": {
+          "fpr": null,
+          "recall": null,
+          "falseAccepts": 0,
+          "negativeTrials": 0,
+          "trueAccepts": 0,
+          "positiveTrials": 0
+        },
+        "fpr": null,
+        "recall": null,
         "pointEstimateReliable": false,
-        "falseAccepts": 2,
-        "negativeTrials": 24,
-        "trueAccepts": 16,
-        "positiveTrials": 24,
+        "falseAccepts": null,
+        "negativeTrials": null,
+        "trueAccepts": null,
+        "positiveTrials": null,
+        "testNegativeTrials": 24,
+        "testPositiveTrials": 24,
         "fprUnit": "held-out session",
-        "independentSessions": 24,
-        "uniqueSessionIds": 23,
-        "effectiveOuterFolds": 24,
+        "testIndependentSessions": 24,
+        "testUniqueSessionIds": 23,
+        "independentSessions": 0,
+        "uniqueSessionIds": 0,
+        "eligibleOuterFolds": 0,
+        "skippedOuterFolds": 24,
+        "skippedReasons": {
+          "training-resolution-insufficient": 24
+        },
+        "effectiveOuterFolds": 0,
+        "trainingResolutionSufficient": false,
+        "testResolutionSufficient": false,
+        "thresholdResolvable": false,
         "resolutionInsufficient": true,
+        "minimumTrainNegativeTrials": 4,
+        "maximumTrainResolution": 0.25,
         "minimumObservableNonzeroFpr": 0.042,
         "requiredNegativeTrials": 100,
-        "thresholdResolvable": false,
         "fprConfidence": {
-          "point": 0.083,
-          "lower": 0,
-          "upper": 0.208,
-          "upper95": 0.167,
+          "point": null,
+          "lower": null,
+          "upper": null,
+          "upper95": null,
           "unit": "session",
           "clustered": true,
-          "twoWayCluster": true,
-          "reps": 2000,
+          "modelSessionRecords": 0,
+          "uniqueUnderlyingSessions": 0,
+          "sharedModelSessionCount": 0,
+          "blockSizes": [],
+          "clusterUnit": "underlying-session-id",
+          "method": "session-block-bootstrap",
+          "stratifiedByModel": false,
+          "pairedDistancesPreserved": true,
+          "reps": 0,
           "seed": 17,
           "meaningful": false
         },
         "recallConfidence": {
-          "point": 0.667,
-          "lower": 0.5,
-          "upper": 0.833,
+          "point": null,
+          "lower": null,
+          "upper": null,
           "unit": "session",
           "clustered": true,
-          "twoWayCluster": true,
-          "reps": 2000,
-          "seed": 18
+          "modelSessionRecords": 0,
+          "uniqueUnderlyingSessions": 0,
+          "sharedModelSessionCount": 0,
+          "blockSizes": [],
+          "clusterUnit": "underlying-session-id",
+          "method": "session-block-bootstrap",
+          "stratifiedByModel": false,
+          "pairedDistancesPreserved": true,
+          "reps": 0,
+          "seed": 18,
+          "meaningful": false
         },
         "meetsTarget": false,
-        "status": "resolution-insufficient",
-        "note": "negative sessions are fewer than 100; cannot resolve 1% FPR",
-        "records": [
+        "status": "training-resolution-insufficient",
+        "note": "at least one outer training fold has fewer than 100 training negatives; target FPR cannot be resolved",
+        "records": [],
+        "exploratoryRecords": [
           {
             "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.475,
-            "otherDistance": 1.736,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.736
           },
           {
             "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 3.538,
-            "otherDistance": 5.691,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.691
           },
           {
             "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.112,
-            "otherDistance": 1.723,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.723
           },
           {
             "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
             "model": "MiniMax-M3",
-            "threshold": 1.723,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.184,
-            "otherDistance": 1.69,
-            "trueAccept": true,
-            "falseAccept": true
+            "otherDistance": 1.69
           },
           {
             "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.05,
-            "otherDistance": 1.754,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.754
           },
           {
             "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 1.329,
-            "otherDistance": 2.573,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.573
           },
           {
             "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 1.092,
-            "otherDistance": 2.863,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.863
           },
           {
             "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.958,
-            "otherDistance": 2.893,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.893
           },
           {
             "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.62,
-            "otherDistance": 2.149,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.149
           },
           {
             "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.602,
-            "otherDistance": 1.894,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.894
           },
           {
             "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 1.402,
-            "otherDistance": 2.949,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.949
           },
           {
             "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.301,
-            "otherDistance": 2.359,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.359
           },
           {
             "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.245,
-            "otherDistance": 2.379,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.379
           },
           {
             "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.338,
-            "otherDistance": 2.575,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.575
           },
           {
             "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.26,
-            "otherDistance": 2.51,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.51
           },
           {
             "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.236,
-            "otherDistance": 2.481,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.481
           },
           {
             "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 3.621,
-            "otherDistance": 5.646,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.646
           },
           {
             "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
             "model": "MiniMax-M3",
-            "threshold": 1.655,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 2.601,
-            "otherDistance": 5.32,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.32
           },
           {
             "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 3.543,
-            "otherDistance": 5.599,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.599
           },
           {
             "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
             "model": "MiniMax-M2.7",
-            "threshold": 0.577,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 2.389,
-            "otherDistance": 2.995,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 2.995
           },
           {
             "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
             "model": "MiniMax-M2.7",
-            "threshold": 0.577,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 5.442,
-            "otherDistance": 3.381,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 3.381
           },
           {
             "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
             "model": "MiniMax-M2.7",
-            "threshold": 0.577,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 5.6,
-            "otherDistance": 4.575,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 4.575
           },
           {
             "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
             "model": "MiniMax-M2.7",
-            "threshold": 0.576,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 5.679,
-            "otherDistance": 3.449,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 3.449
           },
           {
             "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
             "model": "MiniMax-M2.7",
-            "threshold": 2.995,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 2.367,
-            "otherDistance": 0.577,
-            "trueAccept": true,
-            "falseAccept": true
+            "otherDistance": 0.577
           }
         ]
       },
@@ -2433,275 +3258,314 @@
         "thresholdSource": "outer-training-sessions-only",
         "testDataUsedForThreshold": false,
         "featureSelectionUsedTest": false,
+        "finiteSampleRule": "closed interval distance <= threshold; threshold only chosen when accepted/negativeTrials <= targetFpr",
         "thresholdRange": {
-          "min": 0.576,
-          "median": 1.69,
-          "max": 2.995
+          "min": null,
+          "median": null,
+          "max": null
         },
         "point": {
-          "fpr": 0.083,
-          "recall": 0.667,
-          "falseAccepts": 2,
-          "negativeTrials": 24,
-          "trueAccepts": 16,
-          "positiveTrials": 24
+          "fpr": null,
+          "recall": null,
+          "falseAccepts": 0,
+          "negativeTrials": 0,
+          "trueAccepts": 0,
+          "positiveTrials": 0,
+          "formal": false
         },
-        "fpr": 0.083,
-        "recall": 0.667,
-        "pointEstimateReliable": true,
-        "falseAccepts": 2,
-        "negativeTrials": 24,
-        "trueAccepts": 16,
-        "positiveTrials": 24,
+        "exploratoryPoint": {
+          "fpr": null,
+          "recall": null,
+          "falseAccepts": 0,
+          "negativeTrials": 0,
+          "trueAccepts": 0,
+          "positiveTrials": 0
+        },
+        "fpr": null,
+        "recall": null,
+        "pointEstimateReliable": false,
+        "falseAccepts": null,
+        "negativeTrials": null,
+        "trueAccepts": null,
+        "positiveTrials": null,
+        "testNegativeTrials": 24,
+        "testPositiveTrials": 24,
         "fprUnit": "held-out session",
-        "independentSessions": 24,
-        "uniqueSessionIds": 23,
-        "effectiveOuterFolds": 24,
-        "resolutionInsufficient": false,
+        "testIndependentSessions": 24,
+        "testUniqueSessionIds": 23,
+        "independentSessions": 0,
+        "uniqueSessionIds": 0,
+        "eligibleOuterFolds": 0,
+        "skippedOuterFolds": 24,
+        "skippedReasons": {
+          "training-resolution-insufficient": 24
+        },
+        "effectiveOuterFolds": 0,
+        "trainingResolutionSufficient": false,
+        "testResolutionSufficient": true,
+        "thresholdResolvable": false,
+        "resolutionInsufficient": true,
+        "minimumTrainNegativeTrials": 4,
+        "maximumTrainResolution": 0.25,
         "minimumObservableNonzeroFpr": 0.042,
         "requiredNegativeTrials": 20,
-        "thresholdResolvable": true,
         "fprConfidence": {
-          "point": 0.083,
-          "lower": 0,
-          "upper": 0.208,
-          "upper95": 0.167,
+          "point": null,
+          "lower": null,
+          "upper": null,
+          "upper95": null,
           "unit": "session",
           "clustered": true,
-          "twoWayCluster": true,
-          "reps": 2000,
+          "modelSessionRecords": 0,
+          "uniqueUnderlyingSessions": 0,
+          "sharedModelSessionCount": 0,
+          "blockSizes": [],
+          "clusterUnit": "underlying-session-id",
+          "method": "session-block-bootstrap",
+          "stratifiedByModel": false,
+          "pairedDistancesPreserved": true,
+          "reps": 0,
           "seed": 17,
-          "meaningful": true
+          "meaningful": false
         },
         "recallConfidence": {
-          "point": 0.667,
-          "lower": 0.5,
-          "upper": 0.833,
+          "point": null,
+          "lower": null,
+          "upper": null,
           "unit": "session",
           "clustered": true,
-          "twoWayCluster": true,
-          "reps": 2000,
-          "seed": 18
+          "modelSessionRecords": 0,
+          "uniqueUnderlyingSessions": 0,
+          "sharedModelSessionCount": 0,
+          "blockSizes": [],
+          "clusterUnit": "underlying-session-id",
+          "method": "session-block-bootstrap",
+          "stratifiedByModel": false,
+          "pairedDistancesPreserved": true,
+          "reps": 0,
+          "seed": 18,
+          "meaningful": false
         },
         "meetsTarget": false,
-        "status": "not-verified",
-        "note": "session-clustered upper bound does not meet target",
-        "records": [
+        "status": "training-resolution-insufficient",
+        "note": "at least one outer training fold has fewer than 20 training negatives; target FPR cannot be resolved",
+        "records": [],
+        "exploratoryRecords": [
           {
             "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.475,
-            "otherDistance": 1.736,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.736
           },
           {
             "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 3.538,
-            "otherDistance": 5.691,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.691
           },
           {
             "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.112,
-            "otherDistance": 1.723,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.723
           },
           {
             "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
             "model": "MiniMax-M3",
-            "threshold": 1.723,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.184,
-            "otherDistance": 1.69,
-            "trueAccept": true,
-            "falseAccept": true
+            "otherDistance": 1.69
           },
           {
             "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.05,
-            "otherDistance": 1.754,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.754
           },
           {
             "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 1.329,
-            "otherDistance": 2.573,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.573
           },
           {
             "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 1.092,
-            "otherDistance": 2.863,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.863
           },
           {
             "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.958,
-            "otherDistance": 2.893,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.893
           },
           {
             "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.62,
-            "otherDistance": 2.149,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.149
           },
           {
             "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.602,
-            "otherDistance": 1.894,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 1.894
           },
           {
             "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 1.402,
-            "otherDistance": 2.949,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.949
           },
           {
             "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.301,
-            "otherDistance": 2.359,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.359
           },
           {
             "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.245,
-            "otherDistance": 2.379,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.379
           },
           {
             "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.338,
-            "otherDistance": 2.575,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.575
           },
           {
             "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.26,
-            "otherDistance": 2.51,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.51
           },
           {
             "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 0.236,
-            "otherDistance": 2.481,
-            "trueAccept": true,
-            "falseAccept": false
+            "otherDistance": 2.481
           },
           {
             "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 3.621,
-            "otherDistance": 5.646,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.646
           },
           {
             "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
             "model": "MiniMax-M3",
-            "threshold": 1.655,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 2.601,
-            "otherDistance": 5.32,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.32
           },
           {
             "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
             "model": "MiniMax-M3",
-            "threshold": 1.69,
+            "threshold": null,
+            "trainNegativeTrials": 18,
+            "trainResolutionSufficient": false,
             "sameDistance": 3.543,
-            "otherDistance": 5.599,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 5.599
           },
           {
             "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
             "model": "MiniMax-M2.7",
-            "threshold": 0.577,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 2.389,
-            "otherDistance": 2.995,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 2.995
           },
           {
             "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
             "model": "MiniMax-M2.7",
-            "threshold": 0.577,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 5.442,
-            "otherDistance": 3.381,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 3.381
           },
           {
             "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
             "model": "MiniMax-M2.7",
-            "threshold": 0.577,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 5.6,
-            "otherDistance": 4.575,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 4.575
           },
           {
             "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
             "model": "MiniMax-M2.7",
-            "threshold": 0.576,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 5.679,
-            "otherDistance": 3.449,
-            "trueAccept": false,
-            "falseAccept": false
+            "otherDistance": 3.449
           },
           {
             "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
             "model": "MiniMax-M2.7",
-            "threshold": 2.995,
+            "threshold": null,
+            "trainNegativeTrials": 4,
+            "trainResolutionSufficient": false,
             "sameDistance": 2.367,
-            "otherDistance": 0.577,
-            "trueAccept": true,
-            "falseAccept": true
+            "otherDistance": 0.577
           }
         ]
       }
