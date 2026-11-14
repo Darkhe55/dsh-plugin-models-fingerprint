@@ -20,8 +20,10 @@ window.__ModuleLoader__.load({
         this.states = new WeakMap()
       }
       duration(role, scale = 1) {
+        if (this.reduced) return 0
         const base = role === 'squeeze' ? 380 : role === 'incoming' ? 260 : 340
-        return Math.max(100, Math.round(base * (this.reduced ? 0.45 : scale)))
+        // Fast scrolling may shorten motion, but never to zero.
+        return Math.max(120, Math.round(base * scale))
       }
       animation(node, id) {
         const state = node ? this.states.get(node) : null
@@ -29,6 +31,9 @@ window.__ModuleLoader__.load({
       }
       state(node) {
         return node ? this.states.get(node) || null : null
+      }
+      cancelAll(nodes) {
+        for (const node of nodes || []) this.cancel(node)
       }
       cancel(node, ids = ['mf-shift', 'mf-enter', 'mf-eject'], options = {}) {
         if (!node) return false
@@ -41,7 +46,7 @@ window.__ModuleLoader__.load({
         this.states.delete(node)
         return true
       }
-      play(node, { id, key, frames, options }) {
+      play(node, { id, key, frames, options, onDone }) {
         if (!node || typeof node.animate !== 'function') return null
         const current = this.states.get(node)
         if (current && current.id === id && current.key === key && current.animation.playState !== 'finished') {
@@ -57,12 +62,40 @@ window.__ModuleLoader__.load({
         const lastFrame = frames[frames.length - 1]
         if (lastFrame && lastFrame.transform) node.style.transform = lastFrame.transform
         if (lastFrame && lastFrame.opacity !== undefined) node.style.opacity = lastFrame.opacity
-        const state = { id, key, animation }
+        const state = { id, key, animation, onDone }
         this.states.set(node, state)
         animation.onfinish = () => {
           if (this.states.get(node) === state) this.states.delete(node)
+          if (typeof onDone === 'function') onDone('finish')
         }
         return animation
+      }
+      /**
+       * FLIP from the rectangle currently on screen. Reading the rectangle is
+       * the caller's job before any style write; this method only animates the
+       * measured visual position to the new target.
+       */
+      flip(node, { fromRect, fromOpacity, toTop, toScale, toOpacity, role = 'pushed', motionScale = 1, onDone } = {}) {
+        if (!node) return null
+        const current = node.getBoundingClientRect ? node.getBoundingClientRect() : null
+        const rect = fromRect || current
+        const width = node.offsetWidth || this.cardWidth
+        const fromTop = rect && Number.isFinite(rect.top) ? rect.top : toTop
+        const rawScale = rect && width ? rect.width / width : toScale
+        const fromScale = Math.max(0.5, Math.min(1.2, Number.isFinite(rawScale) ? rawScale : toScale))
+        const toAlpha = toOpacity === undefined ? 1 : toOpacity
+        const fromAlpha = fromOpacity === undefined ? toAlpha : fromOpacity
+        const key = [fromTop, fromScale, toTop, toScale, fromAlpha, toAlpha, role, motionScale].map((value) => typeof value === 'number' ? Math.round(value * 10) / 10 : value).join('|')
+        return this.play(node, {
+          id: 'mf-shift',
+          key,
+          frames: [
+            { transform: 'translate3d(0,' + fromTop + 'px,0) scale(' + fromScale + ')', opacity: fromAlpha },
+            { transform: 'translate3d(0,' + toTop + 'px,0) scale(' + toScale + ')', opacity: toAlpha },
+          ],
+          options: { duration: this.duration(role, motionScale), easing: this.eased },
+          onDone,
+        })
       }
       shift(node, { left, fromTop, fromScale, toTop, toScale, role, motionScale }) {
         const key = [role, left, fromTop, fromScale, toTop, toScale, motionScale].map((value) => typeof value === 'number' ? Math.round(value * 10) / 10 : value).join('|')
@@ -88,7 +121,7 @@ window.__ModuleLoader__.load({
           options: { duration: this.duration('incoming', motionScale), easing: this.eased, delay, fill: 'backwards' },
         })
       }
-      eject(node, { fromTransform, fromOpacity, toTransform, motionScale }) {
+      eject(node, { fromTransform, fromOpacity, toTransform, motionScale, onDone }) {
         const key = [fromTransform, fromOpacity, toTransform, motionScale].join('|')
         const animation = this.play(node, {
           id: 'mf-eject',
@@ -98,6 +131,7 @@ window.__ModuleLoader__.load({
             { transform: toTransform, opacity: 0 },
           ],
           options: { duration: this.duration('ejecting', motionScale), easing: this.eased, fill: 'forwards' },
+          onDone,
         })
         return Boolean(animation)
       }
@@ -237,6 +271,172 @@ window.__ModuleLoader__.load({
         return true
       }
     }
+    const RAIL_TOP_ENTER = 18
+    const RAIL_TOP_LEAVE = 30
+    const RAIL_BOTTOM_ENTER = 18
+    const RAIL_BOTTOM_LEAVE = 30
+
+    function railTurnNumber(value) {
+      const number = Number(value)
+      return Number.isFinite(number) ? number : null
+    }
+
+    /**
+     * Pure target derivation. It never mutates the snapshot, refs, DOM or
+     * animations. A target can come only from a row measured in this exact
+     * frame, and every turn id appears at most once.
+     */
+    function deriveRailTargets(snapshot, turns, mapping, viewport, previousZones) {
+      const clipTop = Number(viewport && viewport.clipTop) || 0
+      const clipBottom = Number(viewport && viewport.clipBottom) || 0
+      const offset = Number(mapping && mapping.offset) || 0
+      const turnByNumber = new Map()
+      for (const turn of turns || []) {
+        const number = railTurnNumber(turn && turn.turn)
+        if (number !== null) turnByNumber.set(number, turn)
+      }
+      const previous = previousZones || new Map()
+      const candidates = []
+      const seen = new Set()
+      for (const row of (snapshot && snapshot.rows) || []) {
+        const domTurn = railTurnNumber(row.domTurn)
+        if (domTurn === null) continue
+        const turn = turnByNumber.get(domTurn - offset)
+        if (!turn || !turn.id || seen.has(turn.id)) continue
+        const top = Number(row.top)
+        const bottom = Number(row.bottom)
+        if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) continue
+        seen.add(turn.id)
+        const priorZone = previous.get(turn.id) || null
+        let zone = 'middle'
+        if (priorZone === 'top') {
+          if (bottom <= clipTop + RAIL_TOP_LEAVE) zone = 'top'
+        } else if (bottom <= clipTop - RAIL_TOP_ENTER) {
+          zone = 'top'
+        }
+        if (zone === 'middle') {
+          if (priorZone === 'bottom') {
+            if (top >= clipBottom - RAIL_BOTTOM_LEAVE) zone = 'bottom'
+          } else if (top >= clipBottom + RAIL_BOTTOM_ENTER) {
+            zone = 'bottom'
+          }
+        }
+        if (zone === 'middle' && !(bottom > clipTop && top < clipBottom)) continue
+        candidates.push({ turn, row, top, bottom, zone })
+      }
+      let top = null
+      let bottom = null
+      for (const entry of candidates) {
+        if (entry.zone === 'top' && (!top || entry.bottom > top.bottom)) top = entry
+        if (entry.zone === 'bottom' && (!bottom || entry.top < bottom.top)) bottom = entry
+      }
+      const middle = candidates
+        .filter((entry) => entry.zone === 'middle' && entry !== top && entry !== bottom && entry.turn.id !== (top && top.turn.id) && entry.turn.id !== (bottom && bottom.turn.id))
+        .sort((left, right) => left.top - right.top || railTurnNumber(left.turn.turn) - railTurnNumber(right.turn.turn))
+      const ids = new Set()
+      if (top) ids.add(top.turn.id)
+      if (bottom) ids.add(bottom.turn.id)
+      for (const entry of middle) ids.add(entry.turn.id)
+      return { top, middle, bottom, ids }
+    }
+
+    function validateRailTargets(targets) {
+      const ids = new Set()
+      const check = (target, zone) => {
+        if (!target) return
+        if (!target.turn || !target.turn.id) throw new Error('target without turn id')
+        if (ids.has(target.turn.id)) throw new Error('duplicate target ' + target.turn.id)
+        ids.add(target.turn.id)
+        if (target.zone !== undefined && target.zone !== zone) throw new Error('target in wrong zone')
+      }
+      check(targets && targets.top, 'top')
+      for (const entry of (targets && targets.middle) || []) check(entry, 'middle')
+      check(targets && targets.bottom, 'bottom')
+      return targets
+    }
+
+    /**
+     * Mapping offsets are never chosen by "first candidate". A tie keeps the
+     * previous offset, and a new offset needs at least three matches (unless
+     * only one or two DOM turns are visible and the previous offset agrees).
+     */
+    function chooseRailMapping(apiTurns, domTurns, previous) {
+      const api = [...new Set((apiTurns || []).map(Number).filter(Number.isFinite))]
+      const dom = [...new Set((domTurns || []).map(Number).filter(Number.isFinite))]
+      const domSet = new Set(dom)
+      const matchCount = (delta) => api.reduce((count, turn) => count + (domSet.has(turn + delta) ? 1 : 0), 0)
+      const oldOffset = previous && Number.isFinite(previous.offset) ? Number(previous.offset) : 0
+      const oldScore = matchCount(oldOffset)
+      if (dom.length <= 2) {
+        if (previous && previous.confidence > 0) return { offset: oldOffset, confidence: Math.min(0.7, previous.confidence), score: oldScore }
+        const direct = matchCount(0)
+        return { offset: 0, confidence: direct > 0 ? 0.7 : 0, score: direct }
+      }
+      const candidates = new Set([0, oldOffset])
+      for (const domTurn of dom.slice(0, 24)) {
+        for (const apiTurn of api.slice(0, 24)) candidates.add(domTurn - apiTurn)
+      }
+      let bestOffset = oldOffset
+      let bestScore = oldScore
+      let tie = false
+      for (const candidate of candidates) {
+        const score = matchCount(candidate)
+        if (score > bestScore) {
+          bestOffset = candidate
+          bestScore = score
+          tie = false
+        } else if (score === bestScore && candidate !== bestOffset) {
+          tie = true
+        }
+      }
+      if (bestScore < 2) return { offset: oldOffset, confidence: oldScore > 0 ? (previous.confidence || 0.6) : 0, score: oldScore, tie }
+      // A tied candidate set is ambiguous. Keep the previous offset rather
+      // than selecting whichever candidate happened to be enumerated first.
+      if (tie) return { offset: oldOffset, confidence: previous && previous.confidence ? previous.confidence : 0, score: oldScore, tie }
+      return { offset: bestOffset, confidence: bestScore >= 3 ? 1 : 0.6, score: bestScore, tie }
+    }
+
+    function railJumpDetected(previous, next, options = {}) {
+      if (options.flowChanged) return 'flow'
+      const delta = Number(options.scrollDelta)
+      if (Number.isFinite(delta) && Math.abs(delta) > (options.threshold || 180)) return 'scroll'
+      const before = new Set((previous && previous.rows ? previous.rows : []).map((row) => Number(row.domTurn)))
+      const after = new Set((next && next.rows ? next.rows : []).map((row) => Number(row.domTurn)))
+      if (!before.size || !after.size) return null
+      let common = 0
+      for (const value of before) if (after.has(value)) common += 1
+      const union = before.size + after.size - common
+      if (!common) return 'no-common-turn'
+      if (union && common / union < (options.minOverlap || 0.2)) return 'visible-set'
+      return null
+    }
+
+    class RailSnapshotTracker {
+      constructor({ maxWaitMs = 600 } = {}) {
+        this.maxWaitMs = maxWaitMs
+        this.reset()
+      }
+      reset() {
+        this.signature = ''
+        this.count = 0
+        this.startedAt = null
+      }
+      observe(signature, now = Date.now()) {
+        if (this.startedAt === null) this.startedAt = now
+        if (signature && signature === this.signature) this.count += 1
+        else {
+          this.signature = signature
+          this.count = 1
+        }
+        const waited = now - this.startedAt
+        return {
+          stable: this.count >= 2 || waited >= this.maxWaitMs,
+          timedOut: waited >= this.maxWaitMs,
+          count: this.count,
+          waited,
+        }
+      }
+    }
     class ScrollScheduler {
       constructor({ settleMs = 110, onSettle, setTimer = (fn, ms) => window.setTimeout(fn, ms), clearTimer = (id) => window.clearTimeout(id) } = {}) {
         this.settleMs = settleMs
@@ -295,9 +495,15 @@ window.__ModuleLoader__.load({
         this.fetchTurn = fetchTurn
         this.onTurn = onTurn
         this.limit = limit
-        this.inFlight = new Set()
+        this.epoch = 0
+        this.inFlight = new Map()
       }
-      request(domTurns, knownTurns = [], offset = 0) {
+      invalidate() {
+        this.epoch += 1
+        this.inFlight.clear()
+        return this.epoch
+      }
+      request(domTurns, knownTurns = [], offset = 0, context = {}) {
         const known = new Set((knownTurns || []).map((turn) => Number(turn.turn)))
         const missing = []
         for (const value of domTurns || []) {
@@ -306,16 +512,27 @@ window.__ModuleLoader__.load({
           if (!missing.includes(turn)) missing.push(turn)
           if (missing.length >= this.limit) break
         }
+        const epoch = this.epoch
         for (const turn of missing) {
           if (this.inFlight.has(turn)) continue
-          this.inFlight.add(turn)
+          this.inFlight.set(turn, epoch)
           Promise.resolve()
-            .then(() => this.fetchTurn(turn))
+            .then(() => this.fetchTurn(turn, context))
             .then((payload) => {
-              if (payload && payload.turn) this.onTurn(payload.turn)
+              if (epoch !== this.epoch) return
+              if (!payload || !payload.turn) return
+              if (context.sessionId && payload.sessionId && String(payload.sessionId) !== String(context.sessionId)) return
+              const revision = Number(payload.revision)
+              if (Number.isFinite(revision) && Number.isFinite(Number(context.revision)) && revision < Number(context.revision)) return
+              const generation = payload.generation === undefined ? context.generation : payload.generation
+              const expected = context.generation === undefined ? '' : String(context.generation)
+              if (expected && expected !== '0' && generation !== undefined && String(generation) !== expected) return
+              this.onTurn(payload.turn, payload)
             })
             .catch(() => { /* keep the last stable cards */ })
-            .finally(() => this.inFlight.delete(turn))
+            .finally(() => {
+              if (this.inFlight.get(turn) === epoch) this.inFlight.delete(turn)
+            })
         }
         return missing
       }
@@ -335,7 +552,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-14-2'
+    const CLIENT_BUILD = '2026-11-14-3'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -639,29 +856,36 @@ window.__ModuleLoader__.load({
       const canvasOpen = useCanvasOpen()
       const [turns, setTurns] = React.useState([])
       const [hasMore, setHasMore] = React.useState(false)
-      const [renderIds, setRenderIds] = React.useState(new Set())
+      const [renderTurns, setRenderTurns] = React.useState([])
       const [compact, setCompact] = React.useState(false)
       const [clip, setClip] = React.useState({ top: 0, bottom: 0 })
       const [flowReady, setFlowReady] = React.useState(true)
       const railRef = React.useRef(null)
+      const placeholderRef = React.useRef(null)
       const cardRefs = React.useRef(new Map())
-      const positions = React.useRef(new Map())
-      const slotOccupants = React.useRef(new Map())
-      const pendingTargets = React.useRef(new Map())
-      const lastKnownCard = React.useRef(null)
+      const visual = React.useRef(new Map())
+      const committed = React.useRef(new Map())
+      const absent = React.useRef(new Map())
+      const exiting = React.useRef(new Map())
+      const renderTurnsRef = React.useRef([])
       const loadedSessionRef = React.useRef(null)
       const turnsKey = React.useRef('')
-      const geometry = React.useRef({ ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 })
-      const exitHoldRef = React.useRef(new Map())
-      const initialFadeRef = React.useRef(true)
-      const initialFadeAtRef = React.useRef(0)
       const turnsRef = React.useRef([])
       const turnWindow = React.useRef(new TurnWindowStore())
       const hasMoreRef = React.useRef(false)
-      const renderIdsRef = React.useRef(new Set())
       const autoPreloadRef = React.useRef(false)
       const loadOlderRef = React.useRef(null)
       const refreshRef = React.useRef(null)
+      const scheduleRef = React.useRef(null)
+      const requestView = React.useRef({ sessionId: null, revision: 0, generation: '0', epoch: 0 })
+      const geometry = React.useRef({ ready: false, right: 0, anchorRight: 0, offset: 0, clipTop: 0, clipBottom: 0, compact: false })
+      const mapping = React.useRef({ offset: 0, confidence: 0, generation: 0, flowIdentity: null })
+      const jump = React.useRef({ pending: false, generation: 0, at: 0 })
+      const tracker = React.useRef(null)
+      const recovery = React.useRef({ timer: 0, attempt: 0, deadline: 0, reason: null })
+      const recoveryEvent = React.useRef(null)
+      const scrollDirection = React.useRef(1)
+      const placeholderPosition = React.useRef({ right: 0, top: -9999, visible: false })
 
       React.useEffect(() => {
         const latest = turns.length
@@ -679,19 +903,25 @@ window.__ModuleLoader__.load({
           turnWindow.current.reset()
           hasMoreRef.current = false
           setHasMore(false)
-          renderIdsRef.current = new Set()
-          setRenderIds(new Set())
           setTurns([])
-          positions.current.clear()
-          slotOccupants.current.clear()
-          pendingTargets.current.clear()
-          lastKnownCard.current = null
-          exitHoldRef.current.clear()
-          initialFadeRef.current = true
-          initialFadeAtRef.current = 0
-          geometry.current = { ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 }
+          setRenderTurns([])
+          renderTurnsRef.current = []
+          cardRefs.current.clear()
+          visual.current.clear()
+          committed.current.clear()
+          absent.current.clear()
+          exiting.current.clear()
+          geometry.current = { ready: false, right: 0, anchorRight: 0, offset: 0, clipTop: 0, clipBottom: 0, compact: false }
+          mapping.current = { offset: 0, confidence: 0, generation: 0, flowIdentity: null }
+          jump.current = { pending: false, generation: 0, at: 0 }
+          recovery.current = { timer: 0, attempt: 0, deadline: 0, reason: null }
+          placeholderPosition.current = { right: 0, top: -9999, visible: false }
           sessionViewRevision = 0
           sessionViewStatus = 'loading'
+          const token = requestView.current
+          token.sessionId = targetSession
+          token.generation = '0'
+          token.epoch += 1
         }
         let cancelled = false
         let timer = null
@@ -731,16 +961,33 @@ window.__ModuleLoader__.load({
             if (!response.ok) throw new Error('HTTP ' + response.status)
             const payload = await response.json()
             if (cancelled || seq !== requestSeq) return
+            if (payload.sessionId && String(payload.sessionId) !== String(target)) return
+            if (requestView.current.sessionId && String(requestView.current.sessionId) !== String(target)) return
+            const generation = payload.generation === undefined ? requestView.current.generation : String(payload.generation)
+            if (requestView.current.generation !== '0' && generation !== requestView.current.generation) {
+              // A server generation change is a reset, not a merge.
+              turnWindow.current.reset()
+              turnsKey.current = ''
+            }
+            requestView.current.sessionId = target
+            requestView.current.generation = generation
+            requestView.current.revision = Number(payload.revision) || 0
             lastFetchError = null
             sessionViewRevision = legacy ? 0 : Number(payload.revision) || 0
             sessionViewStatus = legacy ? 'legacy' : String(payload.status || 'unknown')
             const next = Array.isArray(payload.turns) ? payload.turns : []
+            const seen = new Set()
+            for (const turn of next) {
+              if (!turn || turn.id === undefined || seen.has(turn.id)) throw new Error('duplicate turn in API payload')
+              seen.add(turn.id)
+            }
             const merged = turnWindow.current.merge(next)
             const key = JSON.stringify(merged)
             if (key !== turnsKey.current) {
               turnsKey.current = key
               turnsRef.current = merged
               setTurns(merged)
+              recoveryEvent.current?.()
             }
             hasMoreRef.current = payload.hasMore === true
             setHasMore(payload.hasMore === true)
@@ -759,12 +1006,19 @@ window.__ModuleLoader__.load({
           const oldest = turnsRef.current[turnsRef.current.length - 1]
           if (!oldest || !Number.isFinite(Number(oldest.turn))) return
           loadingOlder = true
+          const target = railSessionId || sessionId
+          const epoch = requestView.current.epoch
+          const generation = requestView.current.generation
+          const revision = requestView.current.revision
           try {
-            const target = railSessionId || sessionId
             if (!target) return
             const response = await fetch(apiUrl('/model-fingerprint/api/session-view?id=' + encodeURIComponent(target) + '&limit=200&before=' + encodeURIComponent(String(oldest.turn))), { cache: 'no-store' })
             if (!response.ok) return
             const payload = await response.json()
+            if (epoch !== requestView.current.epoch || String(target) !== String(requestView.current.sessionId)) return
+            if (payload.sessionId && String(payload.sessionId) !== String(target)) return
+            if (generation !== '0' && payload.generation !== undefined && String(payload.generation) !== String(generation)) return
+            if (payload.revision !== undefined && Number(payload.revision) < Number(revision)) return
             const next = Array.isArray(payload.turns) ? payload.turns : []
             if (next.length) {
               const merged = turnWindow.current.merge(next)
@@ -785,6 +1039,7 @@ window.__ModuleLoader__.load({
         return () => {
           cancelled = true
           requestSeq += 1
+          requestView.current.epoch += 1
           if (controller) controller.abort()
           if (timer) clearInterval(timer)
         }
@@ -792,8 +1047,6 @@ window.__ModuleLoader__.load({
 
       React.useEffect(() => {
         if (!on) return undefined
-        // Opening the switch must not show a stale cached card. Refresh the
-        // latest page, then pull one older page once the new revision lands.
         refreshRef.current?.()
         const timer = window.setTimeout(() => {
           loadOlderRef.current?.()
@@ -823,15 +1076,19 @@ window.__ModuleLoader__.load({
         let resizeObserver = null
         let flowObserver = null
         let observedFlow = null
+        let observedResizeFlow = null
         let mutationTimer = 0
         let tick = null
+        let disposed = false
 
-        const hideAll = () => {
-          for (const node of cardRefs.current.values()) {
-            node.style.opacity = '0'
-            node.style.scale = '0.86'
-            node.style.pointerEvents = 'none'
-          }
+        tracker.current = new RailSnapshotTracker({ maxWaitMs: 600 })
+        const beginJump = (reason) => {
+          const fromSignature = tracker.current ? tracker.current.signature : ''
+          jump.current = { pending: true, generation: jump.current.generation + 1, at: performance.now(), reason, fromSignature }
+          tracker.current.reset()
+          animator.cancelAll(cardRefs.current.values())
+          turnQueue.invalidate()
+          noteRecoveryEvent()
         }
 
         const findFlow = () => {
@@ -864,64 +1121,104 @@ window.__ModuleLoader__.load({
           return null
         }
 
-        const rebuild = () => {
-          const flow = findFlow()
-          if (!flow) {
-            geometry.current = { ready: false, left: 0, turnNodes: new Map(), offset: 0, clipTop: 0, clipBottom: 0 }
-            hideAll()
-            setFlowReady(false)
-            railDebug = { flow: false, flowTurns: 0, turns: turns.length, cards: 0, reason: 'no-flow' }
-            return
+        const setStyle = (node, property, value) => {
+          if (!node) return
+          if (!node.__mfStyles) node.__mfStyles = {}
+          if (node.__mfStyles[property] === value) return
+          node.__mfStyles[property] = value
+          node.style[property] = value
+        }
+        const setTransition = (node, value) => {
+          if (!node || node.__mfTransition === value) return
+          node.__mfTransition = value
+          node.style.transition = value
+        }
+        const reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
+        const spring = reducedMotion ? 'ease-out' : 'cubic-bezier(.22,1,.36,1)'
+        const animator = new SlotAnimator({ eased: spring, reduced: reducedMotion, cardWidth: 176 })
+        const scrollScheduler = new ScrollScheduler({
+          settleMs: 110,
+          onSettle: () => schedule(true, { settle: true }),
+        })
+        const turnQueue = new TurnRequestQueue({
+          fetchTurn: (turn, context) => {
+            const target = context && context.sessionId ? context.sessionId : (sessionId || railSessionId)
+            if (!target) return null
+            return fetch(apiUrl('/model-fingerprint/api/turn-view?id=' + encodeURIComponent(target) + '&turn=' + encodeURIComponent(turn)), { cache: 'no-store' })
+              .then((response) => response.ok ? response.json() : null)
+          },
+          onTurn: (turn, payload) => {
+            if (disposed || !turn || turn.hasModelData === false) return
+            const current = requestView.current
+            if (payload && payload.sessionId && current.sessionId && String(payload.sessionId) !== String(current.sessionId)) return
+            if (payload && payload.generation !== undefined && String(current.generation) !== '0' && String(payload.generation) !== String(current.generation)) return
+            if (payload && Number(payload.revision) < Number(current.revision)) return
+            const merged = turnWindow.current.merge([turn])
+            turnsRef.current = merged
+            setTurns(merged)
+            noteRecoveryEvent()
+            schedule(true)
+          },
+        })
+
+        const noteRecoveryEvent = () => {
+          const state = recovery.current
+          state.deadline = performance.now() + 600
+          state.attempt = 0
+          state.reason = null
+        }
+        recoveryEvent.current = noteRecoveryEvent
+
+        const clearRecovery = () => {
+          const state = recovery.current
+          if (state.timer) window.clearTimeout(state.timer)
+          state.timer = 0
+          state.deadline = 0
+          state.attempt = 0
+          state.reason = null
+        }
+
+        const scheduleRecovery = (reason) => {
+          const state = recovery.current
+          state.reason = reason
+          if (state.timer) return
+          const now = performance.now()
+          if (!state.deadline) state.deadline = now + 600
+          if (now >= state.deadline) {
+            // Never stop forever: after the budget, do a full flow requery and
+            // start another bounded recovery window.
+            state.deadline = now + 600
+            state.attempt = 0
+            mapping.current.flowIdentity = null
           }
+          const delay = [0, 100, 250, 500][Math.min(state.attempt, 3)]
+          state.attempt += 1
+          state.timer = window.setTimeout(() => {
+            state.timer = 0
+            schedule(true, { recover: true })
+          }, delay)
+        }
+
+        const retainVisual = (reason) => {
+          // Mapping failures keep the last valid visual state. They never
+          // create synthetic cards or move an occupant.
+          railDebug = {
+            ...railDebug,
+            flow: Boolean(observedFlow),
+            flowTurns: geometry.current.domTurns ? geometry.current.domTurns.length : 0,
+            turns: turnsRef.current.length,
+            cards: visual.current.size,
+            reason,
+            mappingConfidence: mapping.current.confidence,
+            offset: mapping.current.offset,
+            mappingGeneration: mapping.current.generation,
+            jumpGeneration: jump.current.generation,
+          }
+          scheduleRecovery(reason)
+        }
+
+        const measureLayout = (flow) => {
           const flowRect = flow.getBoundingClientRect()
-          const domTurns = []
-          const domNodeMap = new Map()
-          for (const node of flow.querySelectorAll('[data-chat-turn]')) {
-            const value = node.getAttribute('data-chat-turn')
-            if (value === null) continue
-            if (!domTurns.includes(value)) domTurns.push(value)
-            if (!domNodeMap.has(value)) domNodeMap.set(value, [])
-            domNodeMap.get(value).push(node)
-          }
-          const apiTurns = turns.map((item) => Number(item.turn)).filter((value) => Number.isFinite(value))
-          const domNumeric = domTurns.map((value) => Number(value)).filter((value) => Number.isFinite(value))
-          const domSet = new Set(domTurns)
-          const matchCount = (delta) => {
-            let matches = 0
-            for (const value of apiTurns) {
-              if (domSet.has(String(value + delta))) matches += 1
-            }
-            return matches
-          }
-          let offset = 0
-          const previousOffset = Number(geometry.current.offset) || 0
-          const previousScore = previousOffset ? matchCount(previousOffset) : 0
-          const directScore = matchCount(0)
-          if (previousScore > 0 && previousScore >= directScore) {
-            offset = previousOffset
-          } else if (directScore > 0) {
-            offset = 0
-          } else if (apiTurns.length && domNumeric.length) {
-            const candidates = new Set([
-              Math.min(...domNumeric) - Math.min(...apiTurns),
-              Math.max(...domNumeric) - Math.max(...apiTurns),
-            ])
-            const domSample = domNumeric.slice(0, 20)
-            const apiSample = apiTurns.slice(0, 20)
-            for (const dom of domSample) {
-              for (const api of apiSample) candidates.add(dom - api)
-            }
-            let best = 0
-            let bestScore = 0
-            for (const candidate of candidates) {
-              const score = matchCount(candidate)
-              if (score > bestScore) {
-                best = candidate
-                bestScore = score
-              }
-            }
-            if (bestScore >= 2) offset = best
-          }
           let sidebarRight = 0
           for (const node of document.querySelectorAll('aside, nav, [data-slot*="sidebar"], [class*="sidebar"]')) {
             const box = node.getBoundingClientRect()
@@ -967,39 +1264,419 @@ window.__ModuleLoader__.load({
           const nextCompact = gap < cardWidth + 24 || (sidebarRight === 0 && flowRect.left < cardWidth * 2)
           const anchorRight = TurnGeometry.anchorRight(flowRect, sidebarRight, safeLeft, cardWidth)
           const right = Math.max(6, window.innerWidth - anchorRight)
-          const turnNodes = new Map()
-          const renderedTurns = []
-          const domRows = []
-          for (const [value, rawNodes] of domNodeMap) {
-            const nodes = TurnGeometry.responseNodes(rawNodes)
-            let top = Infinity
-            let bottom = -Infinity
-            for (const node of nodes) {
-              const box = node.getBoundingClientRect()
-              if (!box.height) continue
-              top = Math.min(top, box.top)
-              bottom = Math.max(bottom, box.bottom)
+          return {
+            ready: true,
+            left: anchorRight,
+            right,
+            anchorRight,
+            offset: mapping.current.offset,
+            clipTop,
+            clipBottom,
+            composerTop,
+            scrollContainer,
+            compact: nextCompact,
+            sidebarRight,
+            flowLeft: flowRect.left,
+            flowWidth: flowRect.width,
+            flowIdentity: flow,
+          }
+        }
+
+        const captureSnapshot = (flow) => {
+          const raw = []
+          let invalid = false
+          for (const node of flow.querySelectorAll('[data-chat-turn]')) {
+            const value = node.getAttribute('data-chat-turn')
+            const domTurn = Number(value)
+            if (!Number.isFinite(domTurn)) continue
+            if (node.getAttribute('data-chat-turn') !== value) invalid = true
+            raw.push({ node, domTurn, value })
+          }
+          if (invalid) return { invalid: true, flow, rows: [], domTurns: [], signature: '' }
+          const groups = new Map()
+          for (const row of raw) {
+            if (!groups.has(row.domTurn)) groups.set(row.domTurn, [])
+            groups.get(row.domTurn).push(row)
+          }
+          const rows = []
+          for (const [domTurn, group] of groups) {
+            for (const entry of group) {
+              if (entry.node.getAttribute('data-chat-turn') !== entry.value) {
+                invalid = true
+                break
+              }
             }
-            if (Number.isFinite(top) && Number.isFinite(bottom)) domRows.push({ value, top: Math.round(top), bottom: Math.round(bottom) })
+            if (invalid) break
+            const nodes = TurnGeometry.responseNodes(group.map((entry) => entry.node))
+            const box = TurnGeometry.measureNormalized(nodes, geometry.current.clipTop, geometry.current.clipBottom)
+            for (const entry of group) {
+              if (entry.node.getAttribute('data-chat-turn') !== entry.value) {
+                invalid = true
+                break
+              }
+            }
+            if (invalid) break
+            if (!box) continue
+            rows.push({
+              domTurn,
+              top: box.top,
+              bottom: box.bottom,
+              anchorTop: box.anchor ? box.anchor.visibleTop : null,
+              anchorBottom: box.anchor ? box.anchor.visibleBottom : null,
+              segments: box.segments || [],
+            })
           }
-          for (const turn of turns) {
-            const key = String(Number(turn.turn) + offset)
-            const nodes = TurnGeometry.responseNodes(domNodeMap.get(key) || [])
-            turnNodes.set(key, nodes)
-            if (nodes.length) renderedTurns.push({ turn, nodes })
+          if (invalid) return { invalid: true, flow, rows: [], domTurns: [...groups.keys()], signature: '' }
+          rows.sort((left, right) => left.top - right.top)
+          const domTurns = rows.map((row) => row.domTurn)
+          const signature = rows.map((row) => row.domTurn + ':' + Math.round(row.top) + ':' + Math.round(row.bottom)).join('|')
+          return { flow, rows, domTurns, signature, time: performance.now() }
+        }
+
+        const zonesFromCommitted = () => {
+          const zones = new Map()
+          for (const [id, target] of committed.current) zones.set(id, target.zone)
+          return zones
+        }
+
+        const applyRange = (node, target, cardTop) => {
+          const range = node.querySelector ? node.querySelector('[data-mf-range]') : null
+          if (!range) return
+          const segments = Array.isArray(target.segments) ? target.segments.slice(0, 3) : []
+          range.style.opacity = segments.length ? '0.72' : '0'
+          const segmentEls = [...range.querySelectorAll('[data-mf-range-segment]')]
+          for (let index = 0; index < segmentEls.length; index += 1) {
+            const segmentEl = segmentEls[index]
+            const segment = segments[index]
+            if (segment && segment.bottom - segment.top > 12) {
+              segmentEl.style.opacity = '1'
+              segmentEl.style.top = Math.round(segment.top - cardTop) + 'px'
+              segmentEl.style.height = Math.round(segment.bottom - segment.top) + 'px'
+              if (!segmentEl.__mfRangeShown) {
+                segmentEl.__mfRangeShown = true
+                segmentEl.style.transform = 'scaleY(0)'
+                window.requestAnimationFrame(() => {
+                  if (segmentEl.isConnected) segmentEl.style.transform = 'scaleY(1)'
+                })
+              } else {
+                segmentEl.style.transform = 'scaleY(1)'
+              }
+            } else {
+              segmentEl.style.opacity = '0'
+              segmentEl.style.transform = 'scaleY(0)'
+              segmentEl.__mfRangeShown = false
+            }
           }
-          geometry.current = { ready: true, left: anchorRight, right, anchorRight, turnNodes, renderedTurns, offset, clipTop, clipBottom, composerTop, scrollContainer, flowTurns: domTurns.length, domTurns, apiTurns, domRows, compact: nextCompact, sidebarRight, flowLeft: flowRect.left, flowWidth: flowRect.width }
-          fetchVisibleTurns(domTurns)
-          setCompact((value) => value === nextCompact ? value : nextCompact)
-          setClip((value) => Math.abs(value.top - clipTop) < 1 && Math.abs(value.bottom - clipBottom) < 1 ? value : { top: clipTop, bottom: clipBottom })
+        }
+
+        const updateRenderPool = (targets) => {
+          const pool = new Map(renderTurnsRef.current.map((turn) => [turn.id, turn]))
+          for (const target of targets.values()) if (target.turn && target.turn.id) pool.set(target.turn.id, target.turn)
+          for (const [id, entry] of exiting.current) if (entry.turn) pool.set(id, entry.turn)
+          for (const id of [...pool.keys()]) {
+            if (targets.has(id) || exiting.current.has(id) || visual.current.has(id)) continue
+            pool.delete(id)
+          }
+          const list = [...pool.values()]
+          const before = renderTurnsRef.current.map((turn) => turn.id).join('|')
+          const after = list.map((turn) => turn.id).join('|')
+          if (before === after) return
+          renderTurnsRef.current = list
+          setRenderTurns(list)
+          window.requestAnimationFrame(() => schedule(false))
+        }
+
+        const exitCard = (id, node, previous, rects) => {
+          if (!node || exiting.current.has(id)) return
+          const turn = renderTurnsRef.current.find((item) => item.id === id) || (previous && previous.turn)
+          if (!turn) return
+          const rect = rects.get(id) || (node.getBoundingClientRect ? node.getBoundingClientRect() : null)
+          const width = node.offsetWidth || (geometry.current.compact ? 56 : 176)
+          const fromTop = rect && Number.isFinite(rect.top) ? rect.top : previous.top
+          const fromScale = rect && width ? Math.max(0.5, Math.min(1.2, rect.width / width)) : previous.scale
+          const fromTransform = 'translate3d(0,' + fromTop + 'px,0) scale(' + fromScale + ')'
+          const ejectDistance = Math.max(64, (geometry.current.compact ? 24 : 58) * 1.2)
+          let toTop = fromTop
+          if (previous.zone === 'top') toTop = Math.max(0, fromTop - ejectDistance)
+          else if (previous.zone === 'bottom') toTop = fromTop + ejectDistance
+          else toTop = scrollDirection.current > 0 ? geometry.current.clipTop - ejectDistance : geometry.current.clipBottom + ejectDistance
+          const toTransform = 'translate3d(0,' + toTop + 'px,0) scale(0.76)'
+          setStyle(node, 'pointerEvents', 'none')
+          node.__mfOpacity = 0
+          exiting.current.set(id, { turn, zone: previous.zone })
+          const remove = () => {
+            if (disposed) return
+            exiting.current.delete(id)
+            visual.current.delete(id)
+            cardRefs.current.delete(id)
+            absent.current.delete(id)
+            updateRenderPool(committed.current)
+          }
+          try {
+            const animated = animator.eject(node, {
+              fromTransform,
+              fromOpacity: Number.isFinite(previous.opacity) ? previous.opacity : 0.5,
+              toTransform,
+              motionScale: reducedMotion ? 0.45 : 1,
+              onDone: remove,
+            })
+            if (!animated) remove()
+          } catch {
+            remove()
+          }
+        }
+
+        const applyTargets = (targets, snapshot) => {
+          const previous = committed.current
+          committed.current = targets
+          const rects = new Map()
+          for (const [id, node] of cardRefs.current) {
+            if (!node || node.isConnected === false) continue
+            const rect = node.getBoundingClientRect()
+            if (rect && rect.height) rects.set(id, rect)
+          }
+          const validSnapshot = Boolean(snapshot && !snapshot.invalid && snapshot.rows && snapshot.rows.length)
+          for (const id of targets.keys()) absent.current.delete(id)
+          for (const [id, node] of cardRefs.current) {
+            if (targets.has(id)) continue
+            if (!validSnapshot) continue
+            const before = absent.current.get(id) || 0
+            const count = before + 1
+            absent.current.set(id, count)
+            if (count < 2) continue
+            const prior = visual.current.get(id)
+            if (!prior || !prior.visible) continue
+            exitCard(id, node, prior, rects)
+          }
+          for (const [id, target] of targets) {
+            const node = cardRefs.current.get(id)
+            const prior = visual.current.get(id) || null
+            const targetScale = target.zone === 'middle' ? 1 : 0.88
+            const targetOpacity = target.zone === 'middle' ? 1 : 0.5
+            const nextVisual = { top: target.top, zone: target.zone, scale: targetScale, opacity: targetOpacity, visible: true, rendered: Boolean(node), turn: target.turn }
+            visual.current.set(id, nextVisual)
+            if (!node) {
+              window.requestAnimationFrame(() => schedule(false))
+              continue
+            }
+            if (exiting.current.has(id)) {
+              exiting.current.delete(id)
+              absent.current.delete(id)
+            }
+            setStyle(node, 'zIndex', target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2')
+            setStyle(node, 'pointerEvents', 'auto')
+            setStyle(node, 'filter', target.zone === 'middle' ? 'none' : 'grayscale(.45) saturate(.65)')
+            setStyle(node, 'boxShadow', target.zone === 'middle' ? '0 4px 12px rgba(16,24,40,.10)' : '0 1px 4px rgba(16,24,40,.06)')
+            setStyle(node, 'borderColor', target.zone === 'middle' ? 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))' : 'rgba(20,30,45,.08)')
+            // Transform is owned by WAAPI/FLIP. Never write transform transitions:
+            // they fight the animation and cause horizontal/vertical bounce.
+            setTransition(node, reducedMotion ? 'opacity 60ms linear' : 'opacity 220ms ease, filter 180ms ease, box-shadow 180ms ease, border-color 180ms ease, width 240ms cubic-bezier(.22,1,.36,1), padding 240ms cubic-bezier(.22,1,.36,1), border-radius 240ms cubic-bezier(.22,1,.36,1)')
+            node.title = (target.zone === 'top' ? '上方 · ' : target.zone === 'bottom' ? '下方 · ' : '') + '第 ' + target.turn.turn + ' 轮 · ' + target.turn.verdictLabel + (target.zone === 'middle' && target.segments && target.segments.length ? ' · 右侧细线为可见区间' : '')
+            applyRange(node, target, target.top)
+            const rect = rects.get(id) || null
+            const changed = Boolean(prior && prior.visible && (Math.abs(prior.top - target.top) > 1 || prior.zone !== target.zone || Math.abs(prior.scale - targetScale) > 0.01))
+            if (!prior || !prior.visible || prior.rendered === false) {
+              const direction = scrollDirection.current >= 0 ? 1 : -1
+              const fromTop = rect ? rect.top : target.top + direction * 8
+              setStyle(node, 'opacity', String(targetOpacity))
+              try {
+                animator.enter(node, {
+                  left: 0,
+                  fromTop,
+                  fromScale: targetScale * 0.96,
+                  toTop: target.top,
+                  toScale: targetScale,
+                  toOpacity: targetOpacity,
+                  delay: 0,
+                  motionScale: reducedMotion ? 0.45 : 1,
+                })
+              } catch {
+                setStyle(node, 'transform', 'translate3d(0,' + target.top + 'px,0) scale(' + targetScale + ')')
+              }
+            } else if (changed) {
+              const role = prior.zone !== target.zone
+                ? (target.zone === 'middle' ? 'pushing' : 'squeeze')
+                : 'pushed'
+              try {
+                animator.flip(node, {
+                  fromRect: rect,
+                  fromOpacity: prior && Number.isFinite(prior.opacity) ? prior.opacity : targetOpacity,
+                  toTop: target.top,
+                  toScale: targetScale,
+                  toOpacity: targetOpacity,
+                  role,
+                  motionScale: reducedMotion ? 0.45 : 1,
+                })
+              } catch {
+                setStyle(node, 'transform', 'translate3d(0,' + target.top + 'px,0) scale(' + targetScale + ')')
+                setStyle(node, 'opacity', String(targetOpacity))
+              }
+            } else {
+              setStyle(node, 'transform', 'translate3d(0,' + target.top + 'px,0) scale(' + targetScale + ')')
+              setStyle(node, 'opacity', String(targetOpacity))
+            }
+          }
+          for (const [id, prior] of visual.current) {
+            if (targets.has(id) || exiting.current.has(id)) continue
+            if (!validSnapshot) continue
+            if ((absent.current.get(id) || 0) < 2) {
+              // Keep the current visual state for one valid frame; the second
+              // valid snapshot starts the exit. This is not a permanent slot.
+              const node = cardRefs.current.get(id)
+              if (node && prior.visible) setStyle(node, 'opacity', String(prior.opacity))
+            }
+          }
+          updateRenderPool(committed.current)
+        }
+
+        const buildTargets = (snapshot) => {
+          const layout = geometry.current
+          const cardH = layout.compact ? 24 : 58
+          const topY = layout.clipTop + 8
+          const bottomY = layout.clipBottom - cardH - 4
+          const laneTop = layout.clipTop + 8
+          const laneBottom = layout.clipBottom - 8
+          const laneMax = Math.max(laneTop, laneBottom - cardH)
+          const derived = validateRailTargets(deriveRailTargets(snapshot, turnsRef.current, mapping.current, layout, zonesFromCommitted()))
+          const middleTop = derived.top ? topY + cardH + 6 : laneTop
+          const middleBottom = derived.bottom ? bottomY - 6 : laneBottom
+          const middleMax = Math.max(middleTop, middleBottom - cardH)
+          const targets = new Map()
+          let lastBottom = middleTop
+          const middle = derived.middle.slice().sort((left, right) => left.top - right.top)
+          for (const entry of middle) {
+            const visibleTop = Math.max(entry.top, layout.clipTop + 4)
+            const visibleBottom = Math.min(entry.bottom, layout.clipBottom - 4)
+            if (visibleBottom <= visibleTop) continue
+            const segments = entry.row.segments || []
+            const lineTop = segments.length ? Math.min(...segments.map((segment) => segment.top)) : visibleTop
+            const lineBottom = segments.length ? Math.max(...segments.map((segment) => segment.bottom)) : visibleBottom
+            const center = (lineTop + lineBottom) / 2
+            let y = center - cardH / 2
+            const prior = visual.current.get(entry.turn.id)
+            if (prior && prior.visible && prior.zone === 'middle') {
+              const topEdge = prior.top
+              const bottomEdge = prior.top + cardH
+              if (center > bottomEdge) y = center - cardH
+              else if (center < topEdge) y = center
+              else y = prior.top
+            }
+            y = Math.min(Math.max(y, middleTop), middleMax)
+            y = Math.min(Math.max(y, lastBottom + 4), middleMax)
+            targets.set(entry.turn.id, {
+              top: Math.round(y),
+              zone: 'middle',
+              turn: entry.turn,
+              segments: segments.slice(0, 3),
+              rangeTop: lineTop,
+              rangeBottom: lineBottom,
+            })
+            lastBottom = y + cardH + 4
+          }
+          if (derived.top) {
+            targets.set(derived.top.turn.id, { top: Math.round(topY), zone: 'top', turn: derived.top.turn })
+          }
+          if (derived.bottom) {
+            targets.set(derived.bottom.turn.id, { top: Math.round(bottomY), zone: 'bottom', turn: derived.bottom.turn })
+          }
+          return targets
+        }
+
+        const commitSnapshot = (snapshot) => {
+          if (!snapshot || snapshot.invalid) {
+            tracker.current.reset()
+            retainVisual('recovering')
+            return
+          }
+          if (!snapshot.rows.length) {
+            retainVisual('waiting-for-dom')
+            return
+          }
+          const tracked = tracker.current.observe(snapshot.signature, performance.now())
+          const unchangedAfterJump = jump.current.pending && jump.current.fromSignature && snapshot.signature === jump.current.fromSignature && !tracked.timedOut
+          if (jump.current.pending && (!tracked.stable || unchangedAfterJump) && !tracked.timedOut) {
+            railDebug = { ...railDebug, reason: 'waiting-for-dom', flowTurns: snapshot.rows.length, jumpGeneration: jump.current.generation }
+            window.requestAnimationFrame(() => schedule(false))
+            return
+          }
+          jump.current.pending = false
+          const targets = buildTargets(snapshot)
+          applyTargets(targets, snapshot)
+          const focusTarget = [...targets.values()].find((target) => target.zone === 'middle') || [...targets.values()][0]
+          if (focusTarget && turnWindow.current.pruneAround(focusTarget.turn.turn)) {
+            const pruned = turnWindow.current.turns()
+            turnsRef.current = pruned
+            setTurns(pruned)
+          }
+          clearRecovery()
+          setCompact((value) => value === geometry.current.compact ? value : geometry.current.compact)
+          setClip((value) => Math.abs(value.top - geometry.current.clipTop) < 1 && Math.abs(value.bottom - geometry.current.clipBottom) < 1 ? value : { top: geometry.current.clipTop, bottom: geometry.current.clipBottom })
           setFlowReady(true)
+          const atBottom = geometry.current.scrollContainer
+            ? geometry.current.scrollContainer.scrollTop + geometry.current.scrollContainer.clientHeight >= geometry.current.scrollContainer.scrollHeight - 8
+            : false
+          const hasTargets = targets.size > 0
+          placeholderPosition.current = {
+            right: geometry.current.right || 0,
+            top: Math.round((geometry.current.clipTop + geometry.current.clipBottom) / 2 - 22),
+            visible: !hasTargets && turnsRef.current.length > 0,
+          }
+          railDebug = {
+            flow: true,
+            flowTurns: snapshot.rows.length,
+            turns: turnsRef.current.length,
+            cards: targets.size,
+            cardNodes: cardRefs.current.size,
+            windowRows: turnWindow.current.size,
+            windowMax: turnWindow.current.maxWindow,
+            cardTargets: [...targets.entries()].map(([id, target]) => ({ id, turn: target.turn ? target.turn.turn : null, zone: target.zone, top: Math.round(target.top) })),
+            cardAnimations: [...cardRefs.current.entries()].map(([id, node]) => ({ id, role: animator.state(node) ? animator.state(node).id : null })),
+            middleCards: [...targets.values()].filter((target) => target.zone === 'middle').length,
+            placeholder: placeholderPosition.current.visible,
+            offset: mapping.current.offset,
+            mappingConfidence: mapping.current.confidence,
+            mappingGeneration: mapping.current.generation,
+            jumpGeneration: jump.current.generation,
+            measured: snapshot.rows.length,
+            domTurns: snapshot.rows.map((row) => row.domTurn).slice(0, 12),
+            apiTurns: turnsRef.current.map((turn) => turn.turn).slice(0, 12),
+            atBottom,
+            reason: 'ok',
+            right: Math.round(geometry.current.right),
+            left: Math.round(geometry.current.left),
+            compact: geometry.current.compact,
+            clipTop: Math.round(geometry.current.clipTop),
+            clipBottom: Math.round(geometry.current.clipBottom),
+            viewport: window.innerWidth,
+            canvasOpen,
+          }
+        }
+
+        const update = (needsRebuild) => {
+          const flow = findFlow()
+          if (!flow) {
+            geometry.current = { ...geometry.current, ready: false }
+            retainVisual('no-flow')
+            setFlowReady(false)
+            railDebug = { ...railDebug, flow: false, reason: 'no-flow', turns: turnsRef.current.length, cards: visual.current.size }
+            return
+          }
+          if (mapping.current.flowIdentity && mapping.current.flowIdentity !== flow) {
+            mapping.current = { offset: mapping.current.offset, confidence: 0, generation: mapping.current.generation + 1, flowIdentity: flow }
+            beginJump('flow')
+            schedule(true, { recover: true })
+            return
+          }
+          mapping.current.flowIdentity = flow
+          const priorRows = geometry.current.lastRows
           if (typeof MutationObserver === 'function' && !flowObserver) {
             flowObserver = new MutationObserver(() => {
               if (mutationTimer) return
               mutationTimer = window.setTimeout(() => {
                 mutationTimer = 0
+                noteRecoveryEvent()
                 schedule(true)
-              }, 160)
+              }, 40)
             })
           }
           if (flowObserver && observedFlow !== flow) {
@@ -1007,502 +1684,43 @@ window.__ModuleLoader__.load({
             flowObserver.observe(flow, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-chat-turn'] })
             observedFlow = flow
           }
-          if (resizeObserver) {
-            resizeObserver.disconnect()
+          if (typeof ResizeObserver === 'function' && observedResizeFlow !== flow) {
+            if (!resizeObserver) resizeObserver = new ResizeObserver(() => { noteRecoveryEvent(); schedule(true) })
+            else resizeObserver.disconnect()
             resizeObserver.observe(flow)
-          } else if (typeof ResizeObserver === 'function') {
-            resizeObserver = new ResizeObserver(() => schedule(true))
-            resizeObserver.observe(flow)
+            observedResizeFlow = flow
           }
-        }
-
-        let lastScrollAt = 0
-        let lastScrollTop = null
-        let scrollVelocity = 0
-        let settlePending = false
-        let lastActiveIds = new Set()
-        let mappingRetryTimer = 0
-        let mappingRetries = 0
-        const turnQueue = new TurnRequestQueue({
-          fetchTurn: (turn) => {
-            const target = sessionId || railSessionId
-            if (!target) return null
-            return fetch(apiUrl('/model-fingerprint/api/turn-view?id=' + encodeURIComponent(target) + '&turn=' + encodeURIComponent(turn)), { cache: 'no-store' })
-              .then((response) => response.ok ? response.json() : null)
-          },
-          onTurn: (turn) => {
-            if (cancelled || !turn || turn.hasModelData === false) return
-            const merged = turnWindow.current.merge([turn])
-            turnsRef.current = merged
-            setTurns(merged)
-            schedule(true)
-          },
-        })
-        const fetchVisibleTurns = (domTurns) => {
-          turnQueue.request(domTurns, turnsRef.current, geometry.current.offset || 0)
-        }
-        const rangeParts = (node) => {
-          if (!node) return { range: null, segments: [] }
-          const cached = node.__mfRangeParts
-          if (cached && cached.range && cached.range.isConnected) return cached
-          const range = node.querySelector('[data-mf-range]')
-          const segments = range ? [...range.querySelectorAll('[data-mf-range-segment]')] : []
-          const next = { range, segments }
-          node.__mfRangeParts = next
-          return next
-        }
-        const setTransition = (node, value) => {
-          if (!node || node.__mfTransition === value) return
-          node.__mfTransition = value
-          node.style.transition = value
-        }
-        const setStyle = (node, property, value) => {
-          if (!node) return
-          if (!node.__mfStyles) node.__mfStyles = {}
-          if (node.__mfStyles[property] === value) return
-          node.__mfStyles[property] = value
-          node.style[property] = value
-        }
-        const reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-        const motionEase = reducedMotion ? 'ease-out' : 'cubic-bezier(.22,1.4,.36,1)'
-        const spring = motionEase
-        const transitionFor = (withTransform) => (withTransform ? 'transform 380ms ' + spring + ', ' : '') + 'opacity 280ms ease, scale 360ms ' + spring + ', filter 200ms ease, box-shadow 200ms ease, border-color 200ms ease, width 320ms cubic-bezier(.22,1,.36,1), padding 320ms cubic-bezier(.22,1,.36,1), border-radius 320ms cubic-bezier(.22,1,.36,1)'
-        const animator = new SlotAnimator({ eased: spring, reduced: reducedMotion, cardWidth: 176 })
-        const scrollScheduler = new ScrollScheduler({
-          settleMs: 110,
-          onSettle: () => schedule(true, { settle: true }),
-        })
-
-        const update = (needsRebuild, settle = false) => {
-          if (needsRebuild || !geometry.current.ready) rebuild()
-          const geo = geometry.current
-          if (!geo.ready) {
-            hideAll()
-            return
-          }
-          const measured = []
-          const now = performance.now()
-          const scrolling = scrollScheduler.scrolling && !settle
-          const holdMap = exitHoldRef.current
-          for (const item of geo.renderedTurns) {
-            const turn = item.turn
-            const nodes = item.nodes
-            const geometryBox = TurnGeometry.measureNormalized(nodes, geo.clipTop, geo.clipBottom)
-            if (!geometryBox) continue
-            const { top, bottom, anchor, segments } = geometryBox
-            const previousZone = positions.current.get(turn.id)?.zone
-            const { aboveRaw, belowRaw } = TurnGeometry.classify(geometryBox, geo.clipTop, geo.clipBottom, previousZone)
-            const contactDir = aboveRaw ? 'top' : belowRaw ? 'bottom' : top <= geo.clipTop + 18 ? 'top' : bottom >= geo.clipBottom - 18 ? 'bottom' : null
-            let hold = holdMap.get(turn.id)
-            if (contactDir) {
-              if (!hold || hold.dir !== contactDir) {
-                hold = { at: now, dir: contactDir }
-                holdMap.set(turn.id, hold)
-              }
-            } else if (!aboveRaw && !belowRaw) {
-              holdMap.delete(turn.id)
-              hold = null
-            }
-            const wasContext = previousZone === 'top' || previousZone === 'bottom'
-            if (!wasContext && (aboveRaw || belowRaw) && (!hold || !hold.exiting)) {
-              hold = { at: now, dir: aboveRaw ? 'top' : 'bottom', exiting: true }
-              holdMap.set(turn.id, hold)
-            }
-            if (!scrolling && (aboveRaw || belowRaw)) {
-              holdMap.delete(turn.id)
-              hold = null
-            }
-            const held = Boolean(scrolling && hold && hold.exiting)
-            const above = held ? false : aboveRaw
-            const below = held ? false : belowRaw
-            measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, segments, above, below, held, heldDir: held ? contactDir : null })
-          }
-          if (measured.length === 0 && geo.domTurns.length > 0 && positions.current.size > 0) {
-            fetchVisibleTurns(geo.domTurns)
-            if (!mappingRetryTimer && mappingRetries < 3) {
-              mappingRetries += 1
-              mappingRetryTimer = window.setTimeout(() => {
-                mappingRetryTimer = 0
-                schedule(true)
-              }, 70)
-            }
-            railDebug = { ...railDebug, reason: 'mapping-pending', domTurns: geo.domTurns.length, cards: positions.current.size }
-            return
-          }
-          mappingRetries = 0
-          const above = measured
-            .filter((entry) => entry.above)
-            .sort((left, right) => right.bottom - left.bottom)
-          const below = measured
-            .filter((entry) => entry.below)
-            .sort((left, right) => left.top - right.top)
-          const middle = measured
-            .filter((entry) => !entry.above && !entry.below)
-            .sort((left, right) => left.top - right.top || Number(left.turn.turn) - Number(right.turn.turn))
-          const measuredTopTurn = above[0] || null
-          let measuredBottomTurn = below[0] || null
-          const storedTop = slotOccupants.current.get('top') || null
-          const storedBottom = slotOccupants.current.get('bottom') || null
-          const topTurn = scrolling && storedTop ? { turn: storedTop } : measuredTopTurn
-          let bottomTurn = scrolling && storedBottom ? { turn: storedBottom } : measuredBottomTurn
-          const domWithoutMapping = measured.length === 0 && Array.isArray(geo.domTurns) && geo.domTurns.length > 0
-          const latestTurn = [...turns]
-            .filter((turn) => Number.isFinite(Number(turn.turn)))
-            .sort((left, right) => Number(right.turn) - Number(left.turn))[0] || null
-          const atBottom = geo.scrollContainer
-            ? geo.scrollContainer.scrollTop + geo.scrollContainer.clientHeight >= geo.scrollContainer.scrollHeight - 8
-            : false
-          if (atBottom) {
-            if (!scrolling) bottomTurn = null
-            if (!domWithoutMapping && latestTurn && !middle.some((entry) => entry.turn.id === latestTurn.id) && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
-              middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true })
-            }
-          }
-          if (!atBottom && !bottomTurn && measured.length) {
-            const measuredNumbers = measured.map((entry) => Number(entry.turn.turn)).filter((value) => Number.isFinite(value))
-            if (measuredNumbers.length) {
-              const maximum = Math.max(...measuredNumbers)
-              const next = [...turns]
-                .filter((turn) => Number.isFinite(Number(turn.turn)) && Number(turn.turn) > maximum)
-                .sort((left, right) => Number(left.turn) - Number(right.turn))[0]
-              if (next) bottomTurn = { turn: next }
-            }
-          }
-          const lastMeasuredBottom = measured.length ? Math.max(...measured.map((entry) => entry.bottom)) : null
-          const estimatedLatestTop = lastMeasuredBottom === null ? null : lastMeasuredBottom + 16
-          const latestLikelyVisible = atBottom || (estimatedLatestTop !== null && estimatedLatestTop >= geo.clipTop - 120 && estimatedLatestTop < geo.clipBottom - 20)
-          if (!atBottom && !bottomTurn && latestLikelyVisible && latestTurn && middle.length === 0 && !domWithoutMapping && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
-            middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true })
-          }
-          if (middle.length === 0 && !topTurn && !bottomTurn && !domWithoutMapping) {
-            const known = lastKnownCard.current
-            if (known && known.id) {
-              middle.push({ turn: known, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true, lastKnown: true })
-            }
-          }
-          const placeholderNeeded = middle.length === 0 && !topTurn && !bottomTurn && turns.length > 0
-          const cardH = compact ? 24 : 58
-          const topY = geo.clipTop + 8
-          const bottomY = geo.clipBottom - cardH - 4
-          const laneTop = topTurn ? topY + cardH + 6 : geo.clipTop + 8
-          const laneBottom = bottomTurn ? bottomY - 6 : geo.clipBottom - 8
-          const laneMax = Math.max(laneTop, laneBottom - cardH)
-          const targets = new Map()
-          let entryOrdinal = 0
-          if (initialFadeRef.current && !initialFadeAtRef.current) initialFadeAtRef.current = now
-          const initialFade = initialFadeRef.current && now - (initialFadeAtRef.current || now) < 900
-          const transitionRoles = []
-          let lastBottom = laneTop
-          for (const entry of middle) {
-            if (entry.held) {
-              const heldTop = entry.heldDir === 'bottom' ? laneMax : laneTop
-              targets.set(entry.turn.id, {
-                top: heldTop,
-                zone: 'middle',
-                turn: entry.turn,
-                synthetic: Boolean(entry.synthetic),
-                lastKnown: Boolean(entry.lastKnown),
-                held: true,
+          const layout = measureLayout(flow)
+          geometry.current = { ...layout, ready: true, domTurns: geometry.current.domTurns || [] }
+          const snapshot = captureSnapshot(flow)
+          geometry.current.domTurns = snapshot.domTurns || []
+          const detected = priorRows && !snapshot.invalid ? railJumpDetected({ rows: priorRows }, snapshot) : null
+          if (detected && !jump.current.pending) beginJump(detected)
+          if (!snapshot.invalid) geometry.current.lastRows = snapshot.rows.map((row) => ({ domTurn: row.domTurn, top: row.top, bottom: row.bottom }))
+          if (!snapshot.invalid) {
+            const apiTurns = turnsRef.current.map((turn) => Number(turn.turn)).filter(Number.isFinite)
+            const chosen = chooseRailMapping(apiTurns, snapshot.domTurns, mapping.current)
+            mapping.current = { ...mapping.current, offset: chosen.offset, confidence: chosen.confidence }
+            geometry.current.offset = chosen.offset
+            try {
+              turnQueue.request(snapshot.domTurns, turnsRef.current, chosen.offset, {
+                sessionId: requestView.current.sessionId || sessionId || railSessionId,
+                revision: requestView.current.revision,
+                generation: requestView.current.generation,
               })
-              lastBottom = Math.max(lastBottom, heldTop + cardH + 4)
-              continue
-            }
-            const visibleTop = Math.max(entry.top, geo.clipTop + 4)
-            const visibleBottom = Math.min(entry.bottom, geo.clipBottom - 4)
-            if (visibleBottom <= visibleTop) continue
-            const lineTop = entry.segments && entry.segments.length
-              ? Math.min(...entry.segments.map((segment) => segment.top))
-              : visibleTop
-            const lineBottom = entry.segments && entry.segments.length
-              ? Math.max(...entry.segments.map((segment) => segment.bottom))
-              : visibleBottom
-            const center = (lineTop + lineBottom) / 2
-            const prior = positions.current.get(entry.turn.id)
-            if (scrolling && prior && prior.visible && prior.zone !== 'middle') {
-              pendingTargets.current.set(entry.turn.id, { top: center, zone: 'middle', turn: entry.turn })
-              continue
-            }
-            let y
-            if (prior && prior.visible && prior.zone === 'middle') {
-              const topEdge = prior.top
-              const bottomEdge = prior.top + cardH
-              if (center > bottomEdge) y = center - cardH
-              else if (center < topEdge) y = center
-              else y = prior.top
-            } else {
-              y = center - cardH / 2
-            }
-            y = Math.min(Math.max(y, laneTop), laneMax)
-            y = Math.min(Math.max(y, lastBottom + 4), laneMax)
-            const target = { top: y, zone: 'middle', turn: entry.turn, synthetic: Boolean(entry.synthetic), lastKnown: Boolean(entry.lastKnown) }
-            if (!entry.synthetic) {
-              target.rangeTop = lineTop
-              target.rangeBottom = lineBottom
-              target.segments = entry.segments || []
-            }
-            targets.set(entry.turn.id, target)
-            lastBottom = y + cardH + 4
+            } catch { /* request failures never remove cards */ }
           }
-          if (placeholderNeeded) {
-            const center = (geo.clipTop + geo.clipBottom) / 2
-            targets.set('__current__', {
-              top: Math.round(center - 22),
-              zone: 'middle',
-              turn: { id: '__current__', turn: '?', verdict: 'nodata', verdictLabel: '当前消息尚未匹配到模型轮次', primaryShort: '—', primaryModel: '该消息没有可识别的模型轮次' },
-            })
+          if (mapping.current.confidence <= 0 && snapshot.rows.length) {
+            retainVisual('mapping-pending')
+            return
           }
-          if (topTurn) targets.set(topTurn.turn.id, { top: topY, zone: 'top', turn: topTurn.turn })
-          if (bottomTurn) targets.set(bottomTurn.turn.id, { top: bottomY, zone: 'bottom', turn: bottomTurn.turn })
-          if (scrolling) {
-            pendingTargets.current = new Map(targets)
-          } else {
-            pendingTargets.current.clear()
-            if (measuredTopTurn) slotOccupants.current.set('top', measuredTopTurn.turn)
-            else slotOccupants.current.delete('top')
-            if (measuredBottomTurn) slotOccupants.current.set('bottom', measuredBottomTurn.turn)
-            else slotOccupants.current.delete('bottom')
-          }
-          const focusTurn = middle.length ? middle[0].turn.turn : latestTurn && latestTurn.turn
-          if (turnWindow.current.pruneAround(focusTurn)) {
-            const pruned = turnWindow.current.turns()
-            turnsRef.current = pruned
-            setTurns(pruned)
-          }
-          for (const target of targets.values()) {
-            if (target.turn && target.turn.id !== '__current__' && target.turn.primaryShort) lastKnownCard.current = target.turn
-          }
-          const activeVelocity = scrolling ? Math.abs(scrollVelocity) : 0
-          const motionScale = reducedMotion ? 0.45 : activeVelocity > 6 ? 0.42 : activeVelocity > 2 ? 0.7 : 1
-          const previousActiveIds = lastActiveIds
-          lastActiveIds = new Set(targets.keys())
-          const CARD_POOL_LIMIT = 9
-          const nextRenderIds = new Set(targets.keys())
-          for (const id of previousActiveIds) {
-            if (nextRenderIds.size >= CARD_POOL_LIMIT) break
-            nextRenderIds.add(id)
-          }
-          let renderChanged = nextRenderIds.size !== renderIdsRef.current.size
-          if (!renderChanged) {
-            for (const id of nextRenderIds) {
-              if (!renderIdsRef.current.has(id)) {
-                renderChanged = true
-                break
-              }
-            }
-          }
-          if (renderChanged) {
-            renderIdsRef.current = nextRenderIds
-            setRenderIds(nextRenderIds)
-            window.setTimeout(() => schedule(false), 0)
-          }
-          const visualRects = new Map()
-          const visualOpacity = new Map()
-          for (const [id, node] of cardRefs.current) {
-            if (!node || node.isConnected === false) continue
-            const box = node.getBoundingClientRect()
-            if (box.height) visualRects.set(id, box)
-            visualOpacity.set(id, Number.isFinite(node.__mfOpacity) ? node.__mfOpacity : 1)
-          }
-          for (const [id, target] of targets) {
-            const previous = positions.current.get(id)
-            const node = cardRefs.current.get(id)
-            const targetScale = target.zone === 'middle' ? 1 : 0.88
-            positions.current.set(id, { right: geo.right, top: target.top, visible: true, zone: target.zone, scale: targetScale })
-            if (!node) continue
-            const previousRect = visualRects.get(id) || null
-            const ejectAnimation = animator.animation(node, 'mf-eject')
-            const reentryRect = previous && !previous.visible && ejectAnimation ? previousRect : null
-            const zoneChanged = Boolean(previous && previous.zone && previous.zone !== target.zone)
-            const moved = Boolean(previous && Math.abs(previous.top - target.top) > 2)
-            const role = !previous || !previous.visible
-              ? 'incoming'
-              : zoneChanged && target.zone !== 'middle'
-                ? 'squeeze'
-                : zoneChanged
-                  ? 'pushing'
-                  : moved
-                    ? 'pushed'
-                    : 'stable'
-            if (role !== 'stable') transitionRoles.push({ id, role, from: previous ? previous.zone : null, to: target.zone })
-            const previousScale = previous && Number.isFinite(previous.scale) ? previous.scale : targetScale
-            const scaleChanged = Math.abs(previousScale - targetScale) > 0.01
-            const activeShift = animator.animation(node, 'mf-shift')
-            const enterActive = Boolean(animator.animation(node, 'mf-enter'))
-            let fromTop = previous ? previous.top : target.top
-            if (activeShift && previousRect) fromTop = previousRect.top
-            const animateTransform = Boolean(previous && previous.visible && (moved || scaleChanged) && !scrolling && !enterActive)
-            setStyle(node, 'zIndex', target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2')
-            const targetOpacity = target.zone === 'middle' ? '1' : '0.5'
-            const context = target.zone !== 'middle'
-            setTransition(node, scrolling ? 'none' : transitionFor(false))
-            setStyle(node, 'pointerEvents', 'auto')
-            setStyle(node, 'scale', '1')
-            node.style.transform = 'translate3d(0,' + target.top + 'px,0) scale(' + targetScale + ')'
-            node.__mfOpacity = Number(targetOpacity)
-            setStyle(node, 'filter', context ? 'grayscale(.45) saturate(.65)' : 'none')
-            setStyle(node, 'boxShadow', context ? '0 1px 4px rgba(16,24,40,.06)' : '0 4px 12px rgba(16,24,40,.10)')
-            setStyle(node, 'borderColor', context ? 'rgba(20,30,45,.08)' : 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))')
-            node.title = (target.zone === 'top' ? '上方 · ' : target.zone === 'bottom' ? '下方 · ' : '') + '第 ' + target.turn.turn + ' 轮 · ' + target.turn.verdictLabel + (target.lastKnown ? ' · 最后匹配轮次' : '') + (target.zone === 'middle' && Number.isFinite(target.rangeTop) ? ' · 右侧细线为可见区间' : '')
-            const { range: rangeEl, segments: segmentEls } = rangeParts(node)
-            if (rangeEl) {
-              const segments = target.zone === 'middle'
-                ? (Array.isArray(target.segments) ? target.segments : (Number.isFinite(target.rangeTop) && Number.isFinite(target.rangeBottom) ? [{ top: target.rangeTop, bottom: target.rangeBottom }] : [])).slice(0, 3)
-                : []
-              rangeEl.style.opacity = segments.length ? '0.72' : '0'
-              for (let index = 0; index < segmentEls.length; index += 1) {
-                const segmentEl = segmentEls[index]
-                const segment = segments[index]
-                if (segment && segment.bottom - segment.top > 12) {
-                  segmentEl.style.opacity = '1'
-                  segmentEl.style.top = Math.round(segment.top - target.top) + 'px'
-                  segmentEl.style.height = Math.round(segment.bottom - segment.top) + 'px'
-                  if (!segmentEl._mfRangeShown) {
-                    segmentEl._mfRangeShown = true
-                    segmentEl.style.transform = 'scaleY(0)'
-                    window.requestAnimationFrame(() => {
-                      if (!segmentEl.isConnected) return
-                      segmentEl.style.transform = 'scaleY(1)'
-                    })
-                  } else {
-                    segmentEl.style.transform = 'scaleY(1)'
-                  }
-                } else {
-                  segmentEl.style.opacity = '0'
-                  segmentEl.style.transform = 'scaleY(0)'
-                  segmentEl._mfRangeShown = false
-                }
-              }
-            }
-            if (animateTransform) {
-              try {
-                animator.shift(node, {
-                  left: 0,
-                  fromTop,
-                  fromScale: previousScale,
-                  toTop: target.top,
-                  toScale: targetScale,
-                  role,
-                  motionScale,
-                })
-              } catch { /* older engine: settle immediately */ }
-            }
-            if (role === 'incoming') {
-              node.style.opacity = targetOpacity
-              const existingEnter = animator.animation(node, 'mf-enter')
-              if (!existingEnter) {
-                const delay = reentryRect ? 0 : initialFade ? Math.min(140, entryOrdinal * 35) : 0
-                entryOrdinal += 1
-                setTransition(node, 'none')
-                const fromY = reentryRect ? reentryRect.top : initialFade ? target.top : target.top + (target.zone === 'top' ? -6 : 6)
-                const fromScale = reentryRect ? targetScale : initialFade ? targetScale : targetScale * 0.96
-                try {
-                  animator.enter(node, {
-                    left: 0,
-                    fromTop: fromY,
-                    fromScale,
-                    toTop: target.top,
-                    toScale: targetScale,
-                    toOpacity: targetOpacity,
-                    delay,
-                    motionScale,
-                  })
-                } catch {
-                  node.style.opacity = targetOpacity
-                }
-              }
-            } else {
-              node.style.transitionDelay = '0ms'
-              node.style.opacity = targetOpacity
-            }
-          }
-          for (const [id, node] of cardRefs.current) {
-            if (targets.has(id)) continue
-            const previous = positions.current.get(id)
-            if (previous && previous.visible && !scrolling) {
-              transitionRoles.push({ id, role: 'ejecting', from: previous.zone })
-              const ejectDistance = Math.max(64, cardH * 1.2)
-              const fromTransform = node.style.transform || 'translate3d(0,' + previous.top + 'px,0) scale(0.88)'
-              const fromOpacity = visualOpacity.has(id) ? visualOpacity.get(id) : 0.5
-              let toTransform = fromTransform
-              if (previous.zone === 'top') toTransform = 'translate3d(0,' + Math.max(0, previous.top - ejectDistance) + 'px,0) scale(0.76)'
-              else if (previous.zone === 'bottom') toTransform = 'translate3d(0,' + (previous.top + ejectDistance) + 'px,0) scale(0.76)'
-              else if (previous.zone === 'middle') {
-                const direction = previous.top < (geo.clipTop + geo.clipBottom) / 2 ? -1 : 1
-                const outgoing = direction < 0 ? Math.max(0, geo.clipTop - ejectDistance) : geo.clipBottom + ejectDistance
-                toTransform = 'translate3d(0,' + outgoing + 'px,0) scale(0.76)'
-              }
-              node.style.transition = 'none'
-              node.style.pointerEvents = 'none'
-              try {
-                const animated = animator.eject(node, {
-                  fromTransform,
-                  fromOpacity,
-                  toTransform,
-                  motionScale,
-                })
-                if (!animated) throw new Error('animate unavailable')
-              } catch {
-                node.style.opacity = '0'
-                node.style.transform = toTransform
-              }
-            }
-            positions.current.set(id, { right: geo.right, top: previous ? previous.top : -9999, visible: false, zone: previous ? previous.zone : 'hidden' })
-          }
-          railDebug = {
-            flow: true,
-            flowTurns: geo.flowTurns,
-            turns: turns.length,
-            cards: targets.size,
-            cardNodes: cardRefs.current.size,
-            windowRows: turnWindow.current.size,
-            windowMax: turnWindow.current.maxWindow,
-            transitionRoles: transitionRoles.slice(0, 12),
-            cardTargets: [...targets.entries()].map(([id, target]) => ({
-              id,
-              turn: target.turn ? target.turn.turn : null,
-              zone: target.zone,
-              top: Math.round(target.top),
-            })),
-            cardAnimations: [...cardRefs.current.entries()].map(([id, node]) => ({ id, role: animator.state(node) ? animator.state(node).id : null })),
-            middleCards: middle.length,
-            placeholder: placeholderNeeded,
-            lastKnownTurn: lastKnownCard.current ? lastKnownCard.current.turn : null,
-            offset: geo.offset,
-            measured: measured.length,
-            measuredTurns: measured.slice(0, 6).map((entry) => ({ turn: entry.turn.turn, top: Math.round(entry.top), bottom: Math.round(entry.bottom), above: entry.above, below: entry.below })),
-            atBottom: geo.scrollContainer ? geo.scrollContainer.scrollTop + geo.scrollContainer.clientHeight >= geo.scrollContainer.scrollHeight - 8 : false,
-            domTurns: geo.flowTurns,
-            domTurnValues: geo.domTurns ? geo.domTurns.slice(0, 8) : [],
-            apiTurns: geo.apiTurns ? geo.apiTurns.slice(0, 8) : [],
-            domRows: geo.domRows ? geo.domRows.slice(0, 10) : [],
-            reason: targets.size ? 'ok' : 'no-visible-turns',
-            topTurn: topTurn ? topTurn.turn.turn : null,
-            bottomTurn: bottomTurn ? bottomTurn.turn.turn : null,
-            flowLeft: Math.round(geo.flowLeft),
-            flowWidth: Math.round(geo.flowWidth),
-            sidebarRight: Math.round(geo.sidebarRight),
-            left: Math.round(geo.left),
-            compact: geo.compact,
-            clipTop: Math.round(geo.clipTop),
-            clipBottom: Math.round(geo.clipBottom),
-            composerTop: Number.isFinite(geo.composerTop) ? Math.round(geo.composerTop) : null,
-            composerZ: (() => {
-              try {
-                const seat = document.querySelector('[data-composer-seat]')
-                return seat ? window.getComputedStyle(seat).zIndex : null
-              } catch { return null }
-            })(),
-            canvasOpen,
-            canvasProbe: canvasProbe.slice(0, 6),
-            latestTurn: latestTurnSummary ? { turn: latestTurnSummary.turn, verdict: latestTurnSummary.verdict, label: latestTurnSummary.verdictLabel } : null,
-            railOpacity: railRef.current ? window.getComputedStyle(railRef.current).opacity : null,
-            viewport: window.innerWidth,
-          }
+          commitSnapshot(snapshot)
         }
 
-        const safeUpdate = (needsRebuild, settle = false) => {
+        const safeUpdate = (needsRebuild) => {
+          if (disposed) return
           try {
-            update(needsRebuild, settle)
+            update(needsRebuild)
           } catch (error) {
             const message = error && error.message ? error.message : String(error)
             lastFetchError = 'rail: ' + message.slice(0, 300)
@@ -1510,68 +1728,89 @@ window.__ModuleLoader__.load({
           }
         }
 
-        const schedule = (needsRebuild, options = {}) => {
+        schedule = (needsRebuild, options = {}) => {
           if (needsRebuild) rebuildPending = true
-          if (options.settle) settlePending = true
           if (raf) return
           raf = window.requestAnimationFrame(() => {
             raf = 0
             const pending = rebuildPending
-            const doSettle = settlePending
             rebuildPending = false
-            settlePending = false
-            safeUpdate(pending, doSettle)
+            safeUpdate(pending)
           })
         }
-        const rebindScheduler = new RebindScheduler({ onRebind: () => schedule(true) })
+        scheduleRef.current = schedule
 
-        safeUpdate(true)
+        const rebindScheduler = new RebindScheduler({ onRebind: () => schedule(true) })
+        let lastScrollAt = 0
+        let lastScrollTop = null
+        let scrollVelocity = 0
         const onScroll = () => {
+          if (disposed) return
           const now = performance.now()
           const scroller = geometry.current.scrollContainer
           const top = scroller ? scroller.scrollTop : window.scrollY
           let jumped = false
           if (lastScrollTop !== null) {
             const dt = Math.max(1, now - lastScrollAt)
-            scrollVelocity = Math.abs(top - lastScrollTop) / dt
-            jumped = Math.abs(top - lastScrollTop) > 180
+            const delta = top - lastScrollTop
+            scrollVelocity = Math.abs(delta) / dt
+            scrollDirection.current = delta >= 0 ? 1 : -1
+            jumped = Math.abs(delta) > 180
           }
           lastScrollTop = top
           lastScrollAt = now
-          settlePending = false
+          noteRecoveryEvent()
           scrollScheduler.noteScroll()
           if (top < 320 && hasMoreRef.current) loadOlderRef.current?.()
-          // Light follow while the wheel moves; one semantic settle after it stops.
-          if (jumped) rebindScheduler.kick()
-          else schedule(false)
+          if (jumped) {
+            beginJump('scroll')
+            rebindScheduler.kick()
+          }
+          schedule(false)
         }
-        const onResize = () => schedule(true)
+        const onResize = () => {
+          noteRecoveryEvent()
+          schedule(true)
+        }
+        safeUpdate(true)
         window.addEventListener('scroll', onScroll, { capture: true, passive: true })
         window.addEventListener('resize', onResize)
         tick = window.setInterval(() => schedule(false), 1500)
         return () => {
+          disposed = true
           if (raf) window.cancelAnimationFrame(raf)
           window.removeEventListener('scroll', onScroll, true)
           window.removeEventListener('resize', onResize)
           if (resizeObserver) resizeObserver.disconnect()
           if (flowObserver) flowObserver.disconnect()
           if (mutationTimer) clearTimeout(mutationTimer)
-          if (mappingRetryTimer) clearTimeout(mappingRetryTimer)
+          if (recovery.current.timer) clearTimeout(recovery.current.timer)
+          recovery.current.timer = 0
+          turnQueue.invalidate()
           rebindScheduler.dispose()
           scrollScheduler.dispose()
           if (tick) clearInterval(tick)
+          scheduleRef.current = null
+          recoveryEvent.current = null
+          tracker.current = null
         }
-      }, [on, turns, sessionId])
+      }, [on, sessionId])
+
+      React.useEffect(() => {
+        if (!on) return
+        scheduleRef.current?.(false)
+      }, [turns, on])
 
       if (!on) return null
       const clipPath = clip.top > 0
         ? 'inset(' + Math.round(clip.top) + 'px 0 0 0)'
         : undefined
-      const children = turns.filter((turn) => renderIds.has(turn.id)).map((turn) => {
+      const children = renderTurns.map((turn) => {
         const color = railColors[turn.verdict] || railColors.first
-        const position = positions.current.get(turn.id) || { right: geometry.current.right || 0, top: -9999 }
+        const position = visual.current.get(turn.id) || { right: geometry.current.right || 0, top: -9999, opacity: 0, visible: false }
         const base = {
           key: turn.id,
+          'data-mf-card': String(turn.id),
           ref: (node) => {
             if (node) cardRefs.current.set(turn.id, node)
             else cardRefs.current.delete(turn.id)
@@ -1580,17 +1819,14 @@ window.__ModuleLoader__.load({
           style: {
             position: 'absolute',
             left: 'auto',
-            right: position.right || 0,
+            right: position.right || geometry.current.right || 0,
             top: 0,
-            pointerEvents: 'auto',
+            pointerEvents: position.visible ? 'auto' : 'none',
             cursor: 'pointer',
             transform: 'translate3d(0,' + position.top + 'px,0)',
-            opacity: position.visible ? 1 : 0,
-            scale: position.visible ? '1' : '0.86',
-            translate: '0 0',
+            opacity: Number.isFinite(position.opacity) ? position.opacity : (position.visible ? 1 : 0),
             transformOrigin: 'right center',
-            pointerEvents: position.visible ? 'auto' : 'none',
-            willChange: 'transform, opacity, scale, translate',
+            willChange: 'transform, opacity',
             boxSizing: 'border-box',
             borderRadius: compact ? 999 : 10,
             background: 'var(--dsw-specific-menu, rgba(255,255,255,.94))',
@@ -1630,9 +1866,9 @@ window.__ModuleLoader__.load({
               transition: 'opacity 180ms ease, transform 620ms cubic-bezier(.22,1,.36,1)',
             },
           },
-            h('span', { style: { position: 'absolute', left: 0, top: 0, width: 1.5, height: '100%', background: 'currentColor', borderRadius: 1 } }),
-            h('span', { style: { position: 'absolute', left: 0, top: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
-            h('span', { style: { position: 'absolute', left: 0, bottom: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
+            h('span', { key: 'line', style: { position: 'absolute', left: 0, top: 0, width: 1.5, height: '100%', background: 'currentColor', borderRadius: 1 } }),
+            h('span', { key: 'top', style: { position: 'absolute', left: 0, top: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
+            h('span', { key: 'bottom', style: { position: 'absolute', left: 0, bottom: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
           )),
         )
         if (compact) {
@@ -1650,30 +1886,26 @@ window.__ModuleLoader__.load({
         base.title = '点击打开逐轮检测面板'
         return h('div', base,
           rangeEl,
-          h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)' } },
+          h('div', { key: 'head', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)' } },
             h('span', null, '第 ' + turn.turn + ' 轮'),
             h('span', null, turn.verdict === 'same' ? '一致' : turn.verdict === 'changed' ? '变化' : turn.verdict === 'mixed' ? '多指纹' : turn.verdict === 'generation' ? '代际' : '基线'),
           ),
-          h('div', { style: { marginTop: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: 12, fontWeight: 750, color } }, 'FP-' + String(turn.primaryShort || '')),
-          h('div', { style: { marginTop: 1, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, String(turn.primaryModel || '')),
+          h('div', { key: 'body', style: { marginTop: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: 12, fontWeight: 750, color } }, 'FP-' + String(turn.primaryShort || '')),
+          h('div', { key: 'model', style: { marginTop: 1, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, String(turn.primaryModel || '')),
         )
       })
-      const placeholderPosition = positions.current.get('__current__') || { right: geometry.current.right || 0, top: -9999, visible: false }
       children.push(h('div', {
         key: '__current__',
-        ref: (node) => {
-          if (node) cardRefs.current.set('__current__', node)
-          else cardRefs.current.delete('__current__')
-        },
+        ref: placeholderRef,
         onClick: () => setOpen(true),
         style: {
           position: 'absolute',
           left: 'auto',
-          right: placeholderPosition.right || 0,
+          right: placeholderPosition.current.right || 0,
           top: 0,
           width: compact ? 56 : 176,
           boxSizing: 'border-box',
-          pointerEvents: placeholderPosition.visible ? 'auto' : 'none',
+          pointerEvents: placeholderPosition.current.visible ? 'auto' : 'none',
           cursor: 'pointer',
           padding: compact ? '3px 4px' : '6px 8px 7px',
           borderRadius: compact ? 999 : 10,
@@ -1683,12 +1915,11 @@ window.__ModuleLoader__.load({
           color: 'var(--dsw-alias-label-tertiary, #667085)',
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
           lineHeight: 1.35,
-          transform: 'translate3d(0,' + placeholderPosition.top + 'px,0)',
-          opacity: placeholderPosition.visible ? 1 : 0,
-          scale: placeholderPosition.visible ? '1' : '0.86',
+          transform: 'translate3d(0,' + placeholderPosition.current.top + 'px,0)',
+          opacity: placeholderPosition.current.visible ? 1 : 0,
           transformOrigin: 'right center',
-          transition: 'opacity 150ms ease, scale 360ms cubic-bezier(.22,1.4,.36,1), transform 100ms linear',
-          willChange: 'transform, opacity, scale',
+          transition: 'opacity 150ms ease, transform 100ms linear',
+          willChange: 'transform, opacity',
         },
         title: '当前消息尚未匹配到模型轮次',
       }, compact
@@ -1756,7 +1987,6 @@ window.__ModuleLoader__.load({
         return this.state.failed ? null : this.props.children
       }
     }
-
     function ComposerToggle(props) {
       const visible = useRailOn()
       const latest = useLatestTurn()

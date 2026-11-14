@@ -153,12 +153,15 @@ FP-xxxx
 补算流程：
 
 ```text
-发现会话文件
-→ 重新解析当前文件
-→ 去重后补回缺失观测
-→ 更新 Turn Index
+发现会话目录
+→ 只选最高版本日志（v4 > v3 > v2 > 无版本；损坏才回退）
+→ 重新解析规范日志
+→ 按语义键去重（session/turn/step/time/model/fingerprint/protocol）
+→ 重建该会话 Turn Index
 → 写入 state.json.zst
 ```
+
+旧版状态升级为 v2 时，会先保留 `state.json.zst.pre-semantic-v2`，再从规范日志重建观测和轮次索引；标签、探针、官方基线不重建。
 
 手动触发：
 
@@ -433,6 +436,10 @@ npm run build
 - 指纹与声称名称解耦；
 - wire API 变化产生新指纹；
 - zstd 追加帧增量扫描；
+- 同一会话多版本日志只扫描最高版本，损坏时回退；
+- 语义去重、替换/删除后的 Turn Index 重建；
+- 状态文件 v2 迁移与备份；
+- 轮次数值降序、唯一性断言与分页无重复；
 - live 事件去重；
 - 状态文件读写与标签/探针持久化；
 - 路由变化、别名、标签提示；
@@ -440,7 +447,9 @@ npm run build
 - 行为距离和同名模型分组；
 - 固定探针；
 - 插件路由、工具、标签、探针、补算端到端；
-- 客户端几何与用户气泡排除。
+- 客户端几何与用户气泡排除；
+- 虚拟 DOM 节点复用、786/785/784/783 故障序列、跳转恢复；
+- FLIP 起点与最短动画时长。
 
 ---
 
@@ -450,9 +459,10 @@ npm run build
 index.js                 Host 入口：路由、工具、live 订阅、探针、补算
 client.js                构建后的 Client 入口
 client/                  Client 源码模块
+client/rail-state.js     每帧快照、目标推导、映射置信度、跳转稳定性
 client/scroll-scheduler.js 滚动 follow / settle 调度
 client/rebind-scheduler.js 大跨度跳转后的有界 DOM 重绑
-client/turn-requests.js  未加载 turn 的自动补取与去重
+client/turn-requests.js  未加载 turn 的自动补取、代际与 revision 防护
 scripts/build-client.mjs Client 构建脚本
 lib/core.mjs             观测提取、指纹哈希、行为统计
 lib/scan.mjs             文件发现、增量扫描、live、补算

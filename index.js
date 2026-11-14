@@ -354,18 +354,41 @@ export function apply(ctx) {
     initializing = (async () => {
       store = new FingerprintStore({ home: DSH_HOME, logger: ctx.logger })
       const state = await store.load()
+      const migrating = store.needsMigration === true
+      if (migrating) {
+        const backup = await store.backupMigration()
+        ctx.logger?.info?.(`model-fingerprint: migrating state from canonical logs${backup ? ' (backup: ' + backup + ')' : ''}`)
+      }
       const roots = defaultSessionRoots(DSH_HOME)
       roots.push(...await discoverProfileRoots(DSH_HOME))
       scanner = new SessionScanner({
         roots: [...new Set(roots)],
-        state: { files: state.files, observations: state.observations, turnIndex: state.turnIndex },
-        onChange: () => store.scheduleSave(scanner),
+        // A semantic migration must rebuild observations and the turn index
+        // from canonical logs. Labels, probes and baselines are preserved.
+        state: migrating ? { files: {}, observations: {}, turnIndex: {} } : { files: state.files, observations: state.observations, turnIndex: state.turnIndex },
+        // During migration nothing is persisted until the canonical rebuild
+        // passes its guard; a partial state must never replace the backup.
+        onChange: migrating ? () => {} : () => store.scheduleSave(scanner),
         logger: ctx.logger,
       })
-      scanner.onBackfill = async () => {
+      scanner.onBackfill = migrating ? null : async () => {
         await store.flush(scanner)
       }
       scanner.start()
+      if (migrating) {
+        const previousObservations = Object.keys(state.observations || {}).length
+        scanner.ready.then(async () => {
+          if (scanner.lastError) {
+            throw new Error('canonical scan failed: ' + scanner.lastError)
+          }
+          if (previousObservations > 0 && scanner.discovered === 0) {
+            throw new Error('canonical session logs are unavailable; keeping the previous state and backup')
+          }
+          await store.flush(scanner)
+          store.markMigrated()
+          ctx.logger?.info?.(`model-fingerprint: migration complete, ${scanner.observations.size} observation(s)`)
+        }).catch((error) => ctx.logger?.warn?.(`model-fingerprint: migration failed: ${error && error.message ? error.message : String(error)}`))
+      }
       if (disposed) {
         scanner.stop()
         scanner = undefined
@@ -523,10 +546,11 @@ export function apply(ctx) {
       session,
       turns: windowTurns,
       revision: scanner.version,
+      generation: scanner.generation,
+      hasMore: filtered.length > windowTurns.length,
+      nextBefore: windowTurns.length ? Number(windowTurns[windowTurns.length - 1].turn) : null,
       observations: rows,
     })
-    view.hasMore = filtered.length > windowTurns.length
-    view.nextBefore = windowTurns.length ? Number(windowTurns[windowTurns.length - 1].turn) : null
     return json(res, 200, view)
   })
   route('/api/session-index', async (req, res) => {
@@ -550,6 +574,7 @@ export function apply(ctx) {
     return json(res, 200, {
       sessionId,
       revision: scanner.version,
+      generation: scanner.generation,
       turns: page.turns,
       hasMore: page.hasMore,
       nextBefore: page.nextBefore,
@@ -566,12 +591,13 @@ export function apply(ctx) {
     if (!sessionId || !Number.isFinite(turn)) return json(res, 400, { error: 'id and turn required' })
     const turns = buildTurns(scanner.observationsForSession(sessionId), sessionId)
     const found = turns.find((item) => Number(item.turn) === turn) || null
-    if (found) return json(res, 200, { sessionId, revision: scanner.version, turn: found })
+    if (found) return json(res, 200, { sessionId, revision: scanner.version, generation: scanner.generation, turn: found })
     const index = normalizeTurnIndex(scanner.turnIndex)
     const row = index[sessionId] && index[sessionId][String(turn)] ? index[sessionId][String(turn)] : null
     return json(res, 200, {
       sessionId,
       revision: scanner.version,
+      generation: scanner.generation,
       status: row ? 'no-data' : 'missing',
       index: row,
       turn: row ? { ...row, status: 'no-data', hasModelData: false, primaryFingerprint: '', fingerprints: [] } : null,

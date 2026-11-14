@@ -147,6 +147,9 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.equal(sessionViewBody.turns[0].status, 'observed')
   assert.equal(sessionViewBody.turns[0].anchors[0].value, '1')
   assert.ok(sessionViewBody.revision > 0)
+  assert.equal(typeof sessionViewBody.generation, 'string')
+  assert.equal(sessionViewBody.hasMore, false)
+  assert.equal(sessionViewBody.nextBefore, 1)
 
   const requestRoute = (pathName, query) => new Promise((resolve, reject) => {
     const timer = setTimeout(() => reject(new Error(pathName + ' timed out')), 5000)

@@ -72,6 +72,24 @@ test('eject followed by enter commits eject and starts a fresh enter', async () 
   assert.equal(animator.animation(node, 'mf-enter'), enter)
 })
 
+test('FLIP starts from the current on-screen rectangle and keeps a minimum duration', async () => {
+  const SlotAnimator = await loadAnimator()
+  const animator = new SlotAnimator({ eased: 'linear', reduced: false, cardWidth: 176 })
+  const node = fakeNode()
+  node.offsetWidth = 176
+  node.getBoundingClientRect = () => ({ top: 240, left: 0, width: 176, height: 58 })
+  const animation = animator.flip(node, { fromRect: node.getBoundingClientRect(), toTop: 40, toScale: 0.88, toOpacity: 0.5, role: 'pushed', motionScale: 0.42 })
+  assert.match(animation.frames[0].transform, /240px/)
+  assert.equal(animation.options.duration >= 120, true)
+  assert.equal(animation.frames[1].transform, 'translate3d(0,40px,0) scale(0.88)')
+})
+
+test('reduced motion may complete immediately', async () => {
+  const SlotAnimator = await loadAnimator()
+  const animator = new SlotAnimator({ eased: 'linear', reduced: true, cardWidth: 176 })
+  assert.equal(animator.duration('pushed', 0.4), 0)
+})
+
 test('finished animations clear their state without cancelling the next role', async () => {
   const SlotAnimator = await loadAnimator()
   const animator = new SlotAnimator({ eased: 'linear', reduced: false, cardWidth: 176 })

@@ -6,8 +6,10 @@
         this.states = new WeakMap()
       }
       duration(role, scale = 1) {
+        if (this.reduced) return 0
         const base = role === 'squeeze' ? 380 : role === 'incoming' ? 260 : 340
-        return Math.max(100, Math.round(base * (this.reduced ? 0.45 : scale)))
+        // Fast scrolling may shorten motion, but never to zero.
+        return Math.max(120, Math.round(base * scale))
       }
       animation(node, id) {
         const state = node ? this.states.get(node) : null
@@ -15,6 +17,9 @@
       }
       state(node) {
         return node ? this.states.get(node) || null : null
+      }
+      cancelAll(nodes) {
+        for (const node of nodes || []) this.cancel(node)
       }
       cancel(node, ids = ['mf-shift', 'mf-enter', 'mf-eject'], options = {}) {
         if (!node) return false
@@ -27,7 +32,7 @@
         this.states.delete(node)
         return true
       }
-      play(node, { id, key, frames, options }) {
+      play(node, { id, key, frames, options, onDone }) {
         if (!node || typeof node.animate !== 'function') return null
         const current = this.states.get(node)
         if (current && current.id === id && current.key === key && current.animation.playState !== 'finished') {
@@ -43,12 +48,40 @@
         const lastFrame = frames[frames.length - 1]
         if (lastFrame && lastFrame.transform) node.style.transform = lastFrame.transform
         if (lastFrame && lastFrame.opacity !== undefined) node.style.opacity = lastFrame.opacity
-        const state = { id, key, animation }
+        const state = { id, key, animation, onDone }
         this.states.set(node, state)
         animation.onfinish = () => {
           if (this.states.get(node) === state) this.states.delete(node)
+          if (typeof onDone === 'function') onDone('finish')
         }
         return animation
+      }
+      /**
+       * FLIP from the rectangle currently on screen. Reading the rectangle is
+       * the caller's job before any style write; this method only animates the
+       * measured visual position to the new target.
+       */
+      flip(node, { fromRect, fromOpacity, toTop, toScale, toOpacity, role = 'pushed', motionScale = 1, onDone } = {}) {
+        if (!node) return null
+        const current = node.getBoundingClientRect ? node.getBoundingClientRect() : null
+        const rect = fromRect || current
+        const width = node.offsetWidth || this.cardWidth
+        const fromTop = rect && Number.isFinite(rect.top) ? rect.top : toTop
+        const rawScale = rect && width ? rect.width / width : toScale
+        const fromScale = Math.max(0.5, Math.min(1.2, Number.isFinite(rawScale) ? rawScale : toScale))
+        const toAlpha = toOpacity === undefined ? 1 : toOpacity
+        const fromAlpha = fromOpacity === undefined ? toAlpha : fromOpacity
+        const key = [fromTop, fromScale, toTop, toScale, fromAlpha, toAlpha, role, motionScale].map((value) => typeof value === 'number' ? Math.round(value * 10) / 10 : value).join('|')
+        return this.play(node, {
+          id: 'mf-shift',
+          key,
+          frames: [
+            { transform: 'translate3d(0,' + fromTop + 'px,0) scale(' + fromScale + ')', opacity: fromAlpha },
+            { transform: 'translate3d(0,' + toTop + 'px,0) scale(' + toScale + ')', opacity: toAlpha },
+          ],
+          options: { duration: this.duration(role, motionScale), easing: this.eased },
+          onDone,
+        })
       }
       shift(node, { left, fromTop, fromScale, toTop, toScale, role, motionScale }) {
         const key = [role, left, fromTop, fromScale, toTop, toScale, motionScale].map((value) => typeof value === 'number' ? Math.round(value * 10) / 10 : value).join('|')
@@ -74,7 +107,7 @@
           options: { duration: this.duration('incoming', motionScale), easing: this.eased, delay, fill: 'backwards' },
         })
       }
-      eject(node, { fromTransform, fromOpacity, toTransform, motionScale }) {
+      eject(node, { fromTransform, fromOpacity, toTransform, motionScale, onDone }) {
         const key = [fromTransform, fromOpacity, toTransform, motionScale].join('|')
         const animation = this.play(node, {
           id: 'mf-eject',
@@ -84,6 +117,7 @@
             { transform: toTransform, opacity: 0 },
           ],
           options: { duration: this.duration('ejecting', motionScale), easing: this.eased, fill: 'forwards' },
+          onDone,
         })
         return Boolean(animation)
       }

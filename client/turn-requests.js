@@ -3,9 +3,15 @@
         this.fetchTurn = fetchTurn
         this.onTurn = onTurn
         this.limit = limit
-        this.inFlight = new Set()
+        this.epoch = 0
+        this.inFlight = new Map()
       }
-      request(domTurns, knownTurns = [], offset = 0) {
+      invalidate() {
+        this.epoch += 1
+        this.inFlight.clear()
+        return this.epoch
+      }
+      request(domTurns, knownTurns = [], offset = 0, context = {}) {
         const known = new Set((knownTurns || []).map((turn) => Number(turn.turn)))
         const missing = []
         for (const value of domTurns || []) {
@@ -14,16 +20,27 @@
           if (!missing.includes(turn)) missing.push(turn)
           if (missing.length >= this.limit) break
         }
+        const epoch = this.epoch
         for (const turn of missing) {
           if (this.inFlight.has(turn)) continue
-          this.inFlight.add(turn)
+          this.inFlight.set(turn, epoch)
           Promise.resolve()
-            .then(() => this.fetchTurn(turn))
+            .then(() => this.fetchTurn(turn, context))
             .then((payload) => {
-              if (payload && payload.turn) this.onTurn(payload.turn)
+              if (epoch !== this.epoch) return
+              if (!payload || !payload.turn) return
+              if (context.sessionId && payload.sessionId && String(payload.sessionId) !== String(context.sessionId)) return
+              const revision = Number(payload.revision)
+              if (Number.isFinite(revision) && Number.isFinite(Number(context.revision)) && revision < Number(context.revision)) return
+              const generation = payload.generation === undefined ? context.generation : payload.generation
+              const expected = context.generation === undefined ? '' : String(context.generation)
+              if (expected && expected !== '0' && generation !== undefined && String(generation) !== expected) return
+              this.onTurn(payload.turn, payload)
             })
             .catch(() => { /* keep the last stable cards */ })
-            .finally(() => this.inFlight.delete(turn))
+            .finally(() => {
+              if (this.inFlight.get(turn) === epoch) this.inFlight.delete(turn)
+            })
         }
         return missing
       }

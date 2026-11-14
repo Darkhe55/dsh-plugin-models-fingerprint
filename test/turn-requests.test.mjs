@@ -7,6 +7,32 @@ async function loadQueue() {
   return new Function(source + '\nreturn TurnRequestQueue')()
 }
 
+test('turn request generation, session and revision are checked before merge', async () => {
+  const TurnRequestQueue = await loadQueue()
+  const resolvers = []
+  const received = []
+  const queue = new TurnRequestQueue({
+    fetchTurn: (turn) => new Promise((resolve) => resolvers.push({ turn, resolve })),
+    onTurn: (turn) => received.push(turn.turn),
+  })
+  queue.request(['5'], [], 0, { sessionId: 's1', revision: 10, generation: '2' })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  resolvers[0].resolve({ sessionId: 's1', revision: 9, generation: '2', turn: { turn: 5 } })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(received, [], 'older revision is discarded')
+  queue.invalidate()
+  queue.request(['6'], [], 0, { sessionId: 's1', revision: 11, generation: '3' })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  resolvers[1].resolve({ sessionId: 'other', revision: 11, generation: '3', turn: { turn: 6 } })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(received, [], 'other session is discarded')
+  queue.request(['7'], [], 0, { sessionId: 's1', revision: 11, generation: '3' })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  resolvers[2].resolve({ sessionId: 's1', revision: 11, generation: '3', turn: { turn: 7 } })
+  await new Promise((resolve) => setTimeout(resolve, 0))
+  assert.deepEqual(received, [7])
+})
+
 test('turn request queue deduplicates in-flight visible turns and limits the batch', async () => {
   const TurnRequestQueue = await loadQueue()
   const calls = []
