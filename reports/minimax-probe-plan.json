@@ -1,7 +1,7 @@
 {
   "schema": "model-fingerprint-probe-plan/v1",
   "version": 1,
-  "generatedAt": "2026-11-14T13:27:12.233Z",
+  "generatedAt": "2026-11-14T14:09:06.787Z",
   "callPolicy": "offline-only",
   "automaticProviderCalls": false,
   "confirmRequired": true,

@@ -779,7 +779,8 @@ function renderOfficial() {
         const source = model.evidenceLevel || 'unknown';
         const bad = source === 'claimed-only' || source === 'unknown';
         const stale = baseline && baseline.stale ? ' · STALE ' + (baseline.staleReasons || []).join(',') : '';
-        return `<div class="faint small" style="margin-top:4px">${esc(model.label)} <span class="mono">${esc(model.key)}</span> · 证据 ${esc(source)}${bad ? '（不提升身份置信度）' : ''} · ${baseline ? (baseline.ready ? '基线就绪 ' + fmtNum(baseline.samples) + ' 样本 / ' + fmtNum(baseline.sessions) + ' 会话' : '样本不足 ' + fmtNum(baseline.samples || 0) + '/' + fmtNum(baseline.minSamples || model.minSamples)) : '尚无基线'}${stale}</div>`;
+        const legacy = baseline && baseline.legacySamples ? ' · behavior-only-legacy ' + fmtNum(baseline.legacySamples) + '（不用于协议身份）' : '';
+        return `<div class="faint small" style="margin-top:4px">${esc(model.label)} <span class="mono">${esc(model.key)}</span> · 证据 ${esc(source)}${bad ? '（不提升身份置信度）' : ''} · ${baseline ? (baseline.ready ? '基线就绪 ' + fmtNum(baseline.samples) + ' 样本 / ' + fmtNum(baseline.sessions) + ' 会话' : '样本不足 ' + fmtNum(baseline.samples || 0) + '/' + fmtNum(baseline.minSamples || model.minSamples)) : '尚无基线'}${legacy}${stale}</div>`;
       }).join('')
     : '尚未配置官方模型。';
 }

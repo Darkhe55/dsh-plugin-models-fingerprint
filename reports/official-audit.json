@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-14T13:29:38.802Z",
+  "generatedAt": "2026-11-14T14:09:06.288Z",
   "dataVersion": 2,
   "models": [
     {
@@ -7,23 +7,70 @@
       "evidenceLevel": "unknown",
       "evidenceSource": "",
       "confirmedAt": null,
-      "samples": 0,
-      "sessions": 0,
-      "excludedSamples": 40515,
-      "ready": false,
+      "samples": 40509,
+      "sessions": 134,
+      "excludedSamples": 6,
+      "baselineClasses": {
+        "behavior-only-legacy": 40509
+      },
+      "legacySamples": 40509,
+      "protocolIdentitySamples": 0,
+      "ready": true,
       "dataVersion": 2,
       "featureSchemaVersion": "behavior-v1",
-      "sourceDigest": "aa128789da861682eb79b9a3615af96b",
-      "fingerprints": [],
+      "sourceDigest": "8e427d31f88a89ac92edbb08df9dd8ee",
+      "fingerprints": [
+        {
+          "id": "fp_1889be85808c",
+          "count": 35035
+        },
+        {
+          "id": "fp_bb2f3030e807",
+          "count": 5474
+        }
+      ],
       "quality": {
         "total": 40515,
-        "usableForBaseline": 0,
+        "usableForBaseline": 40509,
         "usableForIdentity": 0,
-        "excluded": 40515,
-        "samplesTruncated": true,
+        "excluded": 6,
+        "identityExcluded": 40515,
+        "baselineClasses": [
+          {
+            "baselineClass": "behavior-only-legacy",
+            "count": 40509
+          }
+        ],
+        "samplesTruncated": false,
         "reasons": [
           {
             "reason": "protocol-fields-missing",
+            "count": 6
+          },
+          {
+            "reason": "behavior-fields-missing",
+            "count": 6
+          },
+          {
+            "reason": "usage-missing",
+            "count": 6
+          },
+          {
+            "reason": "replay-missing",
+            "count": 6
+          },
+          {
+            "reason": "reasoning-only-no-response",
+            "count": 4
+          }
+        ],
+        "identityReasons": [
+          {
+            "reason": "protocol-fields-missing",
+            "count": 40515
+          },
+          {
+            "reason": "protocol-identity-ineligible",
             "count": 40515
           },
           {
@@ -43,1054 +90,308 @@
             "count": 4
           }
         ],
+        "missingProtocolFields": [
+          {
+            "field": "api",
+            "count": 40515
+          },
+          {
+            "field": "wireProvider",
+            "count": 40515
+          },
+          {
+            "field": "responseId",
+            "count": 40515
+          },
+          {
+            "field": "adapter",
+            "count": 5480
+          },
+          {
+            "field": "replay",
+            "count": 5480
+          }
+        ],
         "samples": [
           {
-            "id": "7aa47b30-3c42-49aa-b31b-762cb8957e62:14",
-            "sessionId": "7aa47b30-3c42-49aa-b31b-762cb8957e62",
-            "turn": 1,
-            "step": 1,
-            "time": 1789319893653,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7aa47b30-3c42-49aa-b31b-762cb8957e62:21",
-            "sessionId": "7aa47b30-3c42-49aa-b31b-762cb8957e62",
-            "turn": 1,
-            "step": 2,
-            "time": 1789319894879,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7aa47b30-3c42-49aa-b31b-762cb8957e62:26",
-            "sessionId": "7aa47b30-3c42-49aa-b31b-762cb8957e62",
-            "turn": 1,
-            "step": 3,
-            "time": 1789319992814,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7aa47b30-3c42-49aa-b31b-762cb8957e62:31",
-            "sessionId": "7aa47b30-3c42-49aa-b31b-762cb8957e62",
-            "turn": 1,
-            "step": 4,
-            "time": 1789320037404,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7aa47b30-3c42-49aa-b31b-762cb8957e62:36",
-            "sessionId": "7aa47b30-3c42-49aa-b31b-762cb8957e62",
-            "turn": 1,
-            "step": 5,
-            "time": 1789320042034,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:15",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 1,
-            "time": 1789325780303,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:22",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 2,
-            "time": 1789325783046,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:27",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 3,
-            "time": 1789325784886,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:32",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 4,
-            "time": 1789325786158,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:37",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 5,
-            "time": 1789325787847,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:42",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 6,
-            "time": 1789325789771,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:49",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 7,
-            "time": 1789325791243,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:56",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 8,
-            "time": 1789325792772,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:61",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 9,
-            "time": 1789325794155,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:66",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
+            "id": "session-9451ce89-d4d6-471a-b761-19d565d0fb2c:425",
+            "sessionId": "session-9451ce89-d4d6-471a-b761-19d565d0fb2c",
+            "turn": 3,
             "step": 10,
-            "time": 1789325795725,
+            "time": 1790914420386,
             "fingerprint": "fp_bb2f3030e807",
             "quality": {
               "qualityVersion": 1,
               "completeProtocol": false,
-              "completeBehavior": true,
+              "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
                 "protocol-fields-missing",
-                "replay-missing"
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "baselineExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "identityExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response",
+                "protocol-identity-ineligible"
               ]
             }
           },
           {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:73",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 11,
-            "time": 1789325844574,
+            "id": "session-56a150ed-5537-44f3-bb84-1adacb025741:6650",
+            "sessionId": "session-56a150ed-5537-44f3-bb84-1adacb025741",
+            "turn": 66,
+            "step": 1,
+            "time": 1791622146273,
             "fingerprint": "fp_bb2f3030e807",
             "quality": {
               "qualityVersion": 1,
               "completeProtocol": false,
-              "completeBehavior": true,
+              "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
                 "protocol-fields-missing",
-                "replay-missing"
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "baselineExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "identityExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response",
+                "protocol-identity-ineligible"
               ]
             }
           },
           {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:78",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 12,
-            "time": 1789325872384,
+            "id": "session-9d47b8ff-3510-47e0-987a-48addfcd8c6a:26279",
+            "sessionId": "session-9d47b8ff-3510-47e0-987a-48addfcd8c6a",
+            "turn": 201,
+            "step": 1,
+            "time": 1792212959335,
             "fingerprint": "fp_bb2f3030e807",
             "quality": {
               "qualityVersion": 1,
               "completeProtocol": false,
-              "completeBehavior": true,
+              "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
                 "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
                 "replay-missing"
+              ],
+              "baselineExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing"
+              ],
+              "identityExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "protocol-identity-ineligible"
               ]
             }
           },
           {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:83",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 13,
-            "time": 1789325874135,
+            "id": "session-c204a250-bb33-44c3-bcbc-665fd3e4510c:1421",
+            "sessionId": "session-c204a250-bb33-44c3-bcbc-665fd3e4510c",
+            "turn": 13,
+            "step": 1,
+            "time": 1789269724225,
             "fingerprint": "fp_bb2f3030e807",
             "quality": {
               "qualityVersion": 1,
               "completeProtocol": false,
-              "completeBehavior": true,
+              "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
                 "protocol-fields-missing",
-                "replay-missing"
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "baselineExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "identityExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response",
+                "protocol-identity-ineligible"
               ]
             }
           },
           {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:88",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 14,
-            "time": 1789325875528,
+            "id": "session-e5c5c92e-7e77-4e7d-830b-a865fe794dff:4786",
+            "sessionId": "session-e5c5c92e-7e77-4e7d-830b-a865fe794dff",
+            "turn": 57,
+            "step": 1,
+            "time": 1792265916870,
             "fingerprint": "fp_bb2f3030e807",
             "quality": {
               "qualityVersion": 1,
               "completeProtocol": false,
-              "completeBehavior": true,
+              "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
                 "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
                 "replay-missing"
+              ],
+              "baselineExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing"
+              ],
+              "identityExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "protocol-identity-ineligible"
               ]
             }
           },
           {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:93",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 15,
-            "time": 1789325886558,
+            "id": "session-e5c5c92e-7e77-4e7d-830b-a865fe794dff:10047",
+            "sessionId": "session-e5c5c92e-7e77-4e7d-830b-a865fe794dff",
+            "turn": 113,
+            "step": 2,
+            "time": 1793303728495,
             "fingerprint": "fp_bb2f3030e807",
             "quality": {
               "qualityVersion": 1,
               "completeProtocol": false,
-              "completeBehavior": true,
+              "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
                 "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:98",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 16,
-            "time": 1789325889413,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "baselineExclusionReasons": [
                 "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:103",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 17,
-            "time": 1789325895520,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "identityExclusionReasons": [
                 "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:108",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 18,
-            "time": 1789325897385,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:113",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 19,
-            "time": 1789325898707,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:118",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 20,
-            "time": 1789325900408,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:123",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 21,
-            "time": 1789325902314,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:128",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 22,
-            "time": 1789325903922,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:133",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 23,
-            "time": 1789325920252,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:138",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 24,
-            "time": 1789325924184,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:143",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 25,
-            "time": 1789325926935,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:148",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 26,
-            "time": 1789325939831,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:153",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 27,
-            "time": 1789325946635,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:158",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 28,
-            "time": 1789325950269,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:163",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 29,
-            "time": 1789325952735,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:168",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 30,
-            "time": 1789325954631,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:173",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 31,
-            "time": 1789326108801,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:178",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 32,
-            "time": 1789326114200,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:183",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 33,
-            "time": 1789326118257,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:188",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 34,
-            "time": 1789326119308,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:193",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 35,
-            "time": 1789326120942,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:198",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 36,
-            "time": 1789326126419,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:203",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 37,
-            "time": 1789326128031,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:208",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 38,
-            "time": 1789326130122,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:213",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 39,
-            "time": 1789326133916,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:218",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 40,
-            "time": 1789326135339,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:223",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 41,
-            "time": 1789326137213,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:228",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 42,
-            "time": 1789326141610,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:233",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 43,
-            "time": 1789326144312,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:238",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 44,
-            "time": 1789326146433,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
-              ]
-            }
-          },
-          {
-            "id": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b:243",
-            "sessionId": "7fb5d071-dd72-40a4-a419-b38b9daa8b4b",
-            "turn": 1,
-            "step": 45,
-            "time": 1789326258112,
-            "fingerprint": "fp_bb2f3030e807",
-            "quality": {
-              "qualityVersion": 1,
-              "completeProtocol": false,
-              "completeBehavior": true,
-              "canonicalSource": true,
-              "routeConsistent": true,
-              "usableForIdentity": false,
-              "usableForBaseline": false,
-              "exclusionReasons": [
-                "protocol-fields-missing",
-                "replay-missing"
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response",
+                "protocol-identity-ineligible"
               ]
             }
           }
@@ -1105,10 +406,15 @@
       "samples": 1189,
       "sessions": 19,
       "excludedSamples": 0,
+      "baselineClasses": {
+        "canonical": 1189
+      },
+      "legacySamples": 0,
+      "protocolIdentitySamples": 1189,
       "ready": true,
       "dataVersion": 2,
       "featureSchemaVersion": "behavior-v1",
-      "sourceDigest": "28d38a39727eaaed43f7fa10b46956cc",
+      "sourceDigest": "ae3cea9107c9679766aa95dd05c27b04",
       "fingerprints": [
         {
           "id": "fp_8e17c9bd6670",
@@ -1120,8 +426,17 @@
         "usableForBaseline": 1189,
         "usableForIdentity": 1189,
         "excluded": 0,
+        "identityExcluded": 0,
+        "baselineClasses": [
+          {
+            "baselineClass": "canonical",
+            "count": 1189
+          }
+        ],
         "samplesTruncated": false,
         "reasons": [],
+        "identityReasons": [],
+        "missingProtocolFields": [],
         "samples": []
       }
     },
@@ -1133,10 +448,15 @@
       "samples": 105,
       "sessions": 5,
       "excludedSamples": 1,
+      "baselineClasses": {
+        "canonical": 105
+      },
+      "legacySamples": 0,
+      "protocolIdentitySamples": 105,
       "ready": true,
       "dataVersion": 2,
       "featureSchemaVersion": "behavior-v1",
-      "sourceDigest": "132073f6751287182f9400d4ec34732c",
+      "sourceDigest": "332d341c485acee04bef199287648b8b",
       "fingerprints": [
         {
           "id": "fp_8e17c9bd6670",
@@ -1148,6 +468,13 @@
         "usableForBaseline": 105,
         "usableForIdentity": 105,
         "excluded": 1,
+        "identityExcluded": 1,
+        "baselineClasses": [
+          {
+            "baselineClass": "canonical",
+            "count": 105
+          }
+        ],
         "samplesTruncated": false,
         "reasons": [
           {
@@ -1171,6 +498,54 @@
             "count": 1
           }
         ],
+        "identityReasons": [
+          {
+            "reason": "protocol-fields-missing",
+            "count": 1
+          },
+          {
+            "reason": "behavior-fields-missing",
+            "count": 1
+          },
+          {
+            "reason": "usage-missing",
+            "count": 1
+          },
+          {
+            "reason": "replay-missing",
+            "count": 1
+          },
+          {
+            "reason": "reasoning-only-no-response",
+            "count": 1
+          },
+          {
+            "reason": "protocol-identity-ineligible",
+            "count": 1
+          }
+        ],
+        "missingProtocolFields": [
+          {
+            "field": "api",
+            "count": 1
+          },
+          {
+            "field": "adapter",
+            "count": 1
+          },
+          {
+            "field": "wireProvider",
+            "count": 1
+          },
+          {
+            "field": "responseId",
+            "count": 1
+          },
+          {
+            "field": "replay",
+            "count": 1
+          }
+        ],
         "samples": [
           {
             "id": "752a7d48-574b-44cb-a572-60ade02fa907:784",
@@ -1185,6 +560,15 @@
               "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
@@ -1193,6 +577,21 @@
                 "usage-missing",
                 "replay-missing",
                 "reasoning-only-no-response"
+              ],
+              "baselineExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "identityExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response",
+                "protocol-identity-ineligible"
               ]
             }
           }
@@ -1201,8 +600,16 @@
     }
   ],
   "hardNegative": {
-    "schema": "model-fingerprint-hard-negative/v1",
-    "generatedAt": "2026-11-14T13:29:38.120Z",
+    "schema": "model-fingerprint-hard-negative/v2",
+    "generatedAt": "2026-11-14T14:09:05.655Z",
+    "statisticalMethods": {
+      "timeHeldOut": "rolling-origin-forward-chaining",
+      "fpr": "nested-session-level",
+      "auc": "session-paired-verification-auc",
+      "ablation": "exploratory-only",
+      "bootstrapUnit": "session",
+      "oldCartesianFprRetired": true
+    },
     "models": [
       {
         "key": "minimax-cn/MiniMax-M3",
@@ -1225,8 +632,17 @@
         "usableForBaseline": 1189,
         "usableForIdentity": 1189,
         "excluded": 0,
+        "identityExcluded": 0,
+        "baselineClasses": [
+          {
+            "baselineClass": "canonical",
+            "count": 1189
+          }
+        ],
         "samplesTruncated": false,
         "reasons": [],
+        "identityReasons": [],
+        "missingProtocolFields": [],
         "samples": []
       },
       "MiniMax-M2.7": {
@@ -1234,6 +650,13 @@
         "usableForBaseline": 105,
         "usableForIdentity": 105,
         "excluded": 1,
+        "identityExcluded": 1,
+        "baselineClasses": [
+          {
+            "baselineClass": "canonical",
+            "count": 105
+          }
+        ],
         "samplesTruncated": false,
         "reasons": [
           {
@@ -1257,6 +680,54 @@
             "count": 1
           }
         ],
+        "identityReasons": [
+          {
+            "reason": "protocol-fields-missing",
+            "count": 1
+          },
+          {
+            "reason": "behavior-fields-missing",
+            "count": 1
+          },
+          {
+            "reason": "usage-missing",
+            "count": 1
+          },
+          {
+            "reason": "replay-missing",
+            "count": 1
+          },
+          {
+            "reason": "reasoning-only-no-response",
+            "count": 1
+          },
+          {
+            "reason": "protocol-identity-ineligible",
+            "count": 1
+          }
+        ],
+        "missingProtocolFields": [
+          {
+            "field": "api",
+            "count": 1
+          },
+          {
+            "field": "adapter",
+            "count": 1
+          },
+          {
+            "field": "wireProvider",
+            "count": 1
+          },
+          {
+            "field": "responseId",
+            "count": 1
+          },
+          {
+            "field": "replay",
+            "count": 1
+          }
+        ],
         "samples": [
           {
             "id": "752a7d48-574b-44cb-a572-60ade02fa907:784",
@@ -1271,6 +742,15 @@
               "completeBehavior": false,
               "canonicalSource": true,
               "routeConsistent": true,
+              "baselineClass": "excluded",
+              "behaviorBaselineEligible": false,
+              "missingProtocolFields": [
+                "api",
+                "adapter",
+                "wireProvider",
+                "responseId",
+                "replay"
+              ],
               "usableForIdentity": false,
               "usableForBaseline": false,
               "exclusionReasons": [
@@ -1279,6 +759,21 @@
                 "usage-missing",
                 "replay-missing",
                 "reasoning-only-no-response"
+              ],
+              "baselineExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response"
+              ],
+              "identityExclusionReasons": [
+                "protocol-fields-missing",
+                "behavior-fields-missing",
+                "usage-missing",
+                "replay-missing",
+                "reasoning-only-no-response",
+                "protocol-identity-ineligible"
               ]
             }
           }
@@ -1616,6 +1111,12 @@
       "unit": "session",
       "method": "leave-one-session-out; each training profile excludes the held-out session",
       "folds": 24,
+      "independentSessions": 24,
+      "uniqueSessionIds": 23,
+      "sessionsByModel": {
+        "MiniMax-M3": 19,
+        "MiniMax-M2.7": 5
+      },
       "leakage": false,
       "records": [
         {
@@ -1624,6 +1125,35 @@
           "testSamples": 370,
           "sameDistance": 0.475,
           "otherDistance": 1.736,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.261,
           "correct": true,
           "uncertain": false
@@ -1634,6 +1164,35 @@
           "testSamples": 1,
           "sameDistance": 3.538,
           "otherDistance": 5.691,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.153,
           "correct": true,
           "uncertain": false
@@ -1644,6 +1203,35 @@
           "testSamples": 61,
           "sameDistance": 0.112,
           "otherDistance": 1.723,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.611,
           "correct": true,
           "uncertain": false
@@ -1654,6 +1242,35 @@
           "testSamples": 67,
           "sameDistance": 0.184,
           "otherDistance": 1.69,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.506,
           "correct": true,
           "uncertain": false
@@ -1664,6 +1281,35 @@
           "testSamples": 17,
           "sameDistance": 0.05,
           "otherDistance": 1.754,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.704,
           "correct": true,
           "uncertain": false
@@ -1674,6 +1320,35 @@
           "testSamples": 114,
           "sameDistance": 1.329,
           "otherDistance": 2.573,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.244,
           "correct": true,
           "uncertain": false
@@ -1684,6 +1359,35 @@
           "testSamples": 37,
           "sameDistance": 1.092,
           "otherDistance": 2.863,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.771,
           "correct": true,
           "uncertain": false
@@ -1694,6 +1398,35 @@
           "testSamples": 18,
           "sameDistance": 0.958,
           "otherDistance": 2.893,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.935,
           "correct": true,
           "uncertain": false
@@ -1704,6 +1437,35 @@
           "testSamples": 102,
           "sameDistance": 0.62,
           "otherDistance": 2.149,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.529,
           "correct": true,
           "uncertain": false
@@ -1714,6 +1476,35 @@
           "testSamples": 50,
           "sameDistance": 0.602,
           "otherDistance": 1.894,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.292,
           "correct": true,
           "uncertain": false
@@ -1724,6 +1515,35 @@
           "testSamples": 56,
           "sameDistance": 1.402,
           "otherDistance": 2.949,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 1.547,
           "correct": true,
           "uncertain": false
@@ -1734,6 +1554,35 @@
           "testSamples": 64,
           "sameDistance": 0.301,
           "otherDistance": 2.359,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.058,
           "correct": true,
           "uncertain": false
@@ -1744,6 +1593,35 @@
           "testSamples": 56,
           "sameDistance": 0.245,
           "otherDistance": 2.379,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.134,
           "correct": true,
           "uncertain": false
@@ -1754,6 +1632,35 @@
           "testSamples": 42,
           "sameDistance": 0.338,
           "otherDistance": 2.575,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.237,
           "correct": true,
           "uncertain": false
@@ -1764,6 +1671,35 @@
           "testSamples": 52,
           "sameDistance": 0.26,
           "otherDistance": 2.51,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.25,
           "correct": true,
           "uncertain": false
@@ -1774,6 +1710,35 @@
           "testSamples": 63,
           "sameDistance": 0.236,
           "otherDistance": 2.481,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.245,
           "correct": true,
           "uncertain": false
@@ -1784,6 +1749,35 @@
           "testSamples": 1,
           "sameDistance": 3.621,
           "otherDistance": 5.646,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.025,
           "correct": true,
           "uncertain": false
@@ -1793,8 +1787,36 @@
           "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
           "testSamples": 17,
           "sameDistance": 2.601,
-          "otherDistance": 5.261,
-          "margin": 2.66,
+          "otherDistance": 5.32,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
+          "margin": 2.719,
           "correct": true,
           "uncertain": false
         },
@@ -1804,6 +1826,35 @@
           "testSamples": 1,
           "sameDistance": 3.543,
           "otherDistance": 5.599,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 2.056,
           "correct": true,
           "uncertain": false
@@ -1814,6 +1865,35 @@
           "testSamples": 61,
           "sameDistance": 2.389,
           "otherDistance": 2.995,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": 0.606,
           "correct": true,
           "uncertain": false
@@ -1824,6 +1904,35 @@
           "testSamples": 3,
           "sameDistance": 5.442,
           "otherDistance": 3.381,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": -2.061,
           "correct": false,
           "uncertain": false
@@ -1834,6 +1943,35 @@
           "testSamples": 1,
           "sameDistance": 5.6,
           "otherDistance": 4.575,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
           "margin": -1.025,
           "correct": false,
           "uncertain": false
@@ -1843,8 +1981,36 @@
           "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
           "testSamples": 1,
           "sameDistance": 5.679,
-          "otherDistance": 3.447,
-          "margin": -2.232,
+          "otherDistance": 3.449,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "session-cd925444-8a2e-4fb1-bad2-72977cf0e092"
+            ]
+          },
+          "margin": -2.23,
           "correct": false,
           "uncertain": false
         },
@@ -1854,6 +2020,35 @@
           "testSamples": 39,
           "sameDistance": 2.367,
           "otherDistance": 0.577,
+          "trainSessionIds": {
+            "MiniMax-M3": [
+              "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "6fb39571-682d-445c-ad37-12e8504024b4",
+              "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "74e9b039-aaea-80fb-2f32-751578897fef",
+              "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f"
+            ],
+            "MiniMax-M2.7": [
+              "752a7d48-574b-44cb-a572-60ade02fa907",
+              "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "74e9b039-aaea-80fb-2f32-751578897fef"
+            ]
+          },
           "margin": -1.79,
           "correct": false,
           "uncertain": false
@@ -1875,22 +2070,41 @@
         "median": 2.574,
         "p75": 3.398,
         "max": 5.691,
-        "mean": 2.988
+        "mean": 2.99
       },
       "correct": 20,
       "misclassified": 4,
       "uncertain": 0,
       "auc": {
+        "metric": "session-paired-verification-auc",
+        "note": "Each held-out session contributes one paired same-distance and one different-distance trial; observations are not independent units.",
         "auc": 0.724,
+        "sessions": 24,
+        "uniqueSessionIds": 23,
+        "sessionsByModel": {
+          "MiniMax-M3": 19,
+          "MiniMax-M2.7": 5
+        },
         "pairs": 48,
         "bootstrap": {
+          "metric": "session-paired-verification-auc",
+          "paired": true,
           "auc": 0.724,
-          "lower": 0.606,
-          "upper": 0.852,
+          "lower": 0.656,
+          "upper": 0.814,
           "reps": 2000,
-          "unit": "session"
+          "unit": "session",
+          "twoWay": true,
+          "sessions": 24,
+          "pairTrials": 48,
+          "sessionsByModel": {
+            "MiniMax-M3": 19,
+            "MiniMax-M2.7": 5
+          },
+          "seed": 17
         }
-      }
+      },
+      "aucName": "session-paired verification AUC"
     },
     "pairDistances": {
       "sameModelAcrossSessions": {
@@ -1928,115 +2142,2469 @@
       }
     },
     "timeHeldOut": {
-      "unit": "time-window",
-      "windows": 4,
+      "method": "rolling-origin-forward-chaining",
+      "unit": "session",
+      "windows": 5,
+      "minTrainSessionsPerModel": 2,
       "folds": [
         {
           "window": 0,
-          "testSessions": 5,
-          "testSamples": 516,
-          "m3": 0.265,
-          "m27": null,
-          "cross": 1.757,
-          "m3ToM27": 1.757
+          "method": "rolling-origin",
+          "trainStart": null,
+          "trainEnd": null,
+          "testStart": "2026-08-27T09:23:45.379Z",
+          "testEnd": "2026-10-23T14:37:26.273Z",
+          "trainSessionsByModel": {
+            "MiniMax-M3": 0,
+            "MiniMax-M2.7": 0
+          },
+          "testSessionsByModel": {
+            "MiniMax-M3": 4,
+            "MiniMax-M2.7": 0
+          },
+          "trainSamplesByModel": {
+            "MiniMax-M3": 0,
+            "MiniMax-M2.7": 0
+          },
+          "testSamplesByModel": {
+            "MiniMax-M3": 499,
+            "MiniMax-M2.7": 0
+          },
+          "futureSessionsExcluded": 19,
+          "leakage": false,
+          "status": "insufficient-training-history",
+          "skipReason": "need at least 2 sessions per model before testStart",
+          "distances": null,
+          "auc": null
         },
         {
           "window": 1,
-          "testSessions": 6,
-          "testSamples": 377,
-          "m3": 1.401,
-          "m27": null,
-          "cross": 2.59,
-          "m3ToM27": 2.59
+          "method": "rolling-origin",
+          "trainStart": "2026-08-27T09:23:45.379Z",
+          "trainEnd": "2026-10-23T14:37:26.273Z",
+          "testStart": "2026-10-23T14:44:03.945Z",
+          "testEnd": "2026-10-23T15:46:16.827Z",
+          "trainSessionsByModel": {
+            "MiniMax-M3": 4,
+            "MiniMax-M2.7": 0
+          },
+          "testSessionsByModel": {
+            "MiniMax-M3": 5,
+            "MiniMax-M2.7": 0
+          },
+          "trainSamplesByModel": {
+            "MiniMax-M3": 499,
+            "MiniMax-M2.7": 0
+          },
+          "testSamplesByModel": {
+            "MiniMax-M3": 288,
+            "MiniMax-M2.7": 0
+          },
+          "futureSessionsExcluded": 14,
+          "leakage": false,
+          "status": "insufficient-training-history",
+          "skipReason": "need at least 2 sessions per model before testStart",
+          "distances": null,
+          "auc": null
         },
         {
           "window": 2,
-          "testSessions": 6,
-          "testSamples": 338,
-          "m3": 0.249,
-          "m27": 2.388,
-          "cross": 0.68,
-          "m3ToM27": 0.68,
-          "m27ToM3": 2.873
+          "method": "rolling-origin",
+          "trainStart": "2026-08-27T09:23:45.379Z",
+          "trainEnd": "2026-10-23T15:46:16.827Z",
+          "testStart": "2026-10-23T18:23:10.489Z",
+          "testEnd": "2026-10-24T05:43:36.699Z",
+          "trainSessionsByModel": {
+            "MiniMax-M3": 9,
+            "MiniMax-M2.7": 0
+          },
+          "testSessionsByModel": {
+            "MiniMax-M3": 4,
+            "MiniMax-M2.7": 0
+          },
+          "trainSamplesByModel": {
+            "MiniMax-M3": 787,
+            "MiniMax-M2.7": 0
+          },
+          "testSamplesByModel": {
+            "MiniMax-M3": 226,
+            "MiniMax-M2.7": 0
+          },
+          "futureSessionsExcluded": 10,
+          "leakage": false,
+          "status": "insufficient-training-history",
+          "skipReason": "need at least 2 sessions per model before testStart",
+          "distances": null,
+          "auc": null
         },
         {
           "window": 3,
-          "testSessions": 6,
-          "testSamples": 63,
-          "m3": 2.627,
-          "m27": 2.388,
-          "cross": 5.804,
-          "m3ToM27": 5.804,
-          "m27ToM3": 0.514
+          "method": "rolling-origin",
+          "trainStart": "2026-08-27T09:23:45.379Z",
+          "trainEnd": "2026-10-24T05:43:36.699Z",
+          "testStart": "2026-10-24T08:04:16.303Z",
+          "testEnd": "2026-10-29T11:11:13.800Z",
+          "trainSessionsByModel": {
+            "MiniMax-M3": 13,
+            "MiniMax-M2.7": 0
+          },
+          "testSessionsByModel": {
+            "MiniMax-M3": 3,
+            "MiniMax-M2.7": 2
+          },
+          "trainSamplesByModel": {
+            "MiniMax-M3": 1013,
+            "MiniMax-M2.7": 0
+          },
+          "testSamplesByModel": {
+            "MiniMax-M3": 157,
+            "MiniMax-M2.7": 64
+          },
+          "futureSessionsExcluded": 5,
+          "leakage": false,
+          "status": "insufficient-training-history",
+          "skipReason": "need at least 2 sessions per model before testStart",
+          "distances": null,
+          "auc": null
+        },
+        {
+          "window": 4,
+          "method": "rolling-origin",
+          "trainStart": "2026-08-27T09:23:45.379Z",
+          "trainEnd": "2026-10-29T11:11:13.800Z",
+          "testStart": "2026-10-29T11:14:47.505Z",
+          "testEnd": "2026-11-05T11:23:32.669Z",
+          "trainSessionsByModel": {
+            "MiniMax-M3": 16,
+            "MiniMax-M2.7": 2
+          },
+          "testSessionsByModel": {
+            "MiniMax-M3": 3,
+            "MiniMax-M2.7": 2
+          },
+          "trainSamplesByModel": {
+            "MiniMax-M3": 1170,
+            "MiniMax-M2.7": 64
+          },
+          "testSamplesByModel": {
+            "MiniMax-M3": 20,
+            "MiniMax-M2.7": 40
+          },
+          "futureSessionsExcluded": 0,
+          "leakage": false,
+          "status": "ok",
+          "skipReason": null,
+          "distances": {
+            "MiniMax-M3ToOwn": 2.627,
+            "MiniMax-M2.7ToOwn": 2.423,
+            "MiniMax-M3ToOther": 5.488,
+            "MiniMax-M2.7ToOther": 0.581
+          },
+          "auc": null
         }
-      ]
+      ],
+      "leakage": false,
+      "validFolds": 1,
+      "skippedFolds": 4
     },
     "fpr": {
-      "0.01": {
-        "threshold": 0.518,
-        "recall": 0.375,
-        "actualFpr": 0.011,
-        "fprUnit": "cross-model session pair"
+      "method": "nested-session-level",
+      "thresholdSource": "outer-training-sessions-only",
+      "testDataUsedForThreshold": false,
+      "featureSelectionUsedTest": false,
+      "unit": "session",
+      "outerFolds": 24,
+      "skippedFolds": 0,
+      "records": [
+        {
+          "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+          "model": "MiniMax-M3",
+          "testSamples": 370,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.475,
+          "otherDistance": 1.736,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+          "model": "MiniMax-M3",
+          "testSamples": 1,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 3.538,
+          "otherDistance": 5.691,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+          "model": "MiniMax-M3",
+          "testSamples": 61,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.112,
+          "otherDistance": 1.723,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+          "model": "MiniMax-M3",
+          "testSamples": 67,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.184,
+          "otherDistance": 1.69,
+          "thresholds": {
+            "0.01": 1.723,
+            "0.05": 1.723
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+          "model": "MiniMax-M3",
+          "testSamples": 17,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.05,
+          "otherDistance": 1.754,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+          "model": "MiniMax-M3",
+          "testSamples": 114,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 1.329,
+          "otherDistance": 2.573,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+          "model": "MiniMax-M3",
+          "testSamples": 37,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 1.092,
+          "otherDistance": 2.863,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+          "model": "MiniMax-M3",
+          "testSamples": 18,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.958,
+          "otherDistance": 2.893,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+          "model": "MiniMax-M3",
+          "testSamples": 102,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.62,
+          "otherDistance": 2.149,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+          "model": "MiniMax-M3",
+          "testSamples": 50,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.602,
+          "otherDistance": 1.894,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+          "model": "MiniMax-M3",
+          "testSamples": 56,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 1.402,
+          "otherDistance": 2.949,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+          "model": "MiniMax-M3",
+          "testSamples": 64,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.301,
+          "otherDistance": 2.359,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+          "model": "MiniMax-M3",
+          "testSamples": 56,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.245,
+          "otherDistance": 2.379,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+          "model": "MiniMax-M3",
+          "testSamples": 42,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.338,
+          "otherDistance": 2.575,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+          "model": "MiniMax-M3",
+          "testSamples": 52,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.26,
+          "otherDistance": 2.51,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+          "model": "MiniMax-M3",
+          "testSamples": 63,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 0.236,
+          "otherDistance": 2.481,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+          "model": "MiniMax-M3",
+          "testSamples": 1,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 3.621,
+          "otherDistance": 5.646,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+          "model": "MiniMax-M3",
+          "testSamples": 17,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 4
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 2.601,
+          "otherDistance": 5.32,
+          "thresholds": {
+            "0.01": 1.655,
+            "0.05": 1.655
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+          "model": "MiniMax-M3",
+          "testSamples": 1,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 5
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 3.543,
+          "otherDistance": 5.599,
+          "thresholds": {
+            "0.01": 1.69,
+            "0.05": 1.69
+          },
+          "trainCrossSessions": 18
+        },
+        {
+          "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+          "model": "MiniMax-M2.7",
+          "testSamples": 61,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 19,
+            "MiniMax-M2.7": 4
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 2.389,
+          "otherDistance": 2.995,
+          "thresholds": {
+            "0.01": 0.577,
+            "0.05": 0.577
+          },
+          "trainCrossSessions": 4
+        },
+        {
+          "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+          "model": "MiniMax-M2.7",
+          "testSamples": 3,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 19,
+            "MiniMax-M2.7": 4
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 5.442,
+          "otherDistance": 3.381,
+          "thresholds": {
+            "0.01": 0.577,
+            "0.05": 0.577
+          },
+          "trainCrossSessions": 4
+        },
+        {
+          "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+          "model": "MiniMax-M2.7",
+          "testSamples": 1,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 19,
+            "MiniMax-M2.7": 4
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 5.6,
+          "otherDistance": 4.575,
+          "thresholds": {
+            "0.01": 0.577,
+            "0.05": 0.577
+          },
+          "trainCrossSessions": 4
+        },
+        {
+          "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+          "model": "MiniMax-M2.7",
+          "testSamples": 1,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 18,
+            "MiniMax-M2.7": 4
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 5.679,
+          "otherDistance": 3.449,
+          "thresholds": {
+            "0.01": 0.576,
+            "0.05": 0.576
+          },
+          "trainCrossSessions": 4
+        },
+        {
+          "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+          "model": "MiniMax-M2.7",
+          "testSamples": 39,
+          "trainSessionsByModel": {
+            "MiniMax-M3": 19,
+            "MiniMax-M2.7": 4
+          },
+          "status": "ok",
+          "skipReason": null,
+          "sameDistance": 2.367,
+          "otherDistance": 0.577,
+          "thresholds": {
+            "0.01": 2.995,
+            "0.05": 2.995
+          },
+          "trainCrossSessions": 4
+        }
+      ],
+      "targets": {
+        "0.01": {
+          "targetFpr": 0.01,
+          "method": "nested-session-level",
+          "thresholdSource": "outer-training-sessions-only",
+          "testDataUsedForThreshold": false,
+          "featureSelectionUsedTest": false,
+          "thresholdRange": {
+            "min": 0.576,
+            "median": 1.69,
+            "max": 2.995
+          },
+          "point": {
+            "fpr": 0.083,
+            "recall": 0.667,
+            "falseAccepts": 2,
+            "negativeTrials": 24,
+            "trueAccepts": 16,
+            "positiveTrials": 24
+          },
+          "fpr": 0.083,
+          "recall": 0.667,
+          "pointEstimateReliable": false,
+          "falseAccepts": 2,
+          "negativeTrials": 24,
+          "trueAccepts": 16,
+          "positiveTrials": 24,
+          "fprUnit": "held-out session",
+          "independentSessions": 24,
+          "uniqueSessionIds": 23,
+          "effectiveOuterFolds": 24,
+          "resolutionInsufficient": true,
+          "minimumObservableNonzeroFpr": 0.042,
+          "requiredNegativeTrials": 100,
+          "thresholdResolvable": false,
+          "fprConfidence": {
+            "point": 0.083,
+            "lower": 0,
+            "upper": 0.208,
+            "upper95": 0.167,
+            "unit": "session",
+            "clustered": true,
+            "twoWayCluster": true,
+            "reps": 2000,
+            "seed": 17,
+            "meaningful": false
+          },
+          "recallConfidence": {
+            "point": 0.667,
+            "lower": 0.5,
+            "upper": 0.833,
+            "unit": "session",
+            "clustered": true,
+            "twoWayCluster": true,
+            "reps": 2000,
+            "seed": 18
+          },
+          "meetsTarget": false,
+          "status": "resolution-insufficient",
+          "note": "negative sessions are fewer than 100; cannot resolve 1% FPR",
+          "records": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.475,
+              "otherDistance": 1.736,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 3.538,
+              "otherDistance": 5.691,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.112,
+              "otherDistance": 1.723,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "threshold": 1.723,
+              "sameDistance": 0.184,
+              "otherDistance": 1.69,
+              "trueAccept": true,
+              "falseAccept": true
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.05,
+              "otherDistance": 1.754,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 1.329,
+              "otherDistance": 2.573,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 1.092,
+              "otherDistance": 2.863,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.958,
+              "otherDistance": 2.893,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.62,
+              "otherDistance": 2.149,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.602,
+              "otherDistance": 1.894,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 1.402,
+              "otherDistance": 2.949,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.301,
+              "otherDistance": 2.359,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.245,
+              "otherDistance": 2.379,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.338,
+              "otherDistance": 2.575,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.26,
+              "otherDistance": 2.51,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.236,
+              "otherDistance": 2.481,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 3.621,
+              "otherDistance": 5.646,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "threshold": 1.655,
+              "sameDistance": 2.601,
+              "otherDistance": 5.32,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 3.543,
+              "otherDistance": 5.599,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.577,
+              "sameDistance": 2.389,
+              "otherDistance": 2.995,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.577,
+              "sameDistance": 5.442,
+              "otherDistance": 3.381,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.577,
+              "sameDistance": 5.6,
+              "otherDistance": 4.575,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.576,
+              "sameDistance": 5.679,
+              "otherDistance": 3.449,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "threshold": 2.995,
+              "sameDistance": 2.367,
+              "otherDistance": 0.577,
+              "trueAccept": true,
+              "falseAccept": true
+            }
+          ]
+        },
+        "0.05": {
+          "targetFpr": 0.05,
+          "method": "nested-session-level",
+          "thresholdSource": "outer-training-sessions-only",
+          "testDataUsedForThreshold": false,
+          "featureSelectionUsedTest": false,
+          "thresholdRange": {
+            "min": 0.576,
+            "median": 1.69,
+            "max": 2.995
+          },
+          "point": {
+            "fpr": 0.083,
+            "recall": 0.667,
+            "falseAccepts": 2,
+            "negativeTrials": 24,
+            "trueAccepts": 16,
+            "positiveTrials": 24
+          },
+          "fpr": 0.083,
+          "recall": 0.667,
+          "pointEstimateReliable": true,
+          "falseAccepts": 2,
+          "negativeTrials": 24,
+          "trueAccepts": 16,
+          "positiveTrials": 24,
+          "fprUnit": "held-out session",
+          "independentSessions": 24,
+          "uniqueSessionIds": 23,
+          "effectiveOuterFolds": 24,
+          "resolutionInsufficient": false,
+          "minimumObservableNonzeroFpr": 0.042,
+          "requiredNegativeTrials": 20,
+          "thresholdResolvable": true,
+          "fprConfidence": {
+            "point": 0.083,
+            "lower": 0,
+            "upper": 0.208,
+            "upper95": 0.167,
+            "unit": "session",
+            "clustered": true,
+            "twoWayCluster": true,
+            "reps": 2000,
+            "seed": 17,
+            "meaningful": true
+          },
+          "recallConfidence": {
+            "point": 0.667,
+            "lower": 0.5,
+            "upper": 0.833,
+            "unit": "session",
+            "clustered": true,
+            "twoWayCluster": true,
+            "reps": 2000,
+            "seed": 18
+          },
+          "meetsTarget": false,
+          "status": "not-verified",
+          "note": "session-clustered upper bound does not meet target",
+          "records": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.475,
+              "otherDistance": 1.736,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 3.538,
+              "otherDistance": 5.691,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.112,
+              "otherDistance": 1.723,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "threshold": 1.723,
+              "sameDistance": 0.184,
+              "otherDistance": 1.69,
+              "trueAccept": true,
+              "falseAccept": true
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.05,
+              "otherDistance": 1.754,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 1.329,
+              "otherDistance": 2.573,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 1.092,
+              "otherDistance": 2.863,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.958,
+              "otherDistance": 2.893,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.62,
+              "otherDistance": 2.149,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.602,
+              "otherDistance": 1.894,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 1.402,
+              "otherDistance": 2.949,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.301,
+              "otherDistance": 2.359,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.245,
+              "otherDistance": 2.379,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.338,
+              "otherDistance": 2.575,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.26,
+              "otherDistance": 2.51,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 0.236,
+              "otherDistance": 2.481,
+              "trueAccept": true,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 3.621,
+              "otherDistance": 5.646,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "threshold": 1.655,
+              "sameDistance": 2.601,
+              "otherDistance": 5.32,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "threshold": 1.69,
+              "sameDistance": 3.543,
+              "otherDistance": 5.599,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.577,
+              "sameDistance": 2.389,
+              "otherDistance": 2.995,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.577,
+              "sameDistance": 5.442,
+              "otherDistance": 3.381,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.577,
+              "sameDistance": 5.6,
+              "otherDistance": 4.575,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "threshold": 0.576,
+              "sameDistance": 5.679,
+              "otherDistance": 3.449,
+              "trueAccept": false,
+              "falseAccept": false
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "threshold": 2.995,
+              "sameDistance": 2.367,
+              "otherDistance": 0.577,
+              "trueAccept": true,
+              "falseAccept": true
+            }
+          ]
+        }
       },
-      "0.05": {
-        "threshold": 0.721,
-        "recall": 0.458,
-        "actualFpr": 0.053,
-        "fprUnit": "cross-model session pair"
-      }
+      "note": "Threshold is chosen inside each outer fold from training sessions only; test sessions are scored once. Session pairs are not independent."
     },
     "ablation": {
+      "mode": "exploratory-only",
+      "selectionUsedTest": false,
+      "productionWeightsChanged": false,
+      "missingValuesTreatedAsZero": false,
       "fullAuc": 0.724,
       "features": [
         {
           "omitted": "tokensPerChar",
+          "productionWeight": 0.36,
           "auc": 0.823,
-          "delta": 0.099
+          "delta": 0.099,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "jsonSpacing",
+          "productionWeight": 0.18,
           "auc": 0.762,
-          "delta": 0.038
+          "delta": 0.038,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 0.203
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 0.23
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 0.119
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 0.059
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 0.14
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 0.243
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 0.111
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 0.108
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 0.16
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 0.196
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 0.25
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 0.232
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 0.31
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 0.212
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 0.206
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.016
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 0
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 0
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 0
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.103
+            }
+          ],
+          "lowCoverage": true
         },
         {
           "omitted": "reasoningRatio",
+          "productionWeight": 0.18,
           "auc": 0.628,
-          "delta": -0.096
+          "delta": -0.096,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "charsPerChunk",
+          "productionWeight": 0.16,
           "auc": 0.722,
-          "delta": -0.002
+          "delta": -0.002,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "escapedUnicode",
+          "productionWeight": 0.06,
           "auc": 0.731,
-          "delta": 0.007
+          "delta": 0.007,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 0.957
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 0.984
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 0.985
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 0.941
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 0.991
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 0.973
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 0.944
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 0.99
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 0.98
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 0.982
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 0.984
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 0.982
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 0.976
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 0.981
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 0.984
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 0
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.967
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 0
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 0
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 0
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.897
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "asciiRatio",
+          "productionWeight": 0.02,
           "auc": 0.731,
-          "delta": 0.007
+          "delta": 0.007,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 0.059
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 0.787
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 0.687
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 0.765
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 0.754
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 0.838
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 0.944
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 0.696
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 0.68
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 0.768
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 0.781
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 0.786
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 0.762
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 0.75
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 0.794
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.049
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.103
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "cjkRatio",
+          "productionWeight": 0.01,
           "auc": 0.726,
-          "delta": 0.002
+          "delta": 0.002,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 0.059
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 0.787
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 0.687
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 0.765
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 0.754
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 0.838
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 0.944
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 0.696
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 0.68
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 0.768
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 0.781
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 0.786
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 0.762
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 0.75
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 0.794
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.049
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.103
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "punctuationRatio",
+          "productionWeight": 0.01,
           "auc": 0.724,
-          "delta": 0
+          "delta": 0,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 0.059
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 0.787
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 0.687
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 0.765
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 0.754
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 0.838
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 0.944
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 0.696
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 0.68
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 0.768
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 0.781
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 0.786
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 0.762
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 0.75
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 0.794
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.049
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.103
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "markdownPerK",
+          "productionWeight": 0.01,
           "auc": 0.726,
-          "delta": 0.002
+          "delta": 0.002,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 0.059
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 0.787
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 0.687
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 0.765
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 0.754
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 0.838
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 0.944
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 0.696
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 0.68
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 0.768
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 0.781
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 0.786
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 0.762
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 0.75
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 0.794
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.049
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.103
+            }
+          ],
+          "lowCoverage": false
         },
         {
           "omitted": "newlineRatio",
+          "productionWeight": 0.01,
           "auc": 0.724,
-          "delta": 0
+          "delta": 0,
+          "coverageByFold": [
+            {
+              "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+              "model": "MiniMax-M3",
+              "coverage": 0.059
+            },
+            {
+              "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+              "model": "MiniMax-M3",
+              "coverage": 0.787
+            },
+            {
+              "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+              "model": "MiniMax-M3",
+              "coverage": 0.687
+            },
+            {
+              "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+              "model": "MiniMax-M3",
+              "coverage": 0.765
+            },
+            {
+              "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+              "model": "MiniMax-M3",
+              "coverage": 0.754
+            },
+            {
+              "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+              "model": "MiniMax-M3",
+              "coverage": 0.838
+            },
+            {
+              "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+              "model": "MiniMax-M3",
+              "coverage": 0.944
+            },
+            {
+              "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+              "model": "MiniMax-M3",
+              "coverage": 0.696
+            },
+            {
+              "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+              "model": "MiniMax-M3",
+              "coverage": 0.68
+            },
+            {
+              "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+              "model": "MiniMax-M3",
+              "coverage": 0.768
+            },
+            {
+              "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+              "model": "MiniMax-M3",
+              "coverage": 0.781
+            },
+            {
+              "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+              "model": "MiniMax-M3",
+              "coverage": 0.786
+            },
+            {
+              "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+              "model": "MiniMax-M3",
+              "coverage": 0.762
+            },
+            {
+              "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+              "model": "MiniMax-M3",
+              "coverage": 0.75
+            },
+            {
+              "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+              "model": "MiniMax-M3",
+              "coverage": 0.794
+            },
+            {
+              "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+              "model": "MiniMax-M3",
+              "coverage": 1
+            },
+            {
+              "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.049
+            },
+            {
+              "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+              "model": "MiniMax-M2.7",
+              "coverage": 1
+            },
+            {
+              "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+              "model": "MiniMax-M2.7",
+              "coverage": 0.103
+            }
+          ],
+          "lowCoverage": false
         }
       ]
     },
@@ -2061,6 +4629,15 @@
           "completeBehavior": false,
           "canonicalSource": true,
           "routeConsistent": true,
+          "baselineClass": "excluded",
+          "behaviorBaselineEligible": false,
+          "missingProtocolFields": [
+            "api",
+            "adapter",
+            "wireProvider",
+            "responseId",
+            "replay"
+          ],
           "usableForIdentity": false,
           "usableForBaseline": false,
           "exclusionReasons": [
@@ -2069,6 +4646,21 @@
             "usage-missing",
             "replay-missing",
             "reasoning-only-no-response"
+          ],
+          "baselineExclusionReasons": [
+            "protocol-fields-missing",
+            "behavior-fields-missing",
+            "usage-missing",
+            "replay-missing",
+            "reasoning-only-no-response"
+          ],
+          "identityExclusionReasons": [
+            "protocol-fields-missing",
+            "behavior-fields-missing",
+            "usage-missing",
+            "replay-missing",
+            "reasoning-only-no-response",
+            "protocol-identity-ineligible"
           ]
         },
         "analysis": {

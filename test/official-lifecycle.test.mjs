@@ -7,9 +7,9 @@ import { zstdCompressSync } from 'node:zlib'
 import { FingerprintStore } from '../lib/store.mjs'
 import { normalizeOfficialModels, freshness, FEATURE_SCHEMA_VERSION, QUALITY_VERSION } from '../lib/official.mjs'
 import { artifactContext, ensureOfficialArtifacts } from '../lib/lifecycle.mjs'
-import { buildOfficialProfile, SIMILARITY_VERSION } from '../lib/similarity.mjs'
+import { buildOfficialProfile, SIMILARITY_VERSION, sourceForOfficial } from '../lib/similarity.mjs'
 import { assessModelIdentity, compareProtocol } from '../lib/identity.mjs'
-import { bootstrapSessionAuc, buildHardNegativeBenchmark } from '../lib/benchmark.mjs'
+import { bootstrapSessionAuc, buildHardNegativeBenchmark, nestedSessionFpr, rollingTimeFolds } from '../lib/benchmark.mjs'
 import { buildProbePlan, validateProbeResults } from '../lib/probe-plan.mjs'
 import { evaluateObservationQuality } from '../lib/quality.mjs'
 
@@ -205,6 +205,10 @@ test('session bootstrap uses sessions and hard-negative folds do not leak rows',
   ]
   const boot = bootstrapSessionAuc(records, { reps: 100, seed: 3 })
   assert.equal(boot.unit, 'session')
+  assert.equal(boot.paired, true)
+  assert.equal(boot.twoWay, true)
+  assert.equal(boot.sessions, 4)
+  assert.equal(boot.pairTrials, 8)
   assert.ok(boot.auc >= 0.9)
   assert.ok(boot.lower <= boot.auc && boot.auc <= boot.upper)
 
@@ -241,5 +245,155 @@ test('fixed probe plan is offline-only and makes no MoE claim', () => {
   ])
   assert.equal(imported.acceptedCount, 1)
   assert.equal(imported.rejectedCount, 1)
+})
+
+test('rolling-origin training never contains a session at or after testStart', () => {
+  const rowsA = Array.from({ length: 6 }, (_, index) => row(index, 'MiniMax-M3', 'a-' + index, { time: 100 + index * 10 }))
+  const rowsB = Array.from({ length: 6 }, (_, index) => row(100 + index, 'MiniMax-M2.7', 'b-' + index, { time: 105 + index * 10 }))
+  const result = rollingTimeFolds(rowsA, rowsB, { provider: 'minimax-cn', model: 'MiniMax-M3' }, { provider: 'minimax-cn', model: 'MiniMax-M2.7' }, { windows: 3, minTrainSessionsPerModel: 2 })
+  assert.equal(result.method, 'rolling-origin-forward-chaining')
+  assert.ok(result.validFolds >= 1)
+  assert.equal(result.leakage, false)
+  for (const fold of result.folds) {
+    assert.equal(fold.leakage, false)
+    assert.ok(fold.futureSessionsExcluded >= 0)
+    if (fold.status === 'ok') {
+      assert.ok(Date.parse(fold.trainEnd) < Date.parse(fold.testStart), 'trainEnd must precede testStart')
+      assert.ok(fold.trainSessionsByModel['MiniMax-M3'] >= 2)
+      assert.ok(fold.trainSessionsByModel['MiniMax-M2.7'] >= 2)
+      assert.ok(fold.distances)
+    } else {
+      assert.equal(fold.distances, null)
+      assert.equal(fold.auc, null)
+    }
+  }
+})
+
+test('nested FPR selects thresholds only from outer training sessions and reports resolution limits', () => {
+  const rowsA = Array.from({ length: 20 }, (_, index) => row(index, 'MiniMax-M3', 'fa-' + index, { time: 1000 + index }))
+  const rowsB = Array.from({ length: 20 }, (_, index) => row(1000 + index, 'MiniMax-M2.7', 'fb-' + index, { time: 1000 + index }))
+  const result = nestedSessionFpr(rowsA, rowsB, { provider: 'minimax-cn', model: 'MiniMax-M3' }, { provider: 'minimax-cn', model: 'MiniMax-M2.7' }, { targets: [0.01, 0.05], reps: 100, seed: 5 })
+  assert.equal(result.method, 'nested-session-level')
+  assert.equal(result.thresholdSource, 'outer-training-sessions-only')
+  assert.equal(result.testDataUsedForThreshold, false)
+  assert.equal(result.featureSelectionUsedTest, false)
+  assert.equal(result.unit, 'session')
+  assert.equal(result.targets['0.01'].resolutionInsufficient, true)
+  assert.equal(result.targets['0.01'].minimumObservableNonzeroFpr, 0.025)
+  assert.equal(result.targets['0.05'].resolutionInsufficient, false)
+  assert.equal(result.targets['0.01'].fprConfidence.unit, 'session')
+  assert.equal(result.targets['0.01'].fprConfidence.twoWayCluster, true)
+  assert.equal(result.targets['0.01'].thresholdSource, 'outer-training-sessions-only')
+  assert.equal(result.targets['0.01'].testDataUsedForThreshold, false)
+  assert.equal(result.targets['0.01'].meetsTarget, false)
+})
+
+test('behavior-only legacy rows can enter behavior baseline but never protocol identity', () => {
+  const legacy = row(1, 'legacy-model', 'legacy-session', {
+    provider: 'deepseek-official',
+    routeKey: 'deepseek-official/legacy-model',
+    model: 'legacy-model',
+    protocol: { api: '-', adapter: '-', wireProvider: '-', responseId: 'none', replay: 'none' },
+    protocolDetail: { hasReplay: false, usageKeys: [] },
+  })
+  const quality = evaluateObservationQuality(legacy)
+  assert.equal(quality.usableForBaseline, true)
+  assert.equal(quality.baselineClass, 'behavior-only-legacy')
+  assert.equal(quality.usableForIdentity, false)
+  assert.ok(quality.identityExclusionReasons.includes('protocol-identity-ineligible'))
+  const official = normalizeOfficialModels([{ provider: 'deepseek-official', model: 'legacy-model', evidenceLevel: 'unknown' }])[0]
+  const baseline = buildOfficialProfile([legacy], official, { dataVersion: 2 })
+  assert.equal(baseline.samples, 1)
+  assert.equal(baseline.ready, false)
+})
+
+test('source digest ignores generation and input order but changes with behavior, quality and negative inputs', () => {
+  const official = normalizeOfficialModels([{ provider: 'minimax-cn', model: 'MiniMax-M3', evidenceLevel: 'user-confirmed-official-api' }])[0]
+  const rows = Array.from({ length: 6 }, (_, index) => row(index))
+  const context = artifactContext({ dataVersion: 2, scannerGeneration: 'g1', observationRevision: 1, similarityVersion: SIMILARITY_VERSION })
+  const first = ensureOfficialArtifacts({ model: official, observations: rows, context })
+  const otherGeneration = ensureOfficialArtifacts({
+    model: official,
+    observations: rows.slice().reverse(),
+    existingBaseline: first.baseline.artifact,
+    existingCalibration: first.calibration.artifact,
+    context: artifactContext({ dataVersion: 2, scannerGeneration: 'restart-unique', observationRevision: 999, similarityVersion: SIMILARITY_VERSION }),
+    builders: { baseline: () => { throw new Error('generation/order must not rebuild') }, calibration: () => { throw new Error('generation/order must not rebuild') } },
+  })
+  assert.equal(otherGeneration.baseline.rebuilt, false)
+  assert.equal(otherGeneration.calibration.rebuilt, false)
+
+  const changedRows = rows.map((item, index) => index === 0 ? { ...item, behavior: { ...item.behavior, tokensPerChar: 0.9 } } : item)
+  const changed = sourceForOfficial(changedRows, official, { dataVersion: 2 })
+  const original = sourceForOfficial(rows, official, { dataVersion: 2 })
+  assert.notEqual(changed.digest, original.digest)
+  const rebuiltForBehavior = ensureOfficialArtifacts({
+    model: official,
+    observations: changedRows,
+    existingBaseline: first.baseline.artifact,
+    existingCalibration: first.calibration.artifact,
+    context,
+  })
+  assert.equal(rebuiltForBehavior.baseline.rebuilt, true)
+
+  const excluded = rows.map((item, index) => index === 0 ? { ...item, behavior: { ...item.behavior, tokensPerChar: null } } : item)
+  const excludedSource = sourceForOfficial(excluded, official, { dataVersion: 2 })
+  assert.notEqual(excludedSource.digest, original.digest)
+
+  const negative = row(99, 'MiniMax-M2.7', 'negative-session', { provider: 'minimax-cn' })
+  const withNegative = sourceForOfficial(rows.concat(negative), official, { dataVersion: 2 })
+  assert.notEqual(withNegative.calibrationDigest, original.calibrationDigest)
+  assert.equal(withNegative.digest, original.digest)
+
+  const schemaSource = sourceForOfficial(rows, official, { dataVersion: 2, featureSchemaVersion: 'behavior-v0' })
+  assert.notEqual(schemaSource.digest, original.digest)
+  const changedConfig = sourceForOfficial(rows, { ...official, evidenceLevel: 'claimed-only' }, { dataVersion: 2 })
+  assert.notEqual(changedConfig.digest, original.digest)
+
+  const configRebuilt = ensureOfficialArtifacts({
+    model: { ...official, evidenceLevel: 'claimed-only' },
+    observations: rows,
+    existingBaseline: first.baseline.artifact,
+    existingCalibration: first.calibration.artifact,
+    context,
+  })
+  assert.equal(configRebuilt.baseline.rebuilt, true)
+  const schemaRebuilt = ensureOfficialArtifacts({
+    model: official,
+    observations: rows,
+    existingBaseline: first.baseline.artifact,
+    existingCalibration: first.calibration.artifact,
+    context: artifactContext({ dataVersion: 2, scannerGeneration: 'g1', observationRevision: 1, similarityVersion: SIMILARITY_VERSION, featureSchemaVersion: 'behavior-v0' }),
+  })
+  assert.equal(schemaRebuilt.baseline.rebuilt, true)
+})
+
+test('cache rebuild failure keeps the last valid object and empty cache failure is explicitly unavailable', () => {
+  const official = normalizeOfficialModels([{ provider: 'minimax-cn', model: 'MiniMax-M3' }])[0]
+  const rows = Array.from({ length: 8 }, (_, index) => row(index))
+  const context = artifactContext({ dataVersion: 2, scannerGeneration: 'g', observationRevision: 2, similarityVersion: SIMILARITY_VERSION })
+  const valid = ensureOfficialArtifacts({ model: official, observations: rows, context })
+  const changed = rows.concat(row(99, 'MiniMax-M3', 'new-session'))
+  const failed = ensureOfficialArtifacts({
+    model: official,
+    observations: changed,
+    existingBaseline: valid.baseline.artifact,
+    existingCalibration: valid.calibration.artifact,
+    context,
+    builders: { baseline: () => { throw new Error('rebuild failed') } },
+  })
+  assert.equal(failed.baseline.artifact.sourceDigest, valid.baseline.artifact.sourceDigest)
+  assert.equal(failed.baseline.artifact.stale, true)
+  assert.equal(failed.baseline.rebuilt, false)
+
+  const unavailable = ensureOfficialArtifacts({
+    model: official,
+    observations: changed,
+    context,
+    builders: { baseline: () => { throw new Error('no cache') } },
+  })
+  assert.equal(unavailable.baseline.artifact, null)
+  assert.equal(unavailable.baseline.stale, true)
+  assert.equal(unavailable.baseline.rebuilt, false)
 })
 

@@ -137,7 +137,9 @@ sourceDigest, generatedAt, samples, sessions, firstTime, lastTime,
 featureSchemaVersion, qualityVersion, stale, staleReasons
 ```
 
-`sourceDigest` 覆盖官方配置、route key、可用观测数、session 数、首末时间、协议指纹分布、feature schema 和 dataVersion。dataVersion、feature schema、similarity 版本、官方配置或源数据变化时，旧对象会被识别为 stale 并重建；重建失败时保留最后一个有效对象，但明确返回 `stale: true`。删除官方来源会同时删除对应基线和校准。
+`sourceDigest` 覆盖官方配置、route key、规范化观测 ID、provider/model/route、session、time、fingerprint、质量状态、protocol 和全部参与 profile/calibration 的行为值；计算前按稳定顺序排序。进程唯一的 `scannerGeneration` 只用于前端历史窗口隔离，不再作为持久化统计缓存的失效依据。dataVersion、feature schema、qualityVersion、similarity 版本、官方配置、有效行为输入或校准负样本变化时，旧对象会失效并重建；重建失败时保留最后一个有效对象，但明确返回 `stale: true`。删除官方来源会同时删除对应基线和校准。
+
+旧 adapter 缺少 `responseId`/`replay` 的观测可以进入 `behavior-only-legacy` 行为统计，但不能进入协议身份验证，也不能提升 `modelIdentityConfidence`。
 
 ### 读取结果
 
@@ -220,13 +222,13 @@ model_fingerprint action=backfill
 ### 离线困难负样本与探针计划
 
 ```bash
-npm run benchmark:minimax   # M3 vs M2.7，session-held-out、AUC、FPR、消融
+npm run benchmark:minimax   # M3 vs M2.7，rolling-origin、nested FPR、session-paired verification AUC、探索性消融
 npm run benchmark:official  # 官方来源证据、质量门和基线摘要
 npm run probe:plan          # 只生成 6 类 × 5 prompt × 10 次 × 2 窗口的计划
 npm run probe:import -- path/to/probe-results.json  # 离线校验导入，不调用模型
 ```
 
-`probe:plan` 不调用任何模型，只写 `reports/minimax-probe-plan.json`；真实采集仍需显式 `confirm=true`。离线结果用 `probe:import` 校验后进入 `reports/probe-import-audit.json`。`benchmark:minimax` 写 `reports/minimax-m3-m27.json` / `.md`，`benchmark:official` 写 `reports/official-audit.json`。报告明确禁止在无固定重复探针时声称识别出 MoE 专家。
+`probe:plan` 不调用任何模型，只写 `reports/minimax-probe-plan.json`；真实采集仍需显式 `confirm=true`。离线结果用 `probe:import` 校验后进入 `reports/probe-import-audit.json`。`benchmark:minimax` 写 `reports/minimax-m3-m27.json` / `.md`，`benchmark:official` 写 `reports/official-audit.json`。时间验证使用严格 rolling-origin，FPR 使用 nested session-level 阈值，AUC 明确为 session-paired verification AUC；报告明确禁止在无固定重复探针时声称识别出 MoE 专家。
 
 ---
 

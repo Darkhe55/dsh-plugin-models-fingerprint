@@ -50,6 +50,9 @@ const baseline = models.map((model) => {
     samples: built.samples,
     sessions: built.sessions,
     excludedSamples: built.excludedSamples,
+    baselineClasses: built.baselineClasses,
+    legacySamples: built.legacySamples,
+    protocolIdentitySamples: built.protocolIdentitySamples,
     ready: built.ready,
     dataVersion: built.dataVersion,
     featureSchemaVersion: built.featureSchemaVersion,
@@ -78,7 +81,13 @@ console.log(JSON.stringify({
   })),
   hardNegative: hardNegative ? {
     auc: hardNegative.sessionHeldOut.auc.auc,
-    fpr: hardNegative.fpr,
+    fpr: Object.fromEntries(Object.entries(hardNegative.fpr.targets || {}).map(([rate, value]) => [rate, {
+      fpr: value.fpr,
+      recall: value.recall,
+      upper95: value.fprConfidence && value.fprConfidence.upper95,
+      resolutionInsufficient: value.resolutionInsufficient,
+      status: value.status,
+    }])),
     anomalies: hardNegative.anomalies.length,
   } : null,
 }, null, 2))
