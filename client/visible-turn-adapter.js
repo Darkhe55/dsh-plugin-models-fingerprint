@@ -101,8 +101,12 @@
         }
         const safeLeft = sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64)
         const gap = flowRect.left - sidebarRight
-        const cardWidth = 176
-        const compact = gap < cardWidth + 24 || (sidebarRight === 0 && flowRect.left < cardWidth * 2)
+        const fullCardWidth = 176
+        const compact = gap < fullCardWidth + 24 || (sidebarRight === 0 && flowRect.left < fullCardWidth * 2)
+        // The compact pill is only 56px wide. Reserving 176px for it leaves a
+        // dead band between the sidebar and the card, so the card stops moving
+        // outward even when real space remains.
+        const cardWidth = compact ? 56 : fullCardWidth
         const anchorRight = TurnGeometry.anchorRight(flowRect, sidebarRight, safeLeft, cardWidth)
         return {
           ready: true,
