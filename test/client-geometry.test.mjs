@@ -59,3 +59,14 @@ test('measureNormalized does not rescan subtrees', async () => {
   assert.equal(measured.bottom, 80)
   assert.equal(measured.segments.length, 1)
 })
+
+test('right anchor is independent of compact card width', async () => {
+  const source = await fs.readFile(new URL('../client/geometry.js', import.meta.url), 'utf8')
+  const TurnGeometry = new Function(source + '\nreturn TurnGeometry')()
+  const flow = { left: 600, right: 1400 }
+  const wide = TurnGeometry.anchorRight(flow, 240, 442, 176)
+  const narrow = TurnGeometry.anchorRight(flow, 240, 442, 176)
+  assert.equal(wide, narrow)
+  assert.equal(wide, 618)
+  assert.ok(Math.abs((wide - 8) - (narrow - 8)) <= 1, 'range line world X stays fixed')
+})

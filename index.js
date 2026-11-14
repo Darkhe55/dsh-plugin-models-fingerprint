@@ -24,15 +24,11 @@ export const inject = ['webServer', 'tools', 'sessions', 'llm']
 const here = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC = path.join(here, 'public')
 const ROUTE = '/model-fingerprint'
-const TOKEN_TTL_MS = 30 * 60 * 1000
-let tokenValue = randomBytes(16).toString('hex')
-let tokenIssuedAt = Date.now()
-function currentToken() {
-  if (Date.now() - tokenIssuedAt > TOKEN_TTL_MS) {
-    tokenValue = randomBytes(16).toString('hex')
-    tokenIssuedAt = Date.now()
-  }
-  return tokenValue
+const TOKEN = randomBytes(16).toString('hex')
+export function currentToken() {
+  // Stable for the plugin process lifetime. Rotation without a client refresh
+  // handshake made open pages fail after 30 minutes with 403.
+  return TOKEN
 }
 const DSH_HOME = process.env.DSH_HOME ? path.resolve(process.env.DSH_HOME) : path.join(os.homedir(), '.dsh')
 

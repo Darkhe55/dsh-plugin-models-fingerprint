@@ -11,6 +11,8 @@
       const railRef = React.useRef(null)
       const cardRefs = React.useRef(new Map())
       const positions = React.useRef(new Map())
+      const slotOccupants = React.useRef(new Map())
+      const pendingTargets = React.useRef(new Map())
       const lastKnownCard = React.useRef(null)
       const loadedSessionRef = React.useRef(null)
       const turnsKey = React.useRef('')
@@ -46,6 +48,8 @@
           setRenderIds(new Set())
           setTurns([])
           positions.current.clear()
+          slotOccupants.current.clear()
+          pendingTargets.current.clear()
           lastKnownCard.current = null
           exitHoldRef.current.clear()
           initialFadeRef.current = true
@@ -326,9 +330,8 @@
           const gap = flowRect.left - sidebarRight
           const cardWidth = 176
           const nextCompact = gap < cardWidth + 24 || (sidebarRight === 0 && flowRect.left < cardWidth * 2)
-          const activeWidth = nextCompact ? 56 : cardWidth
-          const maxLeft = Math.max(safeLeft, flowRect.right - activeWidth - 6)
-          const left = Math.min(maxLeft, nextCompact ? Math.max(safeLeft, flowRect.left - 62) : Math.max(safeLeft, flowRect.left - cardWidth - 10))
+          const anchorRight = TurnGeometry.anchorRight(flowRect, sidebarRight, safeLeft, cardWidth)
+          const right = Math.max(6, window.innerWidth - anchorRight)
           const turnNodes = new Map()
           const renderedTurns = []
           const domRows = []
@@ -350,7 +353,8 @@
             turnNodes.set(key, nodes)
             if (nodes.length) renderedTurns.push({ turn, nodes })
           }
-          geometry.current = { ready: true, left, turnNodes, renderedTurns, offset, clipTop, clipBottom, composerTop, scrollContainer, flowTurns: domTurns.length, domTurns, apiTurns, domRows, compact: nextCompact, sidebarRight, flowLeft: flowRect.left, flowWidth: flowRect.width }
+          geometry.current = { ready: true, left: anchorRight, right, anchorRight, turnNodes, renderedTurns, offset, clipTop, clipBottom, composerTop, scrollContainer, flowTurns: domTurns.length, domTurns, apiTurns, domRows, compact: nextCompact, sidebarRight, flowLeft: flowRect.left, flowWidth: flowRect.width }
+          fetchVisibleTurns(domTurns)
           setCompact((value) => value === nextCompact ? value : nextCompact)
           setClip((value) => Math.abs(value.top - clipTop) < 1 && Math.abs(value.bottom - clipBottom) < 1 ? value : { top: clipTop, bottom: clipBottom })
           setFlowReady(true)
@@ -365,7 +369,7 @@
           }
           if (flowObserver && observedFlow !== flow) {
             flowObserver.disconnect()
-            flowObserver.observe(flow, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden'] })
+            flowObserver.observe(flow, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-chat-turn'] })
             observedFlow = flow
           }
           if (resizeObserver) {
@@ -382,6 +386,26 @@
         let scrollVelocity = 0
         let settlePending = false
         let lastActiveIds = new Set()
+        let mappingRetryTimer = 0
+        let mappingRetries = 0
+        const turnQueue = new TurnRequestQueue({
+          fetchTurn: (turn) => {
+            const target = sessionId || railSessionId
+            if (!target) return null
+            return fetch(apiUrl('/model-fingerprint/api/turn-view?id=' + encodeURIComponent(target) + '&turn=' + encodeURIComponent(turn)), { cache: 'no-store' })
+              .then((response) => response.ok ? response.json() : null)
+          },
+          onTurn: (turn) => {
+            if (cancelled || !turn || turn.hasModelData === false) return
+            const merged = turnWindow.current.merge([turn])
+            turnsRef.current = merged
+            setTurns(merged)
+            schedule(true)
+          },
+        })
+        const fetchVisibleTurns = (domTurns) => {
+          turnQueue.request(domTurns, turnsRef.current, geometry.current.offset || 0)
+        }
         const rangeParts = (node) => {
           if (!node) return { range: null, segments: [] }
           const cached = node.__mfRangeParts
@@ -411,7 +435,7 @@
         const animator = new SlotAnimator({ eased: spring, reduced: reducedMotion, cardWidth: 176 })
         const scrollScheduler = new ScrollScheduler({
           settleMs: 110,
-          onSettle: () => schedule(false, { settle: true }),
+          onSettle: () => schedule(true, { settle: true }),
         })
 
         const update = (needsRebuild, settle = false) => {
@@ -423,6 +447,7 @@
           }
           const measured = []
           const now = performance.now()
+          const scrolling = scrollScheduler.scrolling && !settle
           const holdMap = exitHoldRef.current
           for (const item of geo.renderedTurns) {
             const turn = item.turn
@@ -448,11 +473,28 @@
               hold = { at: now, dir: aboveRaw ? 'top' : 'bottom', exiting: true }
               holdMap.set(turn.id, hold)
             }
-            const held = false
-            const above = aboveRaw
-            const below = belowRaw
+            if (!scrolling && (aboveRaw || belowRaw)) {
+              holdMap.delete(turn.id)
+              hold = null
+            }
+            const held = Boolean(scrolling && hold && hold.exiting)
+            const above = held ? false : aboveRaw
+            const below = held ? false : belowRaw
             measured.push({ turn, top, bottom, anchorTop: anchor ? anchor.visibleTop : null, anchorBottom: anchor ? anchor.visibleBottom : null, segments, above, below, held, heldDir: held ? contactDir : null })
           }
+          if (measured.length === 0 && geo.domTurns.length > 0 && positions.current.size > 0) {
+            fetchVisibleTurns(geo.domTurns)
+            if (!mappingRetryTimer && mappingRetries < 3) {
+              mappingRetries += 1
+              mappingRetryTimer = window.setTimeout(() => {
+                mappingRetryTimer = 0
+                schedule(true)
+              }, 70)
+            }
+            railDebug = { ...railDebug, reason: 'mapping-pending', domTurns: geo.domTurns.length, cards: positions.current.size }
+            return
+          }
+          mappingRetries = 0
           const above = measured
             .filter((entry) => entry.above)
             .sort((left, right) => right.bottom - left.bottom)
@@ -462,8 +504,12 @@
           const middle = measured
             .filter((entry) => !entry.above && !entry.below)
             .sort((left, right) => left.top - right.top || Number(left.turn.turn) - Number(right.turn.turn))
-          const topTurn = above[0] || null
-          let bottomTurn = below[0] || null
+          const measuredTopTurn = above[0] || null
+          let measuredBottomTurn = below[0] || null
+          const storedTop = slotOccupants.current.get('top') || null
+          const storedBottom = slotOccupants.current.get('bottom') || null
+          const topTurn = scrolling && storedTop ? { turn: storedTop } : measuredTopTurn
+          let bottomTurn = scrolling && storedBottom ? { turn: storedBottom } : measuredBottomTurn
           const domWithoutMapping = measured.length === 0 && Array.isArray(geo.domTurns) && geo.domTurns.length > 0
           const latestTurn = [...turns]
             .filter((turn) => Number.isFinite(Number(turn.turn)))
@@ -472,7 +518,7 @@
             ? geo.scrollContainer.scrollTop + geo.scrollContainer.clientHeight >= geo.scrollContainer.scrollHeight - 8
             : false
           if (atBottom) {
-            bottomTurn = null
+            if (!scrolling) bottomTurn = null
             if (!domWithoutMapping && latestTurn && !middle.some((entry) => entry.turn.id === latestTurn.id) && !measured.some((entry) => entry.turn.id === latestTurn.id)) {
               middle.push({ turn: latestTurn, top: geo.clipTop, bottom: geo.clipBottom, synthetic: true })
             }
@@ -537,6 +583,10 @@
               : visibleBottom
             const center = (lineTop + lineBottom) / 2
             const prior = positions.current.get(entry.turn.id)
+            if (scrolling && prior && prior.visible && prior.zone !== 'middle') {
+              pendingTargets.current.set(entry.turn.id, { top: center, zone: 'middle', turn: entry.turn })
+              continue
+            }
             let y
             if (prior && prior.visible && prior.zone === 'middle') {
               const topEdge = prior.top
@@ -568,6 +618,15 @@
           }
           if (topTurn) targets.set(topTurn.turn.id, { top: topY, zone: 'top', turn: topTurn.turn })
           if (bottomTurn) targets.set(bottomTurn.turn.id, { top: bottomY, zone: 'bottom', turn: bottomTurn.turn })
+          if (scrolling) {
+            pendingTargets.current = new Map(targets)
+          } else {
+            pendingTargets.current.clear()
+            if (measuredTopTurn) slotOccupants.current.set('top', measuredTopTurn.turn)
+            else slotOccupants.current.delete('top')
+            if (measuredBottomTurn) slotOccupants.current.set('bottom', measuredBottomTurn.turn)
+            else slotOccupants.current.delete('bottom')
+          }
           const focusTurn = middle.length ? middle[0].turn.turn : latestTurn && latestTurn.turn
           if (turnWindow.current.pruneAround(focusTurn)) {
             const pruned = turnWindow.current.turns()
@@ -577,7 +636,6 @@
           for (const target of targets.values()) {
             if (target.turn && target.turn.id !== '__current__' && target.turn.primaryShort) lastKnownCard.current = target.turn
           }
-          const scrolling = scrollScheduler.scrolling && !settle
           const activeVelocity = scrolling ? Math.abs(scrollVelocity) : 0
           const motionScale = reducedMotion ? 0.45 : activeVelocity > 6 ? 0.42 : activeVelocity > 2 ? 0.7 : 1
           const previousActiveIds = lastActiveIds
@@ -614,7 +672,7 @@
             const previous = positions.current.get(id)
             const node = cardRefs.current.get(id)
             const targetScale = target.zone === 'middle' ? 1 : 0.88
-            positions.current.set(id, { left: geo.left, top: target.top, visible: true, zone: target.zone, scale: targetScale })
+            positions.current.set(id, { right: geo.right, top: target.top, visible: true, zone: target.zone, scale: targetScale })
             if (!node) continue
             const previousRect = visualRects.get(id) || null
             const ejectAnimation = animator.animation(node, 'mf-eject')
@@ -644,7 +702,7 @@
             setTransition(node, scrolling ? 'none' : transitionFor(false))
             setStyle(node, 'pointerEvents', 'auto')
             setStyle(node, 'scale', '1')
-            node.style.transform = 'translate3d(' + geo.left + 'px,' + target.top + 'px,0) scale(' + targetScale + ')'
+            node.style.transform = 'translate3d(0,' + target.top + 'px,0) scale(' + targetScale + ')'
             node.__mfOpacity = Number(targetOpacity)
             setStyle(node, 'filter', context ? 'grayscale(.45) saturate(.65)' : 'none')
             setStyle(node, 'boxShadow', context ? '0 1px 4px rgba(16,24,40,.06)' : '0 4px 12px rgba(16,24,40,.10)')
@@ -683,7 +741,7 @@
             if (animateTransform) {
               try {
                 animator.shift(node, {
-                  left: geo.left,
+                  left: 0,
                   fromTop,
                   fromScale: previousScale,
                   toTop: target.top,
@@ -704,7 +762,7 @@
                 const fromScale = reentryRect ? targetScale : initialFade ? targetScale : targetScale * 0.96
                 try {
                   animator.enter(node, {
-                    left: geo.left,
+                    left: 0,
                     fromTop: fromY,
                     fromScale,
                     toTop: target.top,
@@ -725,18 +783,18 @@
           for (const [id, node] of cardRefs.current) {
             if (targets.has(id)) continue
             const previous = positions.current.get(id)
-            if (previous && previous.visible) {
+            if (previous && previous.visible && !scrolling) {
               transitionRoles.push({ id, role: 'ejecting', from: previous.zone })
               const ejectDistance = Math.max(64, cardH * 1.2)
-              const fromTransform = node.style.transform || 'translate3d(' + geo.left + 'px,' + previous.top + 'px,0) scale(0.88)'
+              const fromTransform = node.style.transform || 'translate3d(0,' + previous.top + 'px,0) scale(0.88)'
               const fromOpacity = visualOpacity.has(id) ? visualOpacity.get(id) : 0.5
               let toTransform = fromTransform
-              if (previous.zone === 'top') toTransform = 'translate3d(' + geo.left + 'px,' + Math.max(0, previous.top - ejectDistance) + 'px,0) scale(0.76)'
-              else if (previous.zone === 'bottom') toTransform = 'translate3d(' + geo.left + 'px,' + (previous.top + ejectDistance) + 'px,0) scale(0.76)'
+              if (previous.zone === 'top') toTransform = 'translate3d(0,' + Math.max(0, previous.top - ejectDistance) + 'px,0) scale(0.76)'
+              else if (previous.zone === 'bottom') toTransform = 'translate3d(0,' + (previous.top + ejectDistance) + 'px,0) scale(0.76)'
               else if (previous.zone === 'middle') {
                 const direction = previous.top < (geo.clipTop + geo.clipBottom) / 2 ? -1 : 1
                 const outgoing = direction < 0 ? Math.max(0, geo.clipTop - ejectDistance) : geo.clipBottom + ejectDistance
-                toTransform = 'translate3d(' + geo.left + 'px,' + outgoing + 'px,0) scale(0.76)'
+                toTransform = 'translate3d(0,' + outgoing + 'px,0) scale(0.76)'
               }
               node.style.transition = 'none'
               node.style.pointerEvents = 'none'
@@ -753,7 +811,7 @@
                 node.style.transform = toTransform
               }
             }
-            positions.current.set(id, { left: geo.left, top: previous ? previous.top : -9999, visible: false, zone: previous ? previous.zone : 'hidden' })
+            positions.current.set(id, { right: geo.right, top: previous ? previous.top : -9999, visible: false, zone: previous ? previous.zone : 'hidden' })
           }
           railDebug = {
             flow: true,
@@ -830,6 +888,7 @@
             safeUpdate(pending, doSettle)
           })
         }
+        const rebindScheduler = new RebindScheduler({ onRebind: () => schedule(true) })
 
         safeUpdate(true)
         const onScroll = () => {
@@ -848,7 +907,8 @@
           scrollScheduler.noteScroll()
           if (top < 320 && hasMoreRef.current) loadOlderRef.current?.()
           // Light follow while the wheel moves; one semantic settle after it stops.
-          schedule(jumped)
+          if (jumped) rebindScheduler.kick()
+          else schedule(false)
         }
         const onResize = () => schedule(true)
         window.addEventListener('scroll', onScroll, { capture: true, passive: true })
@@ -861,6 +921,8 @@
           if (resizeObserver) resizeObserver.disconnect()
           if (flowObserver) flowObserver.disconnect()
           if (mutationTimer) clearTimeout(mutationTimer)
+          if (mappingRetryTimer) clearTimeout(mappingRetryTimer)
+          rebindScheduler.dispose()
           scrollScheduler.dispose()
           if (tick) clearInterval(tick)
         }
@@ -872,7 +934,7 @@
         : undefined
       const children = turns.filter((turn) => renderIds.has(turn.id)).map((turn) => {
         const color = railColors[turn.verdict] || railColors.first
-        const position = positions.current.get(turn.id) || { left: geometry.current.left || 0, top: -9999 }
+        const position = positions.current.get(turn.id) || { right: geometry.current.right || 0, top: -9999 }
         const base = {
           key: turn.id,
           ref: (node) => {
@@ -882,15 +944,16 @@
           onClick: () => setOpen(true),
           style: {
             position: 'absolute',
-            left: 0,
+            left: 'auto',
+            right: position.right || 0,
             top: 0,
             pointerEvents: 'auto',
             cursor: 'pointer',
-            transform: 'translate3d(' + position.left + 'px,' + position.top + 'px,0)',
+            transform: 'translate3d(0,' + position.top + 'px,0)',
             opacity: position.visible ? 1 : 0,
             scale: position.visible ? '1' : '0.86',
             translate: '0 0',
-            transformOrigin: 'left center',
+            transformOrigin: 'right center',
             pointerEvents: position.visible ? 'auto' : 'none',
             willChange: 'transform, opacity, scale, translate',
             boxSizing: 'border-box',
@@ -960,7 +1023,7 @@
           h('div', { style: { marginTop: 1, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, String(turn.primaryModel || '')),
         )
       })
-      const placeholderPosition = positions.current.get('__current__') || { left: geometry.current.left || 0, top: -9999, visible: false }
+      const placeholderPosition = positions.current.get('__current__') || { right: geometry.current.right || 0, top: -9999, visible: false }
       children.push(h('div', {
         key: '__current__',
         ref: (node) => {
@@ -970,7 +1033,8 @@
         onClick: () => setOpen(true),
         style: {
           position: 'absolute',
-          left: 0,
+          left: 'auto',
+          right: placeholderPosition.right || 0,
           top: 0,
           width: compact ? 56 : 176,
           boxSizing: 'border-box',
@@ -984,10 +1048,10 @@
           color: 'var(--dsw-alias-label-tertiary, #667085)',
           fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
           lineHeight: 1.35,
-          transform: 'translate3d(' + placeholderPosition.left + 'px,' + placeholderPosition.top + 'px,0)',
+          transform: 'translate3d(0,' + placeholderPosition.top + 'px,0)',
           opacity: placeholderPosition.visible ? 1 : 0,
           scale: placeholderPosition.visible ? '1' : '0.86',
-          transformOrigin: 'left center',
+          transformOrigin: 'right center',
           transition: 'opacity 150ms ease, scale 360ms cubic-bezier(.22,1.4,.36,1), transform 100ms linear',
           willChange: 'transform, opacity, scale',
         },

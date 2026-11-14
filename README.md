@@ -451,6 +451,8 @@ index.js                 Host 入口：路由、工具、live 订阅、探针、
 client.js                构建后的 Client 入口
 client/                  Client 源码模块
 client/scroll-scheduler.js 滚动 follow / settle 调度
+client/rebind-scheduler.js 大跨度跳转后的有界 DOM 重绑
+client/turn-requests.js  未加载 turn 的自动补取与去重
 scripts/build-client.mjs Client 构建脚本
 lib/core.mjs             观测提取、指纹哈希、行为统计
 lib/scan.mjs             文件发现、增量扫描、live、补算

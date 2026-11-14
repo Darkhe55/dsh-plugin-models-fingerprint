@@ -1,4 +1,8 @@
     class TurnGeometry {
+      static anchorRight(flowRect, sidebarRight, safeLeft, cardWidth = 176) {
+        const safe = Number.isFinite(safeLeft) ? safeLeft : (sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64))
+        return Math.min(flowRect.right - 6, Math.max(safe + cardWidth, flowRect.left - 6))
+      }
       static isUserNode(node) {
         if (!node || !node.getAttribute) return false
         const kind = String(node.getAttribute('data-chat-flow-kind') || '').toLowerCase()
