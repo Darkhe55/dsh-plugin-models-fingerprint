@@ -1911,18 +1911,11 @@ window.__ModuleLoader__.load({
           const previous = committed.current
           committed.current = targets
           const rects = new Map()
-          const anchorRight = Math.max(6, Number(geometry.current.right) || 0)
           for (const [id, node] of cardRefs.current) {
             if (!node || node.isConnected === false) continue
             const rect = node.getBoundingClientRect()
             if (rect && rect.height) rects.set(id, rect)
-            // The message column can change width without changing compact/
-            // full mode (sidebars, window resize, dock transitions). React's
-            // style prop is only written on render, so update the right anchor
-            // on every measured frame as well.
-            setStyle(node, 'right', anchorRight + 'px')
           }
-          if (placeholderRef.current) setStyle(placeholderRef.current, 'right', anchorRight + 'px')
           const validSnapshot = Boolean(snapshot && !snapshot.invalid && snapshot.rows && snapshot.rows.length)
           for (const id of targets.keys()) absent.current.delete(id)
           for (const [id, node] of cardRefs.current) {
@@ -2257,6 +2250,11 @@ window.__ModuleLoader__.load({
           const priorRows = geometry.current.lastRows
           const layout = adapter.measureViewport(flow)
           geometry.current = { ...layout, ready: true, domTurns: geometry.current.domTurns || [] }
+          // One inherited anchor for every card generation (full, compact,
+          // placeholder, exiting). This is independent of per-node ref timing:
+          // a compact card created after this measurement still inherits the
+          // current anchor immediately.
+          if (railRef.current) railRef.current.style.setProperty('--mf-rail-right', String(Math.max(6, geometry.current.right || 0)) + 'px')
           const snapshot = adapter.capture(flow, layout)
           geometry.current.domTurns = snapshot.domTurns || []
           const detected = priorRows && !snapshot.invalid ? railJumpDetected({ rows: priorRows }, snapshot) : null
@@ -2411,7 +2409,7 @@ window.__ModuleLoader__.load({
           style: {
             position: 'absolute',
             left: 'auto',
-            right: position.right || geometry.current.right || 0,
+            right: 'var(--mf-rail-right, ' + String(geometry.current.right || 0) + 'px)',
             top: 0,
             pointerEvents: position.visible ? 'auto' : 'none',
             cursor: 'pointer',
@@ -2483,7 +2481,7 @@ window.__ModuleLoader__.load({
         style: {
           position: 'absolute',
           left: 'auto',
-          right: placeholderPosition.current.right || 0,
+          right: 'var(--mf-rail-right, ' + String(geometry.current.right || 0) + 'px)',
           top: 0,
           width: compact ? 56 : 176,
           boxSizing: 'border-box',
@@ -2542,6 +2540,7 @@ window.__ModuleLoader__.load({
           zIndex: 8,
           pointerEvents: 'none',
           overflow: 'hidden',
+          '--mf-rail-right': String(geometry.current.right || 0) + 'px',
           clipPath,
           opacity: canvasOpen || rightbarOpen ? 0 : 1,
           transition: 'opacity 160ms ease',
