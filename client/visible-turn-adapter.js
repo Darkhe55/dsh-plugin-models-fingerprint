@@ -13,6 +13,7 @@
         this.listeners = new Set()
         this.observer = null
         this.resizeObserver = null
+        this.resizeNodes = []
         this.observedFlow = null
         this.unsubscribeRegistry = registry && typeof registry.subscribe === 'function'
           ? registry.subscribe(() => this.emit())
@@ -224,7 +225,8 @@
         }
         if (typeof ResizeObserver === 'function') {
           this.resizeObserver = new ResizeObserver(() => this.emit())
-          this.resizeObserver.observe(flow)
+          this.resizeNodes = [flow, flow.parentElement, document.documentElement].filter(Boolean)
+          for (const node of this.resizeNodes) this.resizeObserver.observe(node)
         }
       }
       disconnectObservers() {
@@ -232,6 +234,7 @@
         if (this.resizeObserver) this.resizeObserver.disconnect()
         this.observer = null
         this.resizeObserver = null
+        this.resizeNodes = []
         this.observedFlow = null
       }
       dispose() {

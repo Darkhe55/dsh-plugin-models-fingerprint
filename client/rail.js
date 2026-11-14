@@ -516,11 +516,18 @@
           const previous = committed.current
           committed.current = targets
           const rects = new Map()
+          const anchorRight = Math.max(6, Number(geometry.current.right) || 0)
           for (const [id, node] of cardRefs.current) {
             if (!node || node.isConnected === false) continue
             const rect = node.getBoundingClientRect()
             if (rect && rect.height) rects.set(id, rect)
+            // The message column can change width without changing compact/
+            // full mode (sidebars, window resize, dock transitions). React's
+            // style prop is only written on render, so update the right anchor
+            // on every measured frame as well.
+            setStyle(node, 'right', anchorRight + 'px')
           }
+          if (placeholderRef.current) setStyle(placeholderRef.current, 'right', anchorRight + 'px')
           const validSnapshot = Boolean(snapshot && !snapshot.invalid && snapshot.rows && snapshot.rows.length)
           for (const id of targets.keys()) absent.current.delete(id)
           for (const [id, node] of cardRefs.current) {
@@ -950,6 +957,20 @@
         window.addEventListener('resize', onResize)
         tick = window.setInterval(() => schedule(false), 1500)
         const rightbarTimer = window.setInterval(syncRightbar, 200)
+        const layoutTimer = window.setInterval(() => {
+          if (disposed) return
+          const flow = adapter.getFlow()
+          if (!flow) return
+          const next = adapter.measureViewport(flow)
+          const current = geometry.current
+          if (!current.ready
+            || Math.abs((next.right || 0) - (current.right || 0)) > 0.5
+            || Math.abs((next.clipTop || 0) - (current.clipTop || 0)) > 0.5
+            || Math.abs((next.clipBottom || 0) - (current.clipBottom || 0)) > 0.5
+            || next.compact !== current.compact) {
+            schedule(true)
+          }
+        }, 300)
         return () => {
           disposed = true
           if (raf) window.cancelAnimationFrame(raf)
@@ -964,6 +985,7 @@
           scrollScheduler.dispose()
           if (tick) clearInterval(tick)
           if (rightbarTimer) clearInterval(rightbarTimer)
+          if (layoutTimer) clearInterval(layoutTimer)
           scheduleRef.current = null
           recoveryEvent.current = null
           tracker.current = null

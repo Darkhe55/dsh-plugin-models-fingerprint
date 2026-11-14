@@ -284,7 +284,8 @@ model_fingerprint action=backfill
 2. 用 `VisibleTurnAdapter` 封装 DOM 兼容读取；轨道组件不直接 querySelector 官方 Chat 子树；
 3. 每轮只选择一个 canonical anchor（最终 assistant/message，其次最后一个非工具 assistant-step，最后才回退轮次容器）；
 4. 只读取当前帧的 anchor rect，不跨帧保存节点；
-5. 右侧侧边栏展开时，通过 `ctx.sidebarRight.isExpanded()` 或稳定的 `[data-sidebar-right-open]` 状态自动隐藏轨道卡片，收起后恢复；不会销毁卡片状态，也不会与右侧面板争抢空间。
+5. 右侧侧边栏展开时，通过 `ctx.sidebarRight.isExpanded()` 或稳定的 `[data-sidebar-right-open]` 状态自动隐藏轨道卡片，收起后恢复；不会销毁卡片状态，也不会与右侧面板争抢空间；
+6. 消息列宽度或水平位置变化时，卡片 `right` 锚点和范围线在测量帧内同步更新；ResizeObserver 监听 flow、父列和 document，另有 300ms 布局兜底探测，避免只有 React 重新渲染时才移动。
 
 ---
 
