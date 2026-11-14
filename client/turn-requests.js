@@ -1,7 +1,8 @@
     class TurnRequestQueue {
-      constructor({ fetchTurn, onTurn, limit = 4 } = {}) {
+      constructor({ fetchTurn, onTurn, onNoData, limit = 4 } = {}) {
         this.fetchTurn = fetchTurn
         this.onTurn = onTurn
+        this.onNoData = onNoData
         this.limit = limit
         this.epoch = 0
         this.inFlight = new Map()
@@ -28,14 +29,15 @@
             .then(() => this.fetchTurn(turn, context))
             .then((payload) => {
               if (epoch !== this.epoch) return
-              if (!payload || !payload.turn) return
+              if (!payload) return
               if (context.sessionId && payload.sessionId && String(payload.sessionId) !== String(context.sessionId)) return
               const revision = Number(payload.revision)
               if (Number.isFinite(revision) && Number.isFinite(Number(context.revision)) && revision < Number(context.revision)) return
               const generation = payload.generation === undefined ? context.generation : payload.generation
               const expected = context.generation === undefined ? '' : String(context.generation)
               if (expected && expected !== '0' && generation !== undefined && String(generation) !== expected) return
-              this.onTurn(payload.turn, payload)
+              if (payload.turn) this.onTurn(payload.turn, payload)
+              else if (this.onNoData) this.onNoData(payload)
             })
             .catch(() => { /* keep the last stable cards */ })
             .finally(() => {

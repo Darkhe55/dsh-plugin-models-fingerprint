@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs'
 
 async function loadRailState() {
   const source = await fs.readFile(new URL('../client/rail-state.js', import.meta.url), 'utf8')
-  return new Function(source + '\nreturn { deriveRailTargets, validateRailTargets, chooseRailMapping, railJumpDetected, RailSnapshotTracker }')()
+  return new Function(source + '\nreturn { deriveRailTargets, validateRailTargets, layoutMiddleCards, chooseRailMapping, railJumpDetected, RailSnapshotTracker }')()
 }
 
 const turn = (turn, id = 's:turn:' + turn) => ({ id, turn, verdictLabel: 'test' })
@@ -67,14 +67,37 @@ test('top hysteresis uses position, never a pinned turn', async () => {
   assert.equal(released.middle[0].turn.turn, 1)
 })
 
+test('middle layout never stacks cards and reports overflow as collapsed', async () => {
+  const { layoutMiddleCards } = await loadRailState()
+  const items = Array.from({ length: 8 }, (_, index) => ({
+    id: 't' + index,
+    anchorTop: index * 60,
+    anchorBottom: index * 60 + 40,
+    center: index * 60 + 20,
+  }))
+  const result = layoutMiddleCards(items, { top: 0, bottom: 128, cardHeight: 40, gap: 4 })
+  assert.equal(result.items.length, 3)
+  assert.equal(result.collapsed, 5)
+  assert.equal(result.collapsedIds.length, 5)
+  const tops = result.items.map((item) => item.top)
+  assert.equal(new Set(tops).size, tops.length)
+  for (let index = 1; index < tops.length; index += 1) assert.ok(tops[index] - tops[index - 1] >= 44)
+  assert.ok(tops.every((top) => top >= 0 && top + 40 <= 128))
+  const tooSmall = layoutMiddleCards(items, { top: 0, bottom: 30, cardHeight: 40, gap: 4 })
+  assert.equal(tooSmall.items.length, 0)
+  assert.equal(tooSmall.collapsed, 8)
+})
+
 test('ambiguous offsets keep the previous offset instead of the first candidate', async () => {
   const { chooseRailMapping } = await loadRailState()
   const twoRows = chooseRailMapping([10, 11, 12], [110, 111], { offset: 0, confidence: 0.7 })
   assert.equal(twoRows.offset, 0)
   assert.ok(twoRows.confidence <= 0.7)
   const threeRows = chooseRailMapping([10, 11, 12], [110, 111, 112], { offset: 0, confidence: 0 })
-  assert.equal(threeRows.offset, 100)
-  assert.equal(threeRows.confidence, 1)
+  assert.equal(threeRows.offset, 0, 'pairwise arithmetic is not evidence for an offset')
+  assert.equal(threeRows.confidence, 0)
+  const confirmed = chooseRailMapping([110, 111, 112], [210, 211, 212], { offset: 100, confidence: 1 })
+  assert.equal(confirmed.offset, 100, 'an already confirmed offset remains usable when direct evidence is absent')
 })
 
 test('jump detection and stable-snapshot timeout are bounded but not permanent', async () => {

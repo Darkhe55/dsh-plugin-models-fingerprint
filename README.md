@@ -260,10 +260,53 @@ model_fingerprint action=backfill
 - 启动后台扫描，按文件大小/修改时间增量处理；
 - 追加日志只解析新帧；
 - 补算单独串行执行，不并发重扫；
-- 客户端窗口上限 2000 轮，卡片 DOM 上限 9；
+- 客户端窗口上限 2000 轮；活动/退出/占位卡片按可见轮次生成，单帧只做一次快照和一次写入；
 - 100,000 轮 turn index 分页约 20ms；
 - 100,000 条观测构造单会话轮次约 168ms；
-- 报告按 scanner 版本、标签和 limit 缓存。
+- 报告按 scanner 版本、标签和 limit 缓存；
+- 可见轮次通过 `/api/turn-window` 一次批量取得，单批最多 32 轮；
+- 旧 generation、旧 session、旧 revision 响应丢弃；相同可见窗口请求去重。
+
+---
+
+## 官方扩展点与轨道适配器
+
+当前运行版本为 DSH `0.2.2-rc.3`。可用的正式扩展点：
+
+- `conversation.chat.turnTail`：已完成轮次的 list Slot，owner 提供 `TurnLocation` 和 closing `seq`；
+- `conversation.chat.node`：按 Node kind 替换/扩展 Chat 行渲染，但不能直接装饰已存在的每个轮次；
+- `data-chat-turn`、`data-chat-flow-kind`、`data-chat-group-part`、`data-chat-node-key`：Chat 暴露的稳定 DOM 属性；
+- `data-slot="conversation.chat.flow"`：Chat flow 容器。
+
+没有公开的 visible-turn、scroll、history-pagination 或 per-turn decoration hook。因此：
+
+1. 用 `conversation.chat.turnTail` 注册零布局 probe，获得已完成轮次的官方挂载/卸载生命周期与轮次号；
+2. 用 `VisibleTurnAdapter` 封装 DOM 兼容读取；轨道组件不直接 querySelector 官方 Chat 子树；
+3. 每轮只选择一个 canonical anchor（最终 assistant/message，其次最后一个非工具 assistant-step，最后才回退轮次容器）；
+4. 只读取当前帧的 anchor rect，不跨帧保存节点。
+
+---
+
+## 轨道 API
+
+`GET /model-fingerprint/api/turn-window?id=<sessionId>&turns=80,81,82`
+
+返回：
+
+```js
+{
+  sessionId,
+  revision,
+  generation,
+  turns: [
+    { turn: 80, status: 'observed', data: Turn },
+    { turn: 81, status: 'no-data', data: null, index: TurnIndexRow },
+    { turn: 82, status: 'missing', data: null }
+  ]
+}
+```
+
+`observed` 显示正常指纹卡；`no-data` 显示“无模型指纹数据”；`missing`/请求中显示“指纹数据加载中”。负缓存按 session + generation + turn + revision 生效。
 
 ---
 
@@ -448,7 +491,12 @@ npm run build
 - 固定探针；
 - 插件路由、工具、标签、探针、补算端到端；
 - 客户端几何与用户气泡排除；
+- 单轮 canonical anchor 选择和多段范围移除；
+- 可见轮次批量接口 observed/no-data/missing；
 - 虚拟 DOM 节点复用、786/785/784/783 故障序列、跳转恢复；
+- 防碰撞布局与折叠 ID；
+- 官方 turnTail 生命周期登记；
+- 1,000 次节点复用、500 次历史 prepend、乱序延迟响应；
 - FLIP 起点与最短动画时长。
 
 ---
@@ -459,10 +507,13 @@ npm run build
 index.js                 Host 入口：路由、工具、live 订阅、探针、补算
 client.js                构建后的 Client 入口
 client/                  Client 源码模块
-client/rail-state.js     每帧快照、目标推导、映射置信度、跳转稳定性
+client/rail-state.js     每帧目标推导、canonical anchor、防碰撞布局、跳转稳定性
+client/visible-turn-adapter.js 官方 Chat DOM 快照与 flow/生命周期适配
+client/turn-registry.js  官方 turnTail probe 的挂载/卸载登记
 client/scroll-scheduler.js 滚动 follow / settle 调度
 client/rebind-scheduler.js 大跨度跳转后的有界 DOM 重绑
-client/turn-requests.js  未加载 turn 的自动补取、代际与 revision 防护
+client/turn-requests.js  单轮补取、代际与 revision 防护
+client/turn-window-requests.js 可见轮次批量请求、去重、AbortController
 scripts/build-client.mjs Client 构建脚本
 lib/core.mjs             观测提取、指纹哈希、行为统计
 lib/scan.mjs             文件发现、增量扫描、live、补算

@@ -21,7 +21,11 @@ window.__ModuleLoader__.load({
       }
       duration(role, scale = 1) {
         if (this.reduced) return 0
-        const base = role === 'squeeze' ? 380 : role === 'incoming' ? 260 : 340
+        const base = role === 'squeeze' ? 300
+          : role === 'pushing' ? 260
+            : role === 'incoming' ? 200
+              : role === 'ejecting' ? 200
+                : 220
         // Fast scrolling may shorten motion, but never to zero.
         return Math.max(120, Math.round(base * scale))
       }
@@ -137,6 +141,49 @@ window.__ModuleLoader__.load({
       }
     }
     class TurnGeometry {
+      /**
+       * Choose exactly one canonical reply anchor for a Turn. A Turn can have
+       * user, tool, assistant-step and finalized rows; selecting all of them is
+       * what produced several disconnected braces in the rail.
+       */
+      static pickCanonicalRow(rows) {
+        const usable = (rows || []).filter((row) => row && Number(row.height) > 0)
+        if (!usable.length) return null
+        const legacy = usable.filter((row) => row.kind === 'assistant' || row.kind === 'message')
+        const replies = usable.filter((row) => row.kind === 'assistant-step'
+          && !row.insideProcess
+          && row.groupPart !== 'reasoning')
+        const nonProcess = usable.filter((row) => row.kind === 'assistant-step' && !row.insideProcess)
+        const nonReasoning = usable.filter((row) => row.kind === 'assistant-step' && row.groupPart !== 'reasoning')
+        const assistants = usable.filter((row) => row.kind === 'assistant-step')
+        const pool = legacy.length ? legacy
+          : replies.length ? replies
+            : nonProcess.length ? nonProcess
+              : nonReasoning.length ? nonReasoning : assistants
+        if (!pool.length) return null
+        return pool.slice().sort((left, right) => {
+          const leftStep = Number.isFinite(Number(left.step)) ? Number(left.step) : -1
+          const rightStep = Number.isFinite(Number(right.step)) ? Number(right.step) : -1
+          if (leftStep !== rightStep) return rightStep - leftStep
+          return (Number(right.order) || 0) - (Number(left.order) || 0)
+        })[0]
+      }
+      static visibleRange(rect, clipTop, clipBottom) {
+        if (!rect) return null
+        const top = Math.max(Number(rect.top) || 0, Number(clipTop) || 0)
+        const bottom = Math.min(Number(rect.bottom) || 0, Number(clipBottom) || 0)
+        return bottom > top ? { top, bottom } : null
+      }
+      static canonicalAnchor(rows, clipTop, clipBottom) {
+        const row = TurnGeometry.pickCanonicalRow(rows)
+        if (!row) return null
+        const range = TurnGeometry.visibleRange(row.rect, clipTop, clipBottom)
+        return {
+          row,
+          anchorTop: range ? range.top : null,
+          anchorBottom: range ? range.bottom : null,
+        }
+      }
       static anchorRight(flowRect, sidebarRight, safeLeft, cardWidth = 176) {
         const safe = Number.isFinite(safeLeft) ? safeLeft : (sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64))
         return Math.min(flowRect.right - 6, Math.max(safe + cardWidth, flowRect.left - 6))
@@ -233,18 +280,31 @@ window.__ModuleLoader__.load({
       constructor(maxWindow = 2000) {
         this.maxWindow = Math.max(200, Number(maxWindow) || 2000)
         this.rows = new Map()
+        this.byNumber = new Map()
         this.hasMore = false
       }
       reset() {
         this.rows.clear()
+        this.byNumber.clear()
         this.hasMore = false
       }
       merge(incoming) {
         for (const turn of incoming || []) {
           if (!turn || turn.id === undefined) continue
           this.rows.set(turn.id, turn)
+          const number = Number(turn.turn)
+          if (Number.isFinite(number)) this.byNumber.set(number, turn)
         }
         return this.turns()
+      }
+      get(turn) {
+        return this.byNumber.get(Number(turn)) || null
+      }
+      has(turn) {
+        return this.byNumber.has(Number(turn))
+      }
+      numbers() {
+        return [...this.byNumber.keys()]
       }
       turns() {
         return [...this.rows.values()].sort((left, right) => Number(right.turn) - Number(left.turn))
@@ -267,6 +327,11 @@ window.__ModuleLoader__.load({
         const keep = new Set(rows.slice(0, this.maxWindow).map((turn) => turn.id))
         for (const id of [...this.rows.keys()]) {
           if (!keep.has(id)) this.rows.delete(id)
+        }
+        this.byNumber.clear()
+        for (const turn of this.rows.values()) {
+          const number = Number(turn.turn)
+          if (Number.isFinite(number)) this.byNumber.set(number, turn)
         }
         return true
       }
@@ -303,26 +368,30 @@ window.__ModuleLoader__.load({
         if (domTurn === null) continue
         const turn = turnByNumber.get(domTurn - offset)
         if (!turn || !turn.id || seen.has(turn.id)) continue
-        const top = Number(row.top)
-        const bottom = Number(row.bottom)
-        if (!Number.isFinite(top) || !Number.isFinite(bottom) || bottom <= top) continue
+        const turnTop = Number(row.turnTop === undefined ? row.top : row.turnTop)
+        const turnBottom = Number(row.turnBottom === undefined ? row.bottom : row.turnBottom)
+        const anchorFinite = row.anchorTop !== null && row.anchorTop !== undefined
+          && row.anchorBottom !== null && row.anchorBottom !== undefined
+        const anchorTop = anchorFinite ? Number(row.anchorTop) : null
+        const anchorBottom = anchorFinite ? Number(row.anchorBottom) : null
+        if (!Number.isFinite(turnTop) || !Number.isFinite(turnBottom) || turnBottom <= turnTop) continue
         seen.add(turn.id)
         const priorZone = previous.get(turn.id) || null
         let zone = 'middle'
         if (priorZone === 'top') {
-          if (bottom <= clipTop + RAIL_TOP_LEAVE) zone = 'top'
-        } else if (bottom <= clipTop - RAIL_TOP_ENTER) {
+          if (turnBottom <= clipTop + RAIL_TOP_LEAVE) zone = 'top'
+        } else if (turnBottom <= clipTop - RAIL_TOP_ENTER) {
           zone = 'top'
         }
         if (zone === 'middle') {
           if (priorZone === 'bottom') {
-            if (top >= clipBottom - RAIL_BOTTOM_LEAVE) zone = 'bottom'
-          } else if (top >= clipBottom + RAIL_BOTTOM_ENTER) {
+            if (turnTop >= clipBottom - RAIL_BOTTOM_LEAVE) zone = 'bottom'
+          } else if (turnTop >= clipBottom + RAIL_BOTTOM_ENTER) {
             zone = 'bottom'
           }
         }
-        if (zone === 'middle' && !(bottom > clipTop && top < clipBottom)) continue
-        candidates.push({ turn, row, top, bottom, zone })
+        if (zone === 'middle' && !(turnBottom > clipTop && turnTop < clipBottom)) continue
+        candidates.push({ turn, row, top: turnTop, bottom: turnBottom, anchorTop, anchorBottom, hasAnchor: anchorFinite, zone })
       }
       let top = null
       let bottom = null
@@ -338,6 +407,76 @@ window.__ModuleLoader__.load({
       if (bottom) ids.add(bottom.turn.id)
       for (const entry of middle) ids.add(entry.turn.id)
       return { top, middle, bottom, ids }
+    }
+
+    /**
+     * Collision-free middle layout. Space is allowed to run out: cards are
+     * selected (center first, with the two boundary cards retained when
+     * possible) and the rest are reported as collapsed instead of stacking at
+     * the bottom edge and pretending to be visible.
+     */
+    function layoutMiddleCards(items, { top, bottom, cardHeight, gap = 4 } = {}) {
+      const list = (items || [])
+        .filter((item) => item && item.id !== undefined)
+        .map((item, index) => ({
+          ...item,
+          index,
+          center: Number.isFinite(Number(item.center))
+            ? Number(item.center)
+            : (Number(item.anchorTop) + Number(item.anchorBottom)) / 2,
+        }))
+        .sort((left, right) => left.center - right.center || left.index - right.index)
+      const available = Math.max(0, Number(bottom) - Number(top))
+      const height = Math.max(1, Number(cardHeight) || 1)
+      const space = Math.max(0, Number(gap) || 0)
+      const capacity = Math.max(0, Math.floor((available + space) / (height + space)))
+      if (!list.length || capacity <= 0) {
+        return { items: [], collapsed: list.length, collapsedIds: list.map((item) => item.id) }
+      }
+      let selected = list
+      if (list.length > capacity) {
+        const keep = new Map()
+        const center = available / 2 + Number(top)
+        const byCenter = list.slice().sort((left, right) => Math.abs(left.center - center) - Math.abs(right.center - center))
+        if (capacity === 1) {
+          keep.set(byCenter[0].id, byCenter[0])
+        } else {
+          keep.set(list[0].id, list[0])
+          keep.set(list[list.length - 1].id, list[list.length - 1])
+          for (const item of byCenter) {
+            if (keep.size >= capacity) break
+            keep.set(item.id, item)
+          }
+        }
+        selected = list.filter((item) => keep.has(item.id))
+      }
+      const positions = selected.map((item) => Math.min(
+        Math.max(item.center - height / 2, Number(top)),
+        Math.max(Number(top), Number(bottom) - height),
+      ))
+      let cursor = Number(top)
+      for (let index = 0; index < positions.length; index += 1) {
+        positions[index] = Math.max(positions[index], cursor)
+        cursor = positions[index] + height + space
+      }
+      if (cursor - space > Number(bottom)) {
+        let next = Number(bottom) - height
+        for (let index = positions.length - 1; index >= 0; index -= 1) {
+          positions[index] = Math.min(positions[index], next)
+          next = positions[index] - space - height
+        }
+        cursor = Number(top)
+        for (let index = 0; index < positions.length; index += 1) {
+          positions[index] = Math.max(positions[index], cursor)
+          cursor = positions[index] + height + space
+        }
+      }
+      const visible = new Set(selected.map((item) => item.id))
+      return {
+        items: selected.map((item, index) => ({ ...item, top: Math.round(positions[index]) })),
+        collapsed: list.length - selected.length,
+        collapsedIds: list.filter((item) => !visible.has(item.id)).map((item) => item.id),
+      }
     }
 
     function validateRailTargets(targets) {
@@ -372,26 +511,22 @@ window.__ModuleLoader__.load({
         const direct = matchCount(0)
         return { offset: 0, confidence: direct > 0 ? 0.7 : 0, score: direct }
       }
-      const candidates = new Set([0, oldOffset])
-      for (const domTurn of dom.slice(0, 24)) {
-        for (const apiTurn of api.slice(0, 24)) candidates.add(domTurn - apiTurn)
-      }
+      // `data-chat-turn` is the official Turn number. Never infer an arbitrary
+      // offset from pairwise arithmetic: with a loaded window of 700–800 and a
+      // visible DOM range of 80–90 that would map 80 onto 787 and hide the real
+      // 80–90 fingerprints. Only the identity offset or an already-confirmed
+      // previous offset may be used.
+      const direct = matchCount(0)
       let bestOffset = oldOffset
       let bestScore = oldScore
       let tie = false
-      for (const candidate of candidates) {
-        const score = matchCount(candidate)
-        if (score > bestScore) {
-          bestOffset = candidate
-          bestScore = score
-          tie = false
-        } else if (score === bestScore && candidate !== bestOffset) {
-          tie = true
-        }
+      if (direct > bestScore) {
+        bestOffset = 0
+        bestScore = direct
+      } else if (direct === bestScore && bestOffset !== 0) {
+        tie = true
       }
       if (bestScore < 2) return { offset: oldOffset, confidence: oldScore > 0 ? (previous.confidence || 0.6) : 0, score: oldScore, tie }
-      // A tied candidate set is ambiguous. Keep the previous offset rather
-      // than selecting whichever candidate happened to be enumerated first.
       if (tie) return { offset: oldOffset, confidence: previous && previous.confidence ? previous.confidence : 0, score: oldScore, tie }
       return { offset: bestOffset, confidence: bestScore >= 3 ? 1 : 0.6, score: bestScore, tie }
     }
@@ -491,9 +626,10 @@ window.__ModuleLoader__.load({
       }
     }
     class TurnRequestQueue {
-      constructor({ fetchTurn, onTurn, limit = 4 } = {}) {
+      constructor({ fetchTurn, onTurn, onNoData, limit = 4 } = {}) {
         this.fetchTurn = fetchTurn
         this.onTurn = onTurn
+        this.onNoData = onNoData
         this.limit = limit
         this.epoch = 0
         this.inFlight = new Map()
@@ -520,14 +656,15 @@ window.__ModuleLoader__.load({
             .then(() => this.fetchTurn(turn, context))
             .then((payload) => {
               if (epoch !== this.epoch) return
-              if (!payload || !payload.turn) return
+              if (!payload) return
               if (context.sessionId && payload.sessionId && String(payload.sessionId) !== String(context.sessionId)) return
               const revision = Number(payload.revision)
               if (Number.isFinite(revision) && Number.isFinite(Number(context.revision)) && revision < Number(context.revision)) return
               const generation = payload.generation === undefined ? context.generation : payload.generation
               const expected = context.generation === undefined ? '' : String(context.generation)
               if (expected && expected !== '0' && generation !== undefined && String(generation) !== expected) return
-              this.onTurn(payload.turn, payload)
+              if (payload.turn) this.onTurn(payload.turn, payload)
+              else if (this.onNoData) this.onNoData(payload)
             })
             .catch(() => { /* keep the last stable cards */ })
             .finally(() => {
@@ -538,6 +675,397 @@ window.__ModuleLoader__.load({
       }
       get pending() {
         return this.inFlight.size
+      }
+    }
+    class TurnWindowQueue {
+      constructor({ fetchWindow, onResult, onFallback, onError, limit = 32 } = {}) {
+        this.fetchWindow = fetchWindow
+        this.onResult = onResult
+        this.onFallback = onFallback
+        this.onError = onError
+        this.limit = limit
+        this.epoch = 0
+        this.controller = null
+        this.lastKey = ''
+        this.inFlight = false
+      }
+      request(turns, context = {}) {
+        const values = []
+        const seen = new Set()
+        for (const value of turns || []) {
+          const turn = Number(value)
+          if (!Number.isFinite(turn) || seen.has(turn)) continue
+          seen.add(turn)
+          values.push(turn)
+          if (values.length >= this.limit) break
+        }
+        if (!values.length) return values
+        values.sort((left, right) => left - right)
+        const key = [context.sessionId, context.revision, context.generation, values.join(',')].join('|')
+        if (key === this.lastKey) return values
+        this.lastKey = key
+        if (this.controller) {
+          try { this.controller.abort() } catch { /* already settled */ }
+        }
+        const controller = typeof AbortController === 'function' ? new AbortController() : null
+        this.controller = controller
+        const epoch = this.epoch
+        this.inFlight = true
+        Promise.resolve()
+          .then(() => this.fetchWindow(values, context, controller ? controller.signal : undefined))
+          .then((response) => {
+            if (epoch !== this.epoch) return null
+            if (response && response.status === 404) {
+              this.lastKey = ''
+              if (this.onFallback) this.onFallback(values, context)
+              return null
+            }
+            if (!response || !response.ok) throw new Error('turn-window HTTP ' + (response ? response.status : 'network'))
+            return response.json()
+          })
+          .then((payload) => {
+            if (!payload || epoch !== this.epoch) return
+            if (payload.sessionId && context.sessionId && String(payload.sessionId) !== String(context.sessionId)) return
+            if (context.generation !== undefined && String(context.generation) !== '0'
+              && payload.generation !== undefined && String(payload.generation) !== String(context.generation)) return
+            if (Number(payload.revision) < Number(context.revision)) return
+            if (this.onResult) this.onResult(payload)
+          })
+          .catch((error) => {
+            if (epoch !== this.epoch) return
+            this.lastKey = ''
+            if (this.onError) this.onError(error)
+          })
+          .finally(() => {
+            if (epoch !== this.epoch) return
+            this.inFlight = false
+            if (this.controller === controller) this.controller = null
+          })
+        return values
+      }
+      invalidate() {
+        this.epoch += 1
+        if (this.controller) {
+          try { this.controller.abort() } catch { /* already settled */ }
+        }
+        this.controller = null
+        this.lastKey = ''
+        this.inFlight = false
+      }
+    }
+    /**
+     * Official lifecycle hints from `conversation.chat.turnTail`. This is not a
+     * visible-turn source: the slot only mounts completed Turn tails. It is a
+     * stable mount/unmount signal and a turn-number authority, used to wake the
+     * rail adapter without trusting recycled DOM attributes.
+     */
+    class OfficialTurnRegistry {
+      constructor() {
+        this.entries = new Map()
+        this.listeners = new Set()
+        this.version = 0
+      }
+      subscribe(listener) {
+        this.listeners.add(listener)
+        return () => this.listeners.delete(listener)
+      }
+      emit() {
+        this.version += 1
+        for (const listener of this.listeners) {
+          try { listener(this.version) } catch { /* one listener must not break lifecycle tracking */ }
+        }
+      }
+      add(turn, entry) {
+        const number = Number(turn)
+        if (!Number.isFinite(number)) return () => {}
+        const token = { turn: number, ...entry }
+        this.entries.set(number, token)
+        this.emit()
+        return () => {
+          if (this.entries.get(number) === token) {
+            this.entries.delete(number)
+            this.emit()
+          }
+        }
+      }
+      get(turn) {
+        return this.entries.get(Number(turn)) || null
+      }
+      turns() {
+        return [...this.entries.keys()]
+      }
+      dispose() {
+        this.entries.clear()
+        this.listeners.clear()
+      }
+    }
+
+    const officialTurnRegistry = new OfficialTurnRegistry()
+
+    /**
+     * Zero-layout probe mounted by the official Turn-tail slot. The parent
+     * `[data-chat-turn]` is observed, never cached as a geometry source.
+     */
+    function TurnLifecycleProbe(props) {
+      const markerRef = React.useRef(null)
+      const turnNumber = Number(props && props.turn && props.turn.turn)
+      const seq = Number(props && props.seq) || 0
+      React.useEffect(() => {
+        const marker = markerRef.current
+        if (!marker || !Number.isFinite(turnNumber)) return undefined
+        // No DOM node is retained: the official slot is only a mount/unmount
+        // and turn-number signal. Geometry is always taken from the current
+        // adapter snapshot.
+        return officialTurnRegistry.add(turnNumber, { seq })
+      }, [turnNumber, seq])
+      return h('span', {
+        ref: markerRef,
+        'data-mf-turn-probe': Number.isFinite(turnNumber) ? String(turnNumber) : '',
+        'aria-hidden': 'true',
+        style: { display: 'contents' },
+      })
+    }
+    /**
+     * DOM compatibility adapter. DSH 0.2.2-rc.3 exposes the official
+     * `conversation.chat.turnTail` slot for completed-turn lifecycle, but no
+     * public visible-turn/scroll hook. Geometry and viewport reads therefore
+     * stay here, behind one interface, instead of being scattered through the
+     * rail. The official registry only wakes this adapter; it never substitutes
+     * for a current-frame DOM measurement.
+     */
+    class VisibleTurnAdapter {
+      constructor({ registry = officialTurnRegistry, onDirty } = {}) {
+        this.registry = registry
+        this.onDirty = typeof onDirty === 'function' ? onDirty : () => {}
+        this.listeners = new Set()
+        this.observer = null
+        this.resizeObserver = null
+        this.observedFlow = null
+        this.unsubscribeRegistry = registry && typeof registry.subscribe === 'function'
+          ? registry.subscribe(() => this.emit())
+          : null
+      }
+      subscribe(listener) {
+        this.listeners.add(listener)
+        return () => this.listeners.delete(listener)
+      }
+      emit() {
+        this.onDirty()
+        for (const listener of this.listeners) {
+          try { listener() } catch { /* one adapter subscriber must not stop the rail */ }
+        }
+      }
+      getFlow() {
+        const candidates = [...document.querySelectorAll('[data-slot="conversation.chat.flow"], [data-chat-flow]')]
+        const usable = (node) => {
+          if (!node || !node.getBoundingClientRect) return false
+          const box = node.getBoundingClientRect()
+          if (box.width < 320 || box.height < 120) return false
+          if (node.closest('aside, nav, [data-slot*="sidebar"], [class*="sidebar"], [class*="workspace"]')) return false
+          return node.querySelectorAll('[data-chat-turn]').length > 0
+        }
+        const preferred = candidates.find((node) => node.matches('[data-slot="conversation.chat.flow"]') && usable(node))
+        if (preferred) return preferred
+        let best = null
+        let bestWidth = Infinity
+        for (const candidate of candidates) {
+          if (!usable(candidate)) continue
+          const width = candidate.getBoundingClientRect().width
+          if (width < bestWidth) {
+            best = candidate
+            bestWidth = width
+          }
+        }
+        if (best) return best
+        let cursor = document.querySelector('[data-slot="conversation.chat.flow"] [data-chat-turn], main [data-chat-turn], [data-chat-turn]')
+        while (cursor && cursor !== document.body) {
+          if (!cursor.closest('aside, nav, [data-slot*="sidebar"], [class*="sidebar"], [class*="workspace"]') && cursor.querySelectorAll('[data-chat-turn]').length) return cursor
+          cursor = cursor.parentElement
+        }
+        return null
+      }
+      measureViewport(flow) {
+        const flowRect = flow.getBoundingClientRect()
+        let sidebarRight = 0
+        for (const node of document.querySelectorAll('aside, nav, [data-slot*="sidebar"], [class*="sidebar"]')) {
+          const box = node.getBoundingClientRect()
+          if (box.width >= 150 && box.height >= 280 && box.height <= window.innerHeight + 4 && box.right <= flowRect.left + 2) {
+            sidebarRight = Math.max(sidebarRight, box.right)
+          }
+        }
+        let clipTop = 0
+        let clipBottom = window.innerHeight
+        let scrollContainer = null
+        let container = flow.parentElement
+        while (container && container !== document.body) {
+          const style = window.getComputedStyle(container)
+          const box = container.getBoundingClientRect()
+          if (/(auto|scroll)/.test(style.overflowY) && box.height > 180) {
+            clipTop = Math.max(0, box.top)
+            clipBottom = Math.min(window.innerHeight, box.bottom)
+            scrollContainer = container
+            break
+          }
+          container = container.parentElement
+        }
+        if (clipBottom - clipTop < 120) {
+          clipTop = Math.max(0, flowRect.top)
+          clipBottom = Math.min(window.innerHeight, flowRect.bottom)
+        }
+        if (clipBottom - clipTop < 120) {
+          clipTop = 0
+          clipBottom = window.innerHeight
+        }
+        let composerTop = null
+        const composerSeat = document.querySelector('[data-composer-seat]')
+        if (composerSeat) {
+          const box = composerSeat.getBoundingClientRect()
+          if (box.height > 20 && box.top > clipTop + 60) {
+            composerTop = box.top
+            clipBottom = Math.min(clipBottom, box.top - 8)
+          }
+        }
+        const safeLeft = sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64)
+        const gap = flowRect.left - sidebarRight
+        const cardWidth = 176
+        const compact = gap < cardWidth + 24 || (sidebarRight === 0 && flowRect.left < cardWidth * 2)
+        const anchorRight = TurnGeometry.anchorRight(flowRect, sidebarRight, safeLeft, cardWidth)
+        return {
+          ready: true,
+          flowIdentity: flow,
+          flowRect,
+          left: anchorRight,
+          right: Math.max(6, window.innerWidth - anchorRight),
+          anchorRight,
+          clipTop,
+          clipBottom,
+          composerTop,
+          scrollContainer,
+          compact,
+          sidebarRight,
+          flowLeft: flowRect.left,
+          flowWidth: flowRect.width,
+        }
+      }
+      capture(flow, layout) {
+        const raw = []
+        let invalid = false
+        let order = 0
+        for (const node of flow.querySelectorAll('[data-chat-turn]')) {
+          const value = node.getAttribute('data-chat-turn')
+          const domTurn = Number(value)
+          if (!Number.isFinite(domTurn)) continue
+          if (node.getAttribute('data-chat-turn') !== value) {
+            invalid = true
+            break
+          }
+          if (!node.getClientRects || !node.getClientRects().length) continue
+          const rect = node.getBoundingClientRect()
+          if (!rect || !rect.height) continue
+          const kind = String(node.getAttribute('data-chat-flow-kind') || '').toLowerCase()
+          const processRoot = node.closest ? node.closest('[data-chat-flow-kind="turn-process"], [data-step-process]') : null
+          const groupPart = node.getAttribute('data-chat-group-part') || null
+          const nodeKey = node.getAttribute('data-chat-node-key') || ''
+          const stepPart = nodeKey.includes(':') ? Number(nodeKey.slice(nodeKey.lastIndexOf(':') + 1)) : null
+          raw.push({
+            node,
+            domTurn,
+            value,
+            kind,
+            groupPart,
+            step: Number.isFinite(stepPart) ? stepPart : null,
+            insideProcess: Boolean(processRoot && processRoot !== node),
+            rect,
+            height: rect.height,
+            order: order++,
+          })
+        }
+        if (invalid) return { invalid: true, flow, rows: [], domTurns: [], signature: '' }
+        const groups = new Map()
+        for (const row of raw) {
+          if (!groups.has(row.domTurn)) groups.set(row.domTurn, [])
+          groups.get(row.domTurn).push(row)
+        }
+        const rows = []
+        for (const [domTurn, group] of groups) {
+          for (const row of group) {
+            if (row.node.getAttribute('data-chat-turn') !== row.value) {
+              invalid = true
+              break
+            }
+          }
+          if (invalid) break
+          const canonical = TurnGeometry.canonicalAnchor(group, layout.clipTop, layout.clipBottom)
+          const turnTop = Math.min(...group.map((row) => row.rect.top))
+          const turnBottom = Math.max(...group.map((row) => row.rect.bottom))
+          const anchorRow = canonical ? canonical.row : null
+          const anchorNode = anchorRow ? anchorRow.node : group[0].node
+          let anchorTop = canonical ? canonical.anchorTop : null
+          let anchorBottom = canonical ? canonical.anchorBottom : null
+          let anchorRect = anchorRow ? anchorRow.rect : { top: turnTop, bottom: turnBottom, height: turnBottom - turnTop }
+          if (!anchorRow) {
+            // A turn with no Assistant reply falls back to the whole turn, but
+            // only its visible portion may become a range.
+            anchorTop = Math.max(turnTop, layout.clipTop + 4)
+            anchorBottom = Math.min(turnBottom, layout.clipBottom - 4)
+            if (!(anchorBottom > anchorTop)) anchorTop = anchorBottom = null
+            anchorRect = { top: turnTop, bottom: turnBottom, height: turnBottom - turnTop }
+          }
+          rows.push({
+            domTurn,
+            anchorNode,
+            anchorKind: anchorRow ? anchorRow.kind : 'turn',
+            anchorStep: anchorRow ? anchorRow.step : null,
+            anchorTop,
+            anchorBottom,
+            turnTop,
+            turnBottom,
+            rect: anchorRect,
+          })
+        }
+        rows.sort((left, right) => left.turnTop - right.turnTop || left.domTurn - right.domTurn)
+        const domTurns = rows.map((row) => row.domTurn)
+        const signature = rows.map((row) => [
+          row.domTurn,
+          row.anchorKind,
+          row.anchorStep === null ? '' : row.anchorStep,
+          Math.round(row.turnTop),
+          Math.round(row.turnBottom),
+          Math.round(row.anchorTop),
+          Math.round(row.anchorBottom),
+        ].join(':')).join('|')
+        return { flow, rows, domTurns, signature, time: performance.now() }
+      }
+      observe(flow) {
+        if (!flow || this.observedFlow === flow) return
+        this.disconnectObservers()
+        this.observedFlow = flow
+        if (typeof MutationObserver === 'function') {
+          this.observer = new MutationObserver(() => this.emit())
+          this.observer.observe(flow, {
+            childList: true,
+            subtree: true,
+            attributes: true,
+            attributeFilter: ['hidden', 'data-chat-turn', 'data-chat-flow-kind', 'data-chat-group-part'],
+          })
+        }
+        if (typeof ResizeObserver === 'function') {
+          this.resizeObserver = new ResizeObserver(() => this.emit())
+          this.resizeObserver.observe(flow)
+        }
+      }
+      disconnectObservers() {
+        if (this.observer) this.observer.disconnect()
+        if (this.resizeObserver) this.resizeObserver.disconnect()
+        this.observer = null
+        this.resizeObserver = null
+        this.observedFlow = null
+      }
+      dispose() {
+        this.disconnectObservers()
+        if (this.unsubscribeRegistry) this.unsubscribeRegistry()
+        this.unsubscribeRegistry = null
+        this.listeners.clear()
       }
     }
     const listeners = new Set()
@@ -552,7 +1080,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-14-3'
+    const CLIENT_BUILD = '2026-11-14-4'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -871,6 +1399,10 @@ window.__ModuleLoader__.load({
       const loadedSessionRef = React.useRef(null)
       const turnsKey = React.useRef('')
       const turnsRef = React.useRef([])
+      const turnByNumber = React.useRef(new Map())
+      const dataCache = React.useRef(new Map())
+      const dataRevision = React.useRef(0)
+      const batchDisabled = React.useRef(false)
       const turnWindow = React.useRef(new TurnWindowStore())
       const hasMoreRef = React.useRef(false)
       const autoPreloadRef = React.useRef(false)
@@ -887,6 +1419,18 @@ window.__ModuleLoader__.load({
       const scrollDirection = React.useRef(1)
       const placeholderPosition = React.useRef({ right: 0, top: -9999, visible: false })
 
+      const applyTurns = (next) => {
+        const list = Array.isArray(next) ? next : []
+        turnsRef.current = list
+        const map = new Map()
+        for (const turn of list) {
+          const number = Number(turn && turn.turn)
+          if (Number.isFinite(number)) map.set(number, turn)
+        }
+        turnByNumber.current = map
+        setTurns(list)
+      }
+
       React.useEffect(() => {
         const latest = turns.length
           ? turns.slice().sort((left, right) => Number(right.turn) - Number(left.turn))[0]
@@ -899,11 +1443,13 @@ window.__ModuleLoader__.load({
         if (loadedSessionRef.current !== targetSession) {
           loadedSessionRef.current = targetSession
           turnsKey.current = ''
-          turnsRef.current = []
           turnWindow.current.reset()
           hasMoreRef.current = false
           setHasMore(false)
-          setTurns([])
+          applyTurns([])
+          dataCache.current.clear()
+          dataRevision.current = 0
+          batchDisabled.current = false
           setRenderTurns([])
           renderTurnsRef.current = []
           cardRefs.current.clear()
@@ -982,11 +1528,14 @@ window.__ModuleLoader__.load({
               seen.add(turn.id)
             }
             const merged = turnWindow.current.merge(next)
-            const key = JSON.stringify(merged)
+            dataRevision.current = Number(payload.revision) || 0
+            for (const turn of merged) {
+              dataCache.current.set(Number(turn.turn), { status: 'observed', turn, revision: dataRevision.current })
+            }
+            const key = merged.map((turn) => turn.id + ':' + turn.steps + ':' + turn.endTime + ':' + turn.primaryFingerprint).join('|')
             if (key !== turnsKey.current) {
               turnsKey.current = key
-              turnsRef.current = merged
-              setTurns(merged)
+              applyTurns(merged)
               recoveryEvent.current?.()
             }
             hasMoreRef.current = payload.hasMore === true
@@ -1022,8 +1571,8 @@ window.__ModuleLoader__.load({
             const next = Array.isArray(payload.turns) ? payload.turns : []
             if (next.length) {
               const merged = turnWindow.current.merge(next)
-              turnsRef.current = merged
-              setTurns(merged)
+              for (const turn of next) dataCache.current.set(Number(turn.turn), { status: 'observed', turn, revision: Number(payload.revision) || 0 })
+              applyTurns(merged)
             }
             hasMoreRef.current = payload.hasMore === true
             setHasMore(payload.hasMore === true)
@@ -1073,11 +1622,6 @@ window.__ModuleLoader__.load({
         }
         let raf = 0
         let rebuildPending = false
-        let resizeObserver = null
-        let flowObserver = null
-        let observedFlow = null
-        let observedResizeFlow = null
-        let mutationTimer = 0
         let tick = null
         let disposed = false
 
@@ -1088,37 +1632,8 @@ window.__ModuleLoader__.load({
           tracker.current.reset()
           animator.cancelAll(cardRefs.current.values())
           turnQueue.invalidate()
+          windowQueue.invalidate()
           noteRecoveryEvent()
-        }
-
-        const findFlow = () => {
-          const candidates = [...document.querySelectorAll('[data-slot="conversation.chat.flow"], [data-chat-flow]')]
-          const usable = (node) => {
-            if (!node || !node.getBoundingClientRect) return false
-            const box = node.getBoundingClientRect()
-            if (box.width < 320 || box.height < 120) return false
-            if (node.closest('aside, nav, [data-slot*="sidebar"], [class*="sidebar"], [class*="workspace"]')) return false
-            return node.querySelectorAll('[data-chat-turn]').length > 0
-          }
-          const preferred = candidates.find((node) => node.matches('[data-slot="conversation.chat.flow"]') && usable(node))
-          if (preferred) return preferred
-          let best = null
-          let bestWidth = Infinity
-          for (const candidate of candidates) {
-            if (!usable(candidate)) continue
-            const width = candidate.getBoundingClientRect().width
-            if (width < bestWidth) {
-              best = candidate
-              bestWidth = width
-            }
-          }
-          if (best) return best
-          let cursor = document.querySelector('[data-slot="conversation.chat.flow"] [data-chat-turn], main [data-chat-turn], [data-chat-turn]')
-          while (cursor && cursor !== document.body) {
-            if (!cursor.closest('aside, nav, [data-slot*="sidebar"], [class*="sidebar"], [class*="workspace"]') && cursor.querySelectorAll('[data-chat-turn]').length) return cursor
-            cursor = cursor.parentElement
-          }
-          return null
         }
 
         const setStyle = (node, property, value) => {
@@ -1134,7 +1649,12 @@ window.__ModuleLoader__.load({
           node.style.transition = value
         }
         const reducedMotion = Boolean(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches)
-        const spring = reducedMotion ? 'ease-out' : 'cubic-bezier(.22,1,.36,1)'
+        let motionEase = 'cubic-bezier(.22,1,.36,1)'
+        try {
+          const token = window.getComputedStyle(document.documentElement).getPropertyValue('--dsh-motion-ease-out').trim()
+          if (token) motionEase = token
+        } catch { /* older host: keep the official transform curve */ }
+        const spring = reducedMotion ? 'ease-out' : motionEase
         const animator = new SlotAnimator({ eased: spring, reduced: reducedMotion, cardWidth: 176 })
         const scrollScheduler = new ScrollScheduler({
           settleMs: 110,
@@ -1146,6 +1666,15 @@ window.__ModuleLoader__.load({
             if (!target) return null
             return fetch(apiUrl('/model-fingerprint/api/turn-view?id=' + encodeURIComponent(target) + '&turn=' + encodeURIComponent(turn)), { cache: 'no-store' })
               .then((response) => response.ok ? response.json() : null)
+              .then((payload) => payload ? { ...payload, requestedTurn: turn } : null)
+          },
+          onNoData: (payload) => {
+            if (disposed) return
+            const turn = Number(payload && payload.requestedTurn)
+            if (!Number.isFinite(turn)) return
+            const status = payload.status === 'no-data' ? 'no-data' : 'missing'
+            dataCache.current.set(turn, { status, revision: requestView.current.revision })
+            schedule(true)
           },
           onTurn: (turn, payload) => {
             if (disposed || !turn || turn.hasModelData === false) return
@@ -1154,10 +1683,50 @@ window.__ModuleLoader__.load({
             if (payload && payload.generation !== undefined && String(current.generation) !== '0' && String(payload.generation) !== String(current.generation)) return
             if (payload && Number(payload.revision) < Number(current.revision)) return
             const merged = turnWindow.current.merge([turn])
-            turnsRef.current = merged
-            setTurns(merged)
+            dataCache.current.set(Number(turn.turn), { status: 'observed', turn, revision: requestView.current.revision })
+            applyTurns(merged)
             noteRecoveryEvent()
             schedule(true)
+          },
+        })
+
+        const windowQueue = new TurnWindowQueue({
+          fetchWindow: (values, context, signal) => {
+            const target = context && context.sessionId ? context.sessionId : (sessionId || railSessionId)
+            if (!target) return null
+            return fetch(apiUrl('/model-fingerprint/api/turn-window?id=' + encodeURIComponent(target) + '&turns=' + encodeURIComponent(values.join(','))), { cache: 'no-store', signal })
+          },
+          onResult: (payload) => {
+            if (disposed) return
+            const current = requestView.current
+            if (payload.sessionId && current.sessionId && String(payload.sessionId) !== String(current.sessionId)) return
+            if (payload.generation !== undefined && String(current.generation) !== '0' && String(payload.generation) !== String(current.generation)) return
+            if (Number(payload.revision) < Number(current.revision)) return
+            const revision = Number(payload.revision) || 0
+            requestView.current.revision = Math.max(Number(requestView.current.revision) || 0, revision)
+            sessionViewRevision = requestView.current.revision
+            let changed = false
+            for (const entry of payload.turns || []) {
+              const turn = Number(entry.turn)
+              if (!Number.isFinite(turn)) continue
+              if (entry.status === 'observed' && entry.data) {
+                dataCache.current.set(turn, { status: 'observed', turn: entry.data, revision })
+                turnWindow.current.merge([entry.data])
+                changed = true
+              } else {
+                dataCache.current.set(turn, { status: entry.status === 'no-data' ? 'no-data' : 'missing', revision })
+              }
+            }
+            if (changed) applyTurns(turnWindow.current.turns())
+            noteRecoveryEvent()
+            schedule(true)
+          },
+          onFallback: (values, context) => {
+            batchDisabled.current = true
+            turnQueue.request(values, turnsRef.current, 0, context)
+          },
+          onError: (error) => {
+            lastFetchError = error && error.message ? error.message : String(error)
           },
         })
 
@@ -1204,7 +1773,7 @@ window.__ModuleLoader__.load({
           // create synthetic cards or move an occupant.
           railDebug = {
             ...railDebug,
-            flow: Boolean(observedFlow),
+            flow: Boolean(geometry.current.flowIdentity),
             flowTurns: geometry.current.domTurns ? geometry.current.domTurns.length : 0,
             turns: turnsRef.current.length,
             cards: visual.current.size,
@@ -1217,121 +1786,14 @@ window.__ModuleLoader__.load({
           scheduleRecovery(reason)
         }
 
-        const measureLayout = (flow) => {
-          const flowRect = flow.getBoundingClientRect()
-          let sidebarRight = 0
-          for (const node of document.querySelectorAll('aside, nav, [data-slot*="sidebar"], [class*="sidebar"]')) {
-            const box = node.getBoundingClientRect()
-            if (box.width >= 150 && box.height >= 280 && box.height <= window.innerHeight + 4 && box.right <= flowRect.left + 2) {
-              sidebarRight = Math.max(sidebarRight, box.right)
-            }
-          }
-          let clipTop = 0
-          let clipBottom = window.innerHeight
-          let scrollContainer = null
-          let container = flow.parentElement
-          while (container && container !== document.body) {
-            const style = window.getComputedStyle(container)
-            const box = container.getBoundingClientRect()
-            if (/(auto|scroll)/.test(style.overflowY) && box.height > 180) {
-              clipTop = Math.max(0, box.top)
-              clipBottom = Math.min(window.innerHeight, box.bottom)
-              scrollContainer = container
-              break
-            }
-            container = container.parentElement
-          }
-          if (clipBottom - clipTop < 120) {
-            clipTop = Math.max(0, flowRect.top)
-            clipBottom = Math.min(window.innerHeight, flowRect.bottom)
-          }
-          if (clipBottom - clipTop < 120) {
-            clipTop = 0
-            clipBottom = window.innerHeight
-          }
-          let composerTop = null
-          const composerSeat = document.querySelector('[data-composer-seat]')
-          if (composerSeat) {
-            const box = composerSeat.getBoundingClientRect()
-            if (box.height > 20 && box.top > clipTop + 60) {
-              composerTop = box.top
-              clipBottom = Math.min(clipBottom, box.top - 8)
-            }
-          }
-          const safeLeft = sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64)
-          const gap = flowRect.left - sidebarRight
-          const cardWidth = 176
-          const nextCompact = gap < cardWidth + 24 || (sidebarRight === 0 && flowRect.left < cardWidth * 2)
-          const anchorRight = TurnGeometry.anchorRight(flowRect, sidebarRight, safeLeft, cardWidth)
-          const right = Math.max(6, window.innerWidth - anchorRight)
-          return {
-            ready: true,
-            left: anchorRight,
-            right,
-            anchorRight,
-            offset: mapping.current.offset,
-            clipTop,
-            clipBottom,
-            composerTop,
-            scrollContainer,
-            compact: nextCompact,
-            sidebarRight,
-            flowLeft: flowRect.left,
-            flowWidth: flowRect.width,
-            flowIdentity: flow,
-          }
-        }
-
-        const captureSnapshot = (flow) => {
-          const raw = []
-          let invalid = false
-          for (const node of flow.querySelectorAll('[data-chat-turn]')) {
-            const value = node.getAttribute('data-chat-turn')
-            const domTurn = Number(value)
-            if (!Number.isFinite(domTurn)) continue
-            if (node.getAttribute('data-chat-turn') !== value) invalid = true
-            raw.push({ node, domTurn, value })
-          }
-          if (invalid) return { invalid: true, flow, rows: [], domTurns: [], signature: '' }
-          const groups = new Map()
-          for (const row of raw) {
-            if (!groups.has(row.domTurn)) groups.set(row.domTurn, [])
-            groups.get(row.domTurn).push(row)
-          }
-          const rows = []
-          for (const [domTurn, group] of groups) {
-            for (const entry of group) {
-              if (entry.node.getAttribute('data-chat-turn') !== entry.value) {
-                invalid = true
-                break
-              }
-            }
-            if (invalid) break
-            const nodes = TurnGeometry.responseNodes(group.map((entry) => entry.node))
-            const box = TurnGeometry.measureNormalized(nodes, geometry.current.clipTop, geometry.current.clipBottom)
-            for (const entry of group) {
-              if (entry.node.getAttribute('data-chat-turn') !== entry.value) {
-                invalid = true
-                break
-              }
-            }
-            if (invalid) break
-            if (!box) continue
-            rows.push({
-              domTurn,
-              top: box.top,
-              bottom: box.bottom,
-              anchorTop: box.anchor ? box.anchor.visibleTop : null,
-              anchorBottom: box.anchor ? box.anchor.visibleBottom : null,
-              segments: box.segments || [],
-            })
-          }
-          if (invalid) return { invalid: true, flow, rows: [], domTurns: [...groups.keys()], signature: '' }
-          rows.sort((left, right) => left.top - right.top)
-          const domTurns = rows.map((row) => row.domTurn)
-          const signature = rows.map((row) => row.domTurn + ':' + Math.round(row.top) + ':' + Math.round(row.bottom)).join('|')
-          return { flow, rows, domTurns, signature, time: performance.now() }
-        }
+        const adapter = new VisibleTurnAdapter({
+          registry: officialTurnRegistry,
+          onDirty: () => {
+            if (disposed) return
+            noteRecoveryEvent()
+            schedule(true)
+          },
+        })
 
         const zonesFromCommitted = () => {
           const zones = new Map()
@@ -1342,30 +1804,30 @@ window.__ModuleLoader__.load({
         const applyRange = (node, target, cardTop) => {
           const range = node.querySelector ? node.querySelector('[data-mf-range]') : null
           if (!range) return
-          const segments = Array.isArray(target.segments) ? target.segments.slice(0, 3) : []
-          range.style.opacity = segments.length ? '0.72' : '0'
-          const segmentEls = [...range.querySelectorAll('[data-mf-range-segment]')]
-          for (let index = 0; index < segmentEls.length; index += 1) {
-            const segmentEl = segmentEls[index]
-            const segment = segments[index]
-            if (segment && segment.bottom - segment.top > 12) {
-              segmentEl.style.opacity = '1'
-              segmentEl.style.top = Math.round(segment.top - cardTop) + 'px'
-              segmentEl.style.height = Math.round(segment.bottom - segment.top) + 'px'
-              if (!segmentEl.__mfRangeShown) {
-                segmentEl.__mfRangeShown = true
-                segmentEl.style.transform = 'scaleY(0)'
-                window.requestAnimationFrame(() => {
-                  if (segmentEl.isConnected) segmentEl.style.transform = 'scaleY(1)'
-                })
-              } else {
-                segmentEl.style.transform = 'scaleY(1)'
-              }
-            } else {
-              segmentEl.style.opacity = '0'
-              segmentEl.style.transform = 'scaleY(0)'
-              segmentEl.__mfRangeShown = false
-            }
+          const top = Number(target.rangeTop)
+          const bottom = Number(target.rangeBottom)
+          const visible = target.zone === 'middle' && Number.isFinite(top) && Number.isFinite(bottom) && bottom - top > 6
+          if (!visible) {
+            range.style.opacity = '0'
+            return
+          }
+          if (bottom - top <= 6) {
+            range.style.opacity = '0'
+            return
+          }
+          // The bracket represents the canonical anchor's visible height, not
+          // the card's own box, so a long answer keeps one continuous range.
+          range.style.opacity = '0.72'
+          range.style.top = Math.round(top - cardTop) + 'px'
+          range.style.height = Math.round(bottom - top) + 'px'
+          if (!range.__mfRangeShown) {
+            range.__mfRangeShown = true
+            range.style.transform = 'scaleY(0)'
+            window.requestAnimationFrame(() => {
+              if (range.isConnected) range.style.transform = 'scaleY(1)'
+            })
+          } else {
+            range.style.transform = 'scaleY(1)'
           }
         }
 
@@ -1470,8 +1932,8 @@ window.__ModuleLoader__.load({
             setStyle(node, 'borderColor', target.zone === 'middle' ? 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))' : 'rgba(20,30,45,.08)')
             // Transform is owned by WAAPI/FLIP. Never write transform transitions:
             // they fight the animation and cause horizontal/vertical bounce.
-            setTransition(node, reducedMotion ? 'opacity 60ms linear' : 'opacity 220ms ease, filter 180ms ease, box-shadow 180ms ease, border-color 180ms ease, width 240ms cubic-bezier(.22,1,.36,1), padding 240ms cubic-bezier(.22,1,.36,1), border-radius 240ms cubic-bezier(.22,1,.36,1)')
-            node.title = (target.zone === 'top' ? '上方 · ' : target.zone === 'bottom' ? '下方 · ' : '') + '第 ' + target.turn.turn + ' 轮 · ' + target.turn.verdictLabel + (target.zone === 'middle' && target.segments && target.segments.length ? ' · 右侧细线为可见区间' : '')
+            setTransition(node, reducedMotion ? 'opacity 60ms linear' : 'opacity 160ms ease-out, filter 160ms ease-out, box-shadow 160ms ease-out, border-color 160ms ease-out, width 220ms cubic-bezier(.22,1,.36,1), padding 220ms cubic-bezier(.22,1,.36,1), border-radius 220ms cubic-bezier(.22,1,.36,1)')
+            node.title = (target.zone === 'top' ? '上方 · ' : target.zone === 'bottom' ? '下方 · ' : '') + '第 ' + target.turn.turn + ' 轮 · ' + target.turn.verdictLabel + (target.zone === 'middle' && Number.isFinite(target.rangeTop) ? ' · 右侧细线为最终回复可见区间' : '')
             applyRange(node, target, target.top)
             const rect = rects.get(id) || null
             const changed = Boolean(prior && prior.visible && (Math.abs(prior.top - target.top) > 1 || prior.zone !== target.zone || Math.abs(prior.scale - targetScale) > 0.01))
@@ -1529,6 +1991,58 @@ window.__ModuleLoader__.load({
           updateRenderPool(committed.current)
         }
 
+        const placeholderTurn = (turn, status) => {
+          const session = requestView.current.sessionId || sessionId || railSessionId || 'session'
+          const noData = status === 'no-data'
+          return {
+            id: session + ':turn:' + turn + ':' + (noData ? 'no-data' : 'loading'),
+            turn,
+            verdict: noData ? 'nodata' : 'loading',
+            verdictLabel: noData ? '无模型指纹数据' : '指纹数据加载中',
+            primaryShort: noData ? '—' : '…',
+            primaryModel: noData ? '该轮没有可识别的模型观测' : '正在取得本轮指纹',
+            hasModelData: false,
+            placeholder: true,
+            placeholderStatus: noData ? 'no-data' : 'loading',
+          }
+        }
+
+        const visibleCardTurns = (snapshot) => {
+          const offset = Number(mapping.current.offset) || 0
+          const list = []
+          for (const row of snapshot.rows || []) {
+            const apiTurn = Number(row.domTurn) - offset
+            if (!Number.isFinite(apiTurn)) continue
+            const observed = turnByNumber.current.get(apiTurn)
+            const cached = dataCache.current.get(apiTurn)
+            let turn = observed || null
+            if (!turn) {
+              const status = cached && cached.status === 'no-data' ? 'no-data' : 'loading'
+              turn = placeholderTurn(apiTurn, status)
+            }
+            list.push({ turn, row })
+          }
+          return list
+        }
+
+        const relevantRows = (snapshot) => {
+          const rows = snapshot.rows || []
+          const clipTop = geometry.current.clipTop
+          const clipBottom = geometry.current.clipBottom
+          const overlapping = rows.filter((row) => row.turnBottom > clipTop && row.turnTop < clipBottom)
+          let above = null
+          let below = null
+          for (const row of rows) {
+            if (row.turnBottom <= clipTop && (!above || row.turnBottom > above.turnBottom)) above = row
+            if (row.turnTop >= clipBottom && (!below || row.turnTop < below.turnTop)) below = row
+          }
+          const selected = overlapping.slice()
+          if (above && !selected.includes(above)) selected.push(above)
+          if (below && !selected.includes(below)) selected.push(below)
+          selected.sort((left, right) => left.turnTop - right.turnTop)
+          return { ...snapshot, rows: selected, domTurns: selected.map((row) => row.domTurn) }
+        }
+
         const buildTargets = (snapshot) => {
           const layout = geometry.current
           const cardH = layout.compact ? 24 : 58
@@ -1536,42 +2050,39 @@ window.__ModuleLoader__.load({
           const bottomY = layout.clipBottom - cardH - 4
           const laneTop = layout.clipTop + 8
           const laneBottom = layout.clipBottom - 8
-          const laneMax = Math.max(laneTop, laneBottom - cardH)
-          const derived = validateRailTargets(deriveRailTargets(snapshot, turnsRef.current, mapping.current, layout, zonesFromCommitted()))
+          const items = visibleCardTurns(snapshot)
+          const turnList = items.map((item) => item.turn)
+          const derived = validateRailTargets(deriveRailTargets(snapshot, turnList, mapping.current, layout, zonesFromCommitted()))
           const middleTop = derived.top ? topY + cardH + 6 : laneTop
           const middleBottom = derived.bottom ? bottomY - 6 : laneBottom
-          const middleMax = Math.max(middleTop, middleBottom - cardH)
-          const targets = new Map()
-          let lastBottom = middleTop
-          const middle = derived.middle.slice().sort((left, right) => left.top - right.top)
-          for (const entry of middle) {
-            const visibleTop = Math.max(entry.top, layout.clipTop + 4)
-            const visibleBottom = Math.min(entry.bottom, layout.clipBottom - 4)
-            if (visibleBottom <= visibleTop) continue
-            const segments = entry.row.segments || []
-            const lineTop = segments.length ? Math.min(...segments.map((segment) => segment.top)) : visibleTop
-            const lineBottom = segments.length ? Math.max(...segments.map((segment) => segment.bottom)) : visibleBottom
-            const center = (lineTop + lineBottom) / 2
-            let y = center - cardH / 2
-            const prior = visual.current.get(entry.turn.id)
-            if (prior && prior.visible && prior.zone === 'middle') {
-              const topEdge = prior.top
-              const bottomEdge = prior.top + cardH
-              if (center > bottomEdge) y = center - cardH
-              else if (center < topEdge) y = center
-              else y = prior.top
-            }
-            y = Math.min(Math.max(y, middleTop), middleMax)
-            y = Math.min(Math.max(y, lastBottom + 4), middleMax)
-            targets.set(entry.turn.id, {
-              top: Math.round(y),
-              zone: 'middle',
+          const middleItems = derived.middle.map((entry) => {
+            const hasAnchor = entry.hasAnchor && Number.isFinite(entry.anchorTop) && Number.isFinite(entry.anchorBottom)
+            const anchorTop = hasAnchor ? entry.anchorTop : entry.top
+            const anchorBottom = hasAnchor ? entry.anchorBottom : entry.bottom
+            return {
+              id: entry.turn.id,
               turn: entry.turn,
-              segments: segments.slice(0, 3),
-              rangeTop: lineTop,
-              rangeBottom: lineBottom,
+              anchorTop,
+              anchorBottom,
+              hasAnchor,
+              center: (anchorTop + anchorBottom) / 2,
+            }
+          })
+          const middleLayout = layoutMiddleCards(middleItems, {
+            top: middleTop,
+            bottom: middleBottom,
+            cardHeight: cardH,
+            gap: 4,
+          })
+          const targets = new Map()
+          for (const item of middleLayout.items) {
+            targets.set(item.id, {
+              top: item.top,
+              zone: 'middle',
+              turn: item.turn,
+              rangeTop: item.hasAnchor && !item.turn.placeholder ? item.anchorTop : undefined,
+              rangeBottom: item.hasAnchor && !item.turn.placeholder ? item.anchorBottom : undefined,
             })
-            lastBottom = y + cardH + 4
           }
           if (derived.top) {
             targets.set(derived.top.turn.id, { top: Math.round(topY), zone: 'top', turn: derived.top.turn })
@@ -1579,7 +2090,7 @@ window.__ModuleLoader__.load({
           if (derived.bottom) {
             targets.set(derived.bottom.turn.id, { top: Math.round(bottomY), zone: 'bottom', turn: derived.bottom.turn })
           }
-          return targets
+          return { targets, collapsedIds: middleLayout.collapsedIds }
         }
 
         const commitSnapshot = (snapshot) => {
@@ -1600,13 +2111,13 @@ window.__ModuleLoader__.load({
             return
           }
           jump.current.pending = false
-          const targets = buildTargets(snapshot)
-          applyTargets(targets, snapshot)
+          const relevant = relevantRows(snapshot)
+          const built = buildTargets(relevant)
+          const targets = built.targets
+          applyTargets(targets, relevant)
           const focusTarget = [...targets.values()].find((target) => target.zone === 'middle') || [...targets.values()][0]
           if (focusTarget && turnWindow.current.pruneAround(focusTarget.turn.turn)) {
-            const pruned = turnWindow.current.turns()
-            turnsRef.current = pruned
-            setTurns(pruned)
+            applyTurns(turnWindow.current.turns())
           }
           clearRecovery()
           setCompact((value) => value === geometry.current.compact ? value : geometry.current.compact)
@@ -1632,13 +2143,19 @@ window.__ModuleLoader__.load({
             cardTargets: [...targets.entries()].map(([id, target]) => ({ id, turn: target.turn ? target.turn.turn : null, zone: target.zone, top: Math.round(target.top) })),
             cardAnimations: [...cardRefs.current.entries()].map(([id, node]) => ({ id, role: animator.state(node) ? animator.state(node).id : null })),
             middleCards: [...targets.values()].filter((target) => target.zone === 'middle').length,
+            collapsedCards: built.collapsedIds.length,
+            collapsedIds: built.collapsedIds.slice(0, 16),
             placeholder: placeholderPosition.current.visible,
             offset: mapping.current.offset,
+            batchLastKey: windowQueue.lastKey,
+            batchPending: windowQueue.inFlight,
+            cacheRows: dataCache.current.size,
             mappingConfidence: mapping.current.confidence,
             mappingGeneration: mapping.current.generation,
             jumpGeneration: jump.current.generation,
-            measured: snapshot.rows.length,
-            domTurns: snapshot.rows.map((row) => row.domTurn).slice(0, 12),
+            measured: relevant.rows.length,
+            domTurns: relevant.rows.map((row) => row.domTurn).slice(0, 12),
+            anchors: relevant.rows.slice(0, 12).map((row) => ({ turn: row.domTurn, kind: row.anchorKind, step: row.anchorStep })),
             apiTurns: turnsRef.current.map((turn) => turn.turn).slice(0, 12),
             atBottom,
             reason: 'ok',
@@ -1652,8 +2169,35 @@ window.__ModuleLoader__.load({
           }
         }
 
+        const requestVisibleTurns = (snapshot) => {
+          const offset = Number(mapping.current.offset) || 0
+          const turnNumbers = []
+          const seen = new Set()
+          for (const row of snapshot.rows || []) {
+            const turn = Number(row.domTurn) - offset
+            if (!Number.isFinite(turn) || seen.has(turn)) continue
+            seen.add(turn)
+            const cached = dataCache.current.get(turn)
+            if (turnByNumber.current.has(turn)) continue
+            if (cached && cached.status === 'no-data' && cached.revision === requestView.current.revision) continue
+            if (cached && cached.status === 'missing' && cached.revision === requestView.current.revision) continue
+            turnNumbers.push(turn)
+          }
+          if (!turnNumbers.length) return
+          const context = {
+            sessionId: requestView.current.sessionId || sessionId || railSessionId,
+            revision: requestView.current.revision,
+            generation: requestView.current.generation,
+          }
+          if (batchDisabled.current) {
+            turnQueue.request(turnNumbers, turnsRef.current, 0, context)
+            return
+          }
+          windowQueue.request(turnNumbers, context)
+        }
+
         const update = (needsRebuild) => {
-          const flow = findFlow()
+          const flow = adapter.getFlow()
           if (!flow) {
             geometry.current = { ...geometry.current, ready: false }
             retainVisual('no-flow')
@@ -1664,54 +2208,46 @@ window.__ModuleLoader__.load({
           if (mapping.current.flowIdentity && mapping.current.flowIdentity !== flow) {
             mapping.current = { offset: mapping.current.offset, confidence: 0, generation: mapping.current.generation + 1, flowIdentity: flow }
             beginJump('flow')
+            adapter.observe(flow)
             schedule(true, { recover: true })
             return
           }
           mapping.current.flowIdentity = flow
+          adapter.observe(flow)
           const priorRows = geometry.current.lastRows
-          if (typeof MutationObserver === 'function' && !flowObserver) {
-            flowObserver = new MutationObserver(() => {
-              if (mutationTimer) return
-              mutationTimer = window.setTimeout(() => {
-                mutationTimer = 0
-                noteRecoveryEvent()
-                schedule(true)
-              }, 40)
-            })
-          }
-          if (flowObserver && observedFlow !== flow) {
-            flowObserver.disconnect()
-            flowObserver.observe(flow, { childList: true, subtree: true, attributes: true, attributeFilter: ['hidden', 'data-chat-turn'] })
-            observedFlow = flow
-          }
-          if (typeof ResizeObserver === 'function' && observedResizeFlow !== flow) {
-            if (!resizeObserver) resizeObserver = new ResizeObserver(() => { noteRecoveryEvent(); schedule(true) })
-            else resizeObserver.disconnect()
-            resizeObserver.observe(flow)
-            observedResizeFlow = flow
-          }
-          const layout = measureLayout(flow)
+          const layout = adapter.measureViewport(flow)
           geometry.current = { ...layout, ready: true, domTurns: geometry.current.domTurns || [] }
-          const snapshot = captureSnapshot(flow)
+          const snapshot = adapter.capture(flow, layout)
           geometry.current.domTurns = snapshot.domTurns || []
           const detected = priorRows && !snapshot.invalid ? railJumpDetected({ rows: priorRows }, snapshot) : null
           if (detected && !jump.current.pending) beginJump(detected)
-          if (!snapshot.invalid) geometry.current.lastRows = snapshot.rows.map((row) => ({ domTurn: row.domTurn, top: row.top, bottom: row.bottom }))
           if (!snapshot.invalid) {
-            const apiTurns = turnsRef.current.map((turn) => Number(turn.turn)).filter(Number.isFinite)
+            geometry.current.lastRows = snapshot.rows.map((row) => ({
+              domTurn: row.domTurn,
+              top: row.turnTop,
+              bottom: row.turnBottom,
+              anchorTop: row.anchorTop,
+              anchorBottom: row.anchorBottom,
+            }))
+            const apiTurns = [...turnByNumber.current.keys()]
             const chosen = chooseRailMapping(apiTurns, snapshot.domTurns, mapping.current)
             mapping.current = { ...mapping.current, offset: chosen.offset, confidence: chosen.confidence }
             geometry.current.offset = chosen.offset
             try {
-              turnQueue.request(snapshot.domTurns, turnsRef.current, chosen.offset, {
-                sessionId: requestView.current.sessionId || sessionId || railSessionId,
-                revision: requestView.current.revision,
-                generation: requestView.current.generation,
-              })
-            } catch { /* request failures never remove cards */ }
+              requestVisibleTurns(relevantRows(snapshot))
+            } catch (error) {
+              lastFetchError = error && error.message ? error.message : String(error)
+            }
           }
           if (mapping.current.confidence <= 0 && snapshot.rows.length) {
-            retainVisual('mapping-pending')
+            // No overlap does not mean no cards: request the visible DOM turn
+            // numbers and render explicit loading placeholders. The DOM value
+            // is the durable turn number in current DSH; a non-zero offset is
+            // learned later as the API window overlaps.
+            mapping.current.offset = 0
+            geometry.current.offset = 0
+            try { requestVisibleTurns(snapshot) } catch { /* placeholders still render */ }
+            commitSnapshot(snapshot)
             return
           }
           commitSnapshot(snapshot)
@@ -1761,7 +2297,6 @@ window.__ModuleLoader__.load({
           lastScrollAt = now
           noteRecoveryEvent()
           scrollScheduler.noteScroll()
-          if (top < 320 && hasMoreRef.current) loadOlderRef.current?.()
           if (jumped) {
             beginJump('scroll')
             rebindScheduler.kick()
@@ -1781,12 +2316,11 @@ window.__ModuleLoader__.load({
           if (raf) window.cancelAnimationFrame(raf)
           window.removeEventListener('scroll', onScroll, true)
           window.removeEventListener('resize', onResize)
-          if (resizeObserver) resizeObserver.disconnect()
-          if (flowObserver) flowObserver.disconnect()
-          if (mutationTimer) clearTimeout(mutationTimer)
+          adapter.dispose()
           if (recovery.current.timer) clearTimeout(recovery.current.timer)
           recovery.current.timer = 0
           turnQueue.invalidate()
+          windowQueue.invalidate()
           rebindScheduler.dispose()
           scrollScheduler.dispose()
           if (tick) clearInterval(tick)
@@ -1806,7 +2340,8 @@ window.__ModuleLoader__.load({
         ? 'inset(' + Math.round(clip.top) + 'px 0 0 0)'
         : undefined
       const children = renderTurns.map((turn) => {
-        const color = railColors[turn.verdict] || railColors.first
+        const placeholder = turn.placeholder === true
+        const color = placeholder ? 'var(--dsw-alias-label-tertiary, #667085)' : (railColors[turn.verdict] || railColors.first)
         const position = visual.current.get(turn.id) || { right: geometry.current.right || 0, top: -9999, opacity: 0, visible: false }
         const base = {
           key: turn.id,
@@ -1829,9 +2364,9 @@ window.__ModuleLoader__.load({
             willChange: 'transform, opacity',
             boxSizing: 'border-box',
             borderRadius: compact ? 999 : 10,
-            background: 'var(--dsw-specific-menu, rgba(255,255,255,.94))',
-            border: '1px solid var(--dsw-alias-border-l1, rgba(20,30,45,.14))',
-            boxShadow: '0 2px 10px rgba(16,24,40,.10)',
+            background: placeholder ? 'var(--dsw-alias-bg-secondary, rgba(248,249,251,.78))' : 'var(--dsw-specific-menu, rgba(255,255,255,.94))',
+            border: placeholder ? '1px dashed var(--dsw-alias-border-l1, rgba(20,30,45,.18))' : '1px solid var(--dsw-alias-border-l1, rgba(20,30,45,.14))',
+            boxShadow: placeholder ? '0 1px 6px rgba(16,24,40,.05)' : '0 2px 10px rgba(16,24,40,.10)',
             color: 'var(--dsw-alias-label-primary, #1b1f24)',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif',
             lineHeight: 1.35,
@@ -1844,32 +2379,18 @@ window.__ModuleLoader__.load({
             right: -8,
             top: 0,
             width: 5,
-            height: '100%',
+            height: 0,
             opacity: 0,
             pointerEvents: 'none',
             color: 'rgba(91, 117, 145, .76)',
-            transition: 'opacity 180ms ease',
+            transform: 'scaleY(1)',
+            transformOrigin: 'top center',
+            transition: 'opacity 160ms ease, top 140ms ease, height 140ms ease',
           },
         },
-          [0, 1, 2].map((index) => h('span', {
-            key: 'segment-' + index,
-            'data-mf-range-segment': String(index),
-            style: {
-              position: 'absolute',
-              left: 0,
-              top: 0,
-              width: 5,
-              height: 0,
-              opacity: 0,
-              transform: 'scaleY(0)',
-              transformOrigin: 'top center',
-              transition: 'opacity 180ms ease, transform 620ms cubic-bezier(.22,1,.36,1)',
-            },
-          },
-            h('span', { key: 'line', style: { position: 'absolute', left: 0, top: 0, width: 1.5, height: '100%', background: 'currentColor', borderRadius: 1 } }),
-            h('span', { key: 'top', style: { position: 'absolute', left: 0, top: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
-            h('span', { key: 'bottom', style: { position: 'absolute', left: 0, bottom: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
-          )),
+          h('span', { key: 'line', style: { position: 'absolute', left: 0, top: 0, width: 1.5, height: '100%', background: 'currentColor', borderRadius: 1 } }),
+          h('span', { key: 'top', style: { position: 'absolute', left: 0, top: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
+          h('span', { key: 'bottom', style: { position: 'absolute', left: 0, bottom: 0, width: 5, height: 1.5, background: 'currentColor', borderRadius: 1 } }),
         )
         if (compact) {
           base.style.width = 56
@@ -1879,18 +2400,22 @@ window.__ModuleLoader__.load({
           base.style.fontSize = 10
           base.style.color = color
           base.title = '第 ' + turn.turn + ' 轮 · ' + turn.verdictLabel
-          return h('div', base, rangeEl, 'FP-' + String(turn.primaryShort || '').slice(0, 4))
+          return h('div', base, rangeEl, placeholder ? (turn.placeholderStatus === 'no-data' ? '—' : '…') : 'FP-' + String(turn.primaryShort || '').slice(0, 4))
         }
         base.style.width = 176
         base.style.padding = '6px 8px 7px'
-        base.title = '点击打开逐轮检测面板'
+        base.title = placeholder ? '第 ' + turn.turn + ' 轮 · ' + turn.verdictLabel : '点击打开逐轮检测面板'
         return h('div', base,
           rangeEl,
           h('div', { key: 'head', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)' } },
             h('span', null, '第 ' + turn.turn + ' 轮'),
-            h('span', null, turn.verdict === 'same' ? '一致' : turn.verdict === 'changed' ? '变化' : turn.verdict === 'mixed' ? '多指纹' : turn.verdict === 'generation' ? '代际' : '基线'),
+            h('span', null, placeholder
+              ? (turn.placeholderStatus === 'no-data' ? '无数据' : '加载中')
+              : turn.verdict === 'same' ? '一致' : turn.verdict === 'changed' ? '变化' : turn.verdict === 'mixed' ? '多指纹' : turn.verdict === 'generation' ? '代际' : '基线'),
           ),
-          h('div', { key: 'body', style: { marginTop: 1, fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: 12, fontWeight: 750, color } }, 'FP-' + String(turn.primaryShort || '')),
+          h('div', { key: 'body', style: { marginTop: 1, fontFamily: placeholder ? 'inherit' : 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: 12, fontWeight: 750, color } }, placeholder
+            ? (turn.placeholderStatus === 'no-data' ? '无模型指纹数据' : '指纹数据加载中')
+            : 'FP-' + String(turn.primaryShort || '')),
           h('div', { key: 'model', style: { marginTop: 1, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, String(turn.primaryModel || '')),
         )
       })
@@ -2142,6 +2667,7 @@ window.__ModuleLoader__.load({
     const GuardedTurnRail = guard(TurnRailFast)
     const GuardedOverlay = guard(Overlay)
     const GuardedComposerToggle = guard(ComposerToggle)
+    const GuardedTurnProbe = guard(TurnLifecycleProbe)
 
 
     return {
@@ -2187,6 +2713,7 @@ window.__ModuleLoader__.load({
           lastFetchError,
           commandError,
           build: CLIENT_BUILD,
+          officialTurns: officialTurnRegistry.turns().sort((left, right) => left - right),
           rail: railDebug,
         })
         const reportClientDebug = () => {
@@ -2285,6 +2812,11 @@ window.__ModuleLoader__.load({
           id: 'model-fingerprint-overlay',
           order: 200,
         }, GuardedOverlay))
+        ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
+          name: 'conversation.chat.turnTail',
+          id: 'model-fingerprint-turn-probe',
+          order: 20,
+        }, GuardedTurnProbe))
         ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
           name: 'conversation.composer.dock',
           id: 'model-fingerprint-toggle',

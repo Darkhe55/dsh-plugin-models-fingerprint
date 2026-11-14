@@ -84,6 +84,21 @@ test('FLIP starts from the current on-screen rectangle and keeps a minimum durat
   assert.equal(animation.frames[1].transform, 'translate3d(0,40px,0) scale(0.88)')
 })
 
+test('retarget starts from the current visual rect instead of the old logical target', async () => {
+  const SlotAnimator = await loadAnimator()
+  const animator = new SlotAnimator({ eased: 'linear', reduced: false, cardWidth: 176 })
+  const node = fakeNode()
+  node.offsetWidth = 176
+  node.getBoundingClientRect = () => ({ top: 41, left: 0, width: 176, height: 58 })
+  const first = animator.shift(node, { left: 0, fromTop: 10, fromScale: 1, toTop: 100, toScale: 1, role: 'pushed', motionScale: 1 })
+  const retarget = animator.flip(node, { fromRect: node.getBoundingClientRect(), toTop: 220, toScale: 0.88, role: 'squeeze', motionScale: 1 })
+  assert.equal(first.cancelled, true)
+  assert.equal(first.committed, true)
+  assert.match(retarget.frames[0].transform, /41px/)
+  assert.equal(retarget.frames[1].transform, 'translate3d(0,220px,0) scale(0.88)')
+  assert.ok(retarget.options.duration >= 220)
+})
+
 test('reduced motion may complete immediately', async () => {
   const SlotAnimator = await loadAnimator()
   const animator = new SlotAnimator({ eased: 'linear', reduced: true, cardWidth: 176 })

@@ -7,7 +7,11 @@
       }
       duration(role, scale = 1) {
         if (this.reduced) return 0
-        const base = role === 'squeeze' ? 380 : role === 'incoming' ? 260 : 340
+        const base = role === 'squeeze' ? 300
+          : role === 'pushing' ? 260
+            : role === 'incoming' ? 200
+              : role === 'ejecting' ? 200
+                : 220
         // Fast scrolling may shorten motion, but never to zero.
         return Math.max(120, Math.round(base * scale))
       }

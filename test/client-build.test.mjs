@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs'
 
 test('built client.js is exactly the concatenated client modules', async () => {
   const root = new URL('../', import.meta.url)
-  const parts = ['transport.js', 'animator.js', 'geometry.js', 'window-store.js', 'rail-state.js', 'scroll-scheduler.js', 'rebind-scheduler.js', 'turn-requests.js', 'state.js', 'overlay.js', 'rail.js', 'composer.js', 'apply.js']
+  const parts = ['transport.js', 'animator.js', 'geometry.js', 'window-store.js', 'rail-state.js', 'scroll-scheduler.js', 'rebind-scheduler.js', 'turn-requests.js', 'turn-window-requests.js', 'turn-registry.js', 'visible-turn-adapter.js', 'state.js', 'overlay.js', 'rail.js', 'composer.js', 'apply.js']
   const header = [
     'window.__ModuleLoader__.load({',
     "  id: 'dsh-plugin-model-fingerprint',",

@@ -60,6 +60,28 @@ test('measureNormalized does not rescan subtrees', async () => {
   assert.equal(measured.segments.length, 1)
 })
 
+test('one Turn chooses only the final Assistant anchor, not every child node', async () => {
+  const source = await fs.readFile(new URL('../client/geometry.js', import.meta.url), 'utf8')
+  const TurnGeometry = new Function(source + '\nreturn TurnGeometry')()
+  const rect = (top, height) => ({ top, bottom: top + height, height, left: 0, right: 100, width: 100 })
+  const rows = [
+    { kind: 'user', step: null, groupPart: null, insideProcess: false, order: 0, height: 40, rect: rect(0, 40) },
+    { kind: 'assistant-step', step: 1, groupPart: 'reasoning', insideProcess: true, order: 1, height: 60, rect: rect(45, 60) },
+    { kind: 'tool-call', step: 1, groupPart: null, insideProcess: true, order: 2, height: 80, rect: rect(110, 80) },
+    { kind: 'assistant-step', step: 2, groupPart: null, insideProcess: false, order: 3, height: 100, rect: rect(200, 100) },
+    { kind: 'assistant-step', step: 3, groupPart: 'reasoning', insideProcess: false, order: 4, height: 80, rect: rect(310, 80) },
+  ]
+  const anchor = TurnGeometry.pickCanonicalRow(rows)
+  assert.equal(anchor.kind, 'assistant-step')
+  assert.equal(anchor.step, 2)
+  const canonical = TurnGeometry.canonicalAnchor(rows, 0, 260)
+  assert.deepEqual(canonical.anchorTop, 200)
+  assert.deepEqual(canonical.anchorBottom, 260)
+  assert.equal(Object.prototype.hasOwnProperty.call(canonical, 'segments'), false)
+  const fallback = TurnGeometry.pickCanonicalRow(rows.filter((row) => row.step !== 2))
+  assert.equal(fallback.step, 3, 'reasoning is still a better assistant fallback than a tool step')
+})
+
 test('right anchor is independent of compact card width', async () => {
   const source = await fs.readFile(new URL('../client/geometry.js', import.meta.url), 'utf8')
   const TurnGeometry = new Function(source + '\nreturn TurnGeometry')()

@@ -4,6 +4,7 @@
     const GuardedTurnRail = guard(TurnRailFast)
     const GuardedOverlay = guard(Overlay)
     const GuardedComposerToggle = guard(ComposerToggle)
+    const GuardedTurnProbe = guard(TurnLifecycleProbe)
 
 
     return {
@@ -49,6 +50,7 @@
           lastFetchError,
           commandError,
           build: CLIENT_BUILD,
+          officialTurns: officialTurnRegistry.turns().sort((left, right) => left - right),
           rail: railDebug,
         })
         const reportClientDebug = () => {
@@ -147,6 +149,11 @@
           id: 'model-fingerprint-overlay',
           order: 200,
         }, GuardedOverlay))
+        ctx.slots.inject('conversation.chat.turnTail', () => ctx.slots.register({
+          name: 'conversation.chat.turnTail',
+          id: 'model-fingerprint-turn-probe',
+          order: 20,
+        }, GuardedTurnProbe))
         ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({
           name: 'conversation.composer.dock',
           id: 'model-fingerprint-toggle',

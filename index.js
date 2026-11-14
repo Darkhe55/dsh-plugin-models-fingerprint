@@ -11,7 +11,7 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildReport, buildTurns, fingerprintLabel, protocolLabel, shortId } from './lib/summary.mjs'
-import { buildSessionView } from './lib/session-view.mjs'
+import { buildSessionView, buildTurnWindow } from './lib/session-view.mjs'
 import { listSessionTurns, normalizeTurnIndex, turnIndexFromObservations } from './lib/turn-index.mjs'
 import { analyzeDegradation, buildCalibration, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity, SIMILARITY_VERSION } from './lib/similarity.mjs'
 import { buildEquivalence } from './lib/equivalence.mjs'
@@ -297,6 +297,17 @@ export function apply(ctx) {
   let initializing
   let saveTimer
   const reportCache = new Map()
+  const turnCache = new Map()
+  const turnsForSession = (sessionId) => {
+    if (!scanner) return []
+    const key = String(sessionId) + '|' + scanner.version
+    const cached = turnCache.get(key)
+    if (cached) return cached
+    const turns = buildTurns(scanner.observationsForSession(sessionId), sessionId)
+    turnCache.set(key, turns)
+    if (turnCache.size > 16) turnCache.delete(turnCache.keys().next().value)
+    return turns
+  }
 
   const reportNow = (limit = 200) => {
     if (!scanner) return null
@@ -534,7 +545,7 @@ export function apply(ctx) {
       .slice()
       .sort((left, right) => right.time - left.time)
       .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 300))
-    const turns = buildTurns(sessionRows, sessionId)
+    const turns = turnsForSession(sessionId)
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
     const before = Number(url.searchParams.get('before'))
     const filtered = Number.isFinite(before) && before > 0
@@ -553,6 +564,31 @@ export function apply(ctx) {
     })
     return json(res, 200, view)
   })
+  route('/api/turn-window', async (req, res) => {
+    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
+    if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
+    await init()
+    const url = new URL(req.url || '/', 'http://local')
+    const sessionId = url.searchParams.get('id')
+    const requested = String(url.searchParams.get('turns') || '')
+      .split(',')
+      .map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+    if (!sessionId || !requested.length) return json(res, 400, { error: 'id and turns required' })
+    const turns = turnsForSession(sessionId)
+    const byNumber = new Map(turns.map((turn) => [Number(turn.turn), turn]))
+    const window = buildTurnWindow({
+      sessionId,
+      turns: byNumber,
+      index: normalizeTurnIndex(scanner.turnIndex),
+      requested,
+      revision: scanner.version,
+      generation: scanner.generation,
+      limit: 32,
+    })
+    return json(res, 200, window)
+  })
+
   route('/api/session-index', async (req, res) => {
     if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
     if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
@@ -589,7 +625,7 @@ export function apply(ctx) {
     const sessionId = url.searchParams.get('id')
     const turn = Number(url.searchParams.get('turn'))
     if (!sessionId || !Number.isFinite(turn)) return json(res, 400, { error: 'id and turn required' })
-    const turns = buildTurns(scanner.observationsForSession(sessionId), sessionId)
+    const turns = turnsForSession(sessionId)
     const found = turns.find((item) => Number(item.turn) === turn) || null
     if (found) return json(res, 200, { sessionId, revision: scanner.version, generation: scanner.generation, turn: found })
     const index = normalizeTurnIndex(scanner.turnIndex)
@@ -719,7 +755,7 @@ export function apply(ctx) {
       .slice()
       .sort((left, right) => right.time - left.time)
       .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 100))
-    const turns = buildTurns(sessionRows, sessionId)
+    const turns = turnsForSession(sessionId)
       .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 100))
     return json(res, 200, { session: session || null, observations: rows, turns })
   })

@@ -6,7 +6,7 @@ import path from 'node:path'
 import { zstdCompressSync, zstdDecompressSync } from 'node:zlib'
 import { canonicalSessionFiles, discoverSessionFiles, semanticKeyOf, SessionScanner } from '../lib/scan.mjs'
 import { buildTurns } from '../lib/summary.mjs'
-import { buildSessionView } from '../lib/session-view.mjs'
+import { buildSessionView, buildTurnWindow } from '../lib/session-view.mjs'
 import { listSessionTurns } from '../lib/turn-index.mjs'
 import { DATA_VERSION, FingerprintStore } from '../lib/store.mjs'
 
@@ -155,6 +155,31 @@ test('turns are numeric newest-first and pagination never duplicates', () => {
   const ids = [...first.turns, ...next.turns].map((row) => row.turn)
   assert.deepEqual(ids, [5, 4, 3, 2, 1])
   assert.equal(new Set(ids).size, ids.length)
+})
+
+test('turn-window batches observe, no-data and missing explicitly', () => {
+  const data = { id: 's:turn:3', turn: 3, hasModelData: true }
+  const window = buildTurnWindow({
+    sessionId: 's',
+    turns: new Map([[3, data]]),
+    index: { s: { '2': { turn: 2, steps: 0, status: 'no-data' } } },
+    requested: [3, 2, 1, 3, 'bad'],
+    revision: 9,
+    generation: 'g9',
+  })
+  assert.equal(window.generation, 'g9')
+  assert.equal(window.revision, 9)
+  assert.deepEqual(window.turns.map((entry) => entry.turn), [1, 2, 3])
+  assert.deepEqual(window.turns.map((entry) => entry.status), ['missing', 'no-data', 'observed'])
+  assert.equal(window.turns[2].data.id, 's:turn:3')
+  assert.equal(window.turns[0].data, null)
+  const capped = buildTurnWindow({
+    sessionId: 's',
+    turns: new Map(),
+    requested: Array.from({ length: 50 }, (_, index) => index),
+    limit: 32,
+  })
+  assert.equal(capped.turns.length, 32)
 })
 
 test('old state is backed up before semantic migration', async () => {

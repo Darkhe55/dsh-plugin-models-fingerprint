@@ -2,18 +2,31 @@
       constructor(maxWindow = 2000) {
         this.maxWindow = Math.max(200, Number(maxWindow) || 2000)
         this.rows = new Map()
+        this.byNumber = new Map()
         this.hasMore = false
       }
       reset() {
         this.rows.clear()
+        this.byNumber.clear()
         this.hasMore = false
       }
       merge(incoming) {
         for (const turn of incoming || []) {
           if (!turn || turn.id === undefined) continue
           this.rows.set(turn.id, turn)
+          const number = Number(turn.turn)
+          if (Number.isFinite(number)) this.byNumber.set(number, turn)
         }
         return this.turns()
+      }
+      get(turn) {
+        return this.byNumber.get(Number(turn)) || null
+      }
+      has(turn) {
+        return this.byNumber.has(Number(turn))
+      }
+      numbers() {
+        return [...this.byNumber.keys()]
       }
       turns() {
         return [...this.rows.values()].sort((left, right) => Number(right.turn) - Number(left.turn))
@@ -36,6 +49,11 @@
         const keep = new Set(rows.slice(0, this.maxWindow).map((turn) => turn.id))
         for (const id of [...this.rows.keys()]) {
           if (!keep.has(id)) this.rows.delete(id)
+        }
+        this.byNumber.clear()
+        for (const turn of this.rows.values()) {
+          const number = Number(turn.turn)
+          if (Number.isFinite(number)) this.byNumber.set(number, turn)
         }
         return true
       }

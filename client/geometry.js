@@ -1,4 +1,47 @@
     class TurnGeometry {
+      /**
+       * Choose exactly one canonical reply anchor for a Turn. A Turn can have
+       * user, tool, assistant-step and finalized rows; selecting all of them is
+       * what produced several disconnected braces in the rail.
+       */
+      static pickCanonicalRow(rows) {
+        const usable = (rows || []).filter((row) => row && Number(row.height) > 0)
+        if (!usable.length) return null
+        const legacy = usable.filter((row) => row.kind === 'assistant' || row.kind === 'message')
+        const replies = usable.filter((row) => row.kind === 'assistant-step'
+          && !row.insideProcess
+          && row.groupPart !== 'reasoning')
+        const nonProcess = usable.filter((row) => row.kind === 'assistant-step' && !row.insideProcess)
+        const nonReasoning = usable.filter((row) => row.kind === 'assistant-step' && row.groupPart !== 'reasoning')
+        const assistants = usable.filter((row) => row.kind === 'assistant-step')
+        const pool = legacy.length ? legacy
+          : replies.length ? replies
+            : nonProcess.length ? nonProcess
+              : nonReasoning.length ? nonReasoning : assistants
+        if (!pool.length) return null
+        return pool.slice().sort((left, right) => {
+          const leftStep = Number.isFinite(Number(left.step)) ? Number(left.step) : -1
+          const rightStep = Number.isFinite(Number(right.step)) ? Number(right.step) : -1
+          if (leftStep !== rightStep) return rightStep - leftStep
+          return (Number(right.order) || 0) - (Number(left.order) || 0)
+        })[0]
+      }
+      static visibleRange(rect, clipTop, clipBottom) {
+        if (!rect) return null
+        const top = Math.max(Number(rect.top) || 0, Number(clipTop) || 0)
+        const bottom = Math.min(Number(rect.bottom) || 0, Number(clipBottom) || 0)
+        return bottom > top ? { top, bottom } : null
+      }
+      static canonicalAnchor(rows, clipTop, clipBottom) {
+        const row = TurnGeometry.pickCanonicalRow(rows)
+        if (!row) return null
+        const range = TurnGeometry.visibleRange(row.rect, clipTop, clipBottom)
+        return {
+          row,
+          anchorTop: range ? range.top : null,
+          anchorBottom: range ? range.bottom : null,
+        }
+      }
       static anchorRight(flowRect, sidebarRight, safeLeft, cardWidth = 176) {
         const safe = Number.isFinite(safeLeft) ? safeLeft : (sidebarRight > 0 ? sidebarRight + 2 : Math.max(8, flowRect.left - 64))
         return Math.min(flowRect.right - 6, Math.max(safe + cardWidth, flowRect.left - 6))
