@@ -20,6 +20,10 @@ test('init migrates a mixed-version state from canonical logs and keeps a backup
       's:1-old': { id: 's:1-old', sessionId: 's', seq: 1, time: 1, turn: 1, step: 1, model: 'm', fingerprint: 'fp_a', protocol: { api: 'x' } },
     },
     turnIndex: { s: { '1': { turn: 1, steps: 2 } } },
+    officialEvidenceVersion: 1,
+    officialModels: [{ key: 'p/m', provider: 'p', model: 'm', label: 'legacy', evidenceLevel: 'unknown', evidenceSource: '', confirmedAt: null, minSamples: 3 }],
+    officialBaselines: { 'p/m': { key: 'p/m', provider: 'p', model: 'm', version: 1, samples: 999, ready: true, dataVersion: 1, profile: { features: {}, usable: 0 } } },
+    similarityCalibration: { 'p/m': { version: 1, officialKey: 'p/m', calibrated: true, dataVersion: 1, positives: 999 } },
   }
   await fs.writeFile(path.join(root, 'state.json.zst'), zstdCompressSync(Buffer.from(JSON.stringify(old))))
   const line = (value) => JSON.stringify(value) + '\n'
@@ -88,6 +92,18 @@ test('init migrates a mixed-version state from canonical logs and keeps a backup
   const view = await request('api/session-view?id=s')
   assert.equal(view.turns.length, 1)
   assert.equal(view.turns[0].steps, 1, 'migration repaired the duplicated turn index')
+  let official = null
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    official = await request('api/official-models')
+    const baseline = official.baselines.find((item) => item.key === 'p/m')
+    if (baseline && baseline.samples !== 999) break
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+  const migratedBaseline = official.baselines.find((item) => item.key === 'p/m')
+  assert.equal(migratedBaseline.samples !== 999, true, 'old baseline was replaced')
+  assert.equal(migratedBaseline.dataVersion, 2)
+  assert.equal(typeof migratedBaseline.sourceDigest, 'string')
+  assert.equal(migratedBaseline.stale, false)
   const backups = (await fs.readdir(root)).filter((name) => name.startsWith('state.json.zst.pre-semantic-v'))
   assert.equal(backups.length, 1)
 })

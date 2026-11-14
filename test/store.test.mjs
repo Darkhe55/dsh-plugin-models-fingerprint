@@ -34,4 +34,7 @@ test('compressed state round-trips labels and observations', async () => {
   assert.equal(reloaded.officialModels()[0].provider, 'official')
   assert.equal(reloaded.officialBaseline('official/m').samples, 20)
   assert.equal(reloaded.calibrationFor('official/m').calibrated, true)
+  reloaded.setOfficialModels([])
+  assert.equal(reloaded.officialBaseline('official/m'), null, 'deleting an official source clears its baseline')
+  assert.equal(reloaded.calibrationFor('official/m'), null, 'deleting an official source clears its calibration')
 })

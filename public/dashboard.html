@@ -296,7 +296,7 @@
     </div>
     <div id="panel-official" hidden>
       <div class="toolbar">
-        <div class="muted small">官方行为基线 · 只有通过本地校准才显示概率 · 不是模型身份证明</div>
+        <div class="muted small">官方行为基线 · 协议一致不等于模型相同 · 被动行为不能单独确认身份</div>
         <span class="faint small" id="official-stats"></span>
       </div>
       <div class="card-b" id="official-config">
@@ -306,6 +306,14 @@
           <input class="search" id="official-model" placeholder="model" />
           <input class="search" id="official-label" placeholder="标签（可选）" />
           <input class="search" id="official-min" placeholder="最少样本 20" />
+          <select class="select" id="official-evidence" title="官方来源证据等级">
+            <option value="user-confirmed-official-api">用户确认官方 API</option>
+            <option value="official-provider-route">官方提供商路由</option>
+            <option value="verified-deployment">已验证部署</option>
+            <option value="claimed-only">仅声称</option>
+            <option value="unknown">未知</option>
+          </select>
+          <input class="search" id="official-evidence-source" placeholder="证据来源（如 user-confirmed:2026-11-14）" />
           <button class="refresh" id="official-add" type="button">保存官方基线</button>
         </div>
         <div class="faint small" id="official-list">尚未配置官方模型。</div>
@@ -768,7 +776,10 @@ function renderOfficial() {
   $('official-list').innerHTML = models.length
     ? models.map((model) => {
         const baseline = baselines.find((item) => item.key === model.key);
-        return `<div class="faint small" style="margin-top:4px">${esc(model.label)} <span class="mono">${esc(model.key)}</span> · ${baseline ? (baseline.ready ? '基线就绪 ' + fmtNum(baseline.samples) + ' 样本' : '样本不足 ' + fmtNum(baseline.samples || 0) + '/' + fmtNum(baseline.minSamples || model.minSamples)) : '尚无基线'}</div>`;
+        const source = model.evidenceLevel || 'unknown';
+        const bad = source === 'claimed-only' || source === 'unknown';
+        const stale = baseline && baseline.stale ? ' · STALE ' + (baseline.staleReasons || []).join(',') : '';
+        return `<div class="faint small" style="margin-top:4px">${esc(model.label)} <span class="mono">${esc(model.key)}</span> · 证据 ${esc(source)}${bad ? '（不提升身份置信度）' : ''} · ${baseline ? (baseline.ready ? '基线就绪 ' + fmtNum(baseline.samples) + ' 样本 / ' + fmtNum(baseline.sessions) + ' 会话' : '样本不足 ' + fmtNum(baseline.samples || 0) + '/' + fmtNum(baseline.minSamples || model.minSamples)) : '尚无基线'}${stale}</div>`;
       }).join('')
     : '尚未配置官方模型。';
 }
@@ -790,9 +801,19 @@ async function saveOfficial() {
   }
   const label = $('official-label').value.trim();
   const minSamples = Number($('official-min').value) || 20;
-  const current = (state.official && state.official.models || []).map((item) => ({ provider: item.provider, model: item.model, label: item.label, minSamples: item.minSamples }));
+  const current = (state.official && state.official.models || []).map((item) => ({
+    provider: item.provider,
+    model: item.model,
+    label: item.label,
+    minSamples: item.minSamples,
+    evidenceLevel: item.evidenceLevel || 'unknown',
+    evidenceSource: item.evidenceSource || '',
+    confirmedAt: item.confirmedAt || null,
+  }));
   const next = current.filter((item) => !(item.provider === provider && item.model === model));
-  next.push({ provider, model, label, minSamples });
+  const evidenceLevel = $('official-evidence').value || 'unknown';
+  const evidenceSource = $('official-evidence-source').value.trim() || ('user-confirmed:' + new Date().toISOString().slice(0, 10));
+  next.push({ provider, model, label, minSamples, evidenceLevel, evidenceSource, confirmedAt: new Date().toISOString().slice(0, 10) });
   const res = await fetch('/model-fingerprint/api/official-models', {
     method: 'POST',
     headers: { 'content-type': 'application/json', 'x-mf-token': TOKEN },
@@ -825,20 +846,29 @@ async function runSimilarity() {
     if (!res.ok) throw new Error(body.error || ('HTTP ' + res.status));
     state.officialResult = body;
     const best = body.best || {};
-    const behaviorSimilarity = body.calibrated && body.behaviorSimilarity != null ? fmtPct(body.behaviorSimilarity) : '未校准';
-    const verdict = best.verdict || body.verdict || 'no-data';
-    const tone = body.calibrated ? (body.behaviorSimilarity >= 0.8 ? 'good' : body.behaviorSimilarity <= 0.2 ? 'bad' : 'warn') : 'warn';
+    const behaviorSimilarity = body.behaviorSimilarity != null ? fmtPct(body.behaviorSimilarity) : '—';
+    const verdict = best.modelIdentityStatus || body.modelIdentityStatus || best.verdict || body.verdict || 'no-data';
+    const tone = body.modelIdentityStatus === 'possible-different-model-insufficient-evidence' ? 'warn' : 'warn';
     const degradation = best.degradation || {};
+    const layers = best.layers || {};
+    const protocol = layers.protocol || {};
+    const identity = body.modelIdentityConfidence != null ? fmtPct(body.modelIdentityConfidence) : '—';
     $('official-result').innerHTML = `
       <div class="eq-grid">
         <div class="eq-card"><div class="k">行为相似度（非身份概率）</div><div class="v">${behaviorSimilarity}</div></div>
-        <div class="eq-card"><div class="k">判定</div><div class="v">${esc(verdict)}</div></div>
+        <div class="eq-card"><div class="k">协议置信度</div><div class="v">${body.protocolConfidence != null ? fmtPct(body.protocolConfidence) : '—'}</div></div>
+        <div class="eq-card"><div class="k">模型身份置信度（上限 ${best.modelIdentityCeiling != null ? fmtPct(best.modelIdentityCeiling) : '—'}）</div><div class="v">${identity}</div></div>
+        <div class="eq-card"><div class="k">身份状态</div><div class="v">${esc(verdict)}</div></div>
         <div class="eq-card"><div class="k">距离</div><div class="v">${best.comparison && best.comparison.distance != null ? best.comparison.distance : '—'}</div></div>
         <div class="eq-card"><div class="k">质量代理</div><div class="v">${esc(degradation.level || 'insufficient')}</div></div>
       </div>
-      <div class="faint small">候选 ${esc(provider)} / ${esc(model)} · 样本 ${fmtNum(body.samples)} · 来源 ${esc(body.source || 'passive')} · ${body.calibrated ? '已用本地同源/异源样本校准' : '未校准：样本不足或分布不可分，不显示行为相似度'} · ${esc(best.reason || '')}</div>
+      <div class="faint small">候选 ${esc(provider)} / ${esc(model)} · 样本 ${fmtNum(body.samples)} · 来源 ${esc(body.source || 'passive')} · 证据 ${esc(body.evidenceLevel || 'unknown')} · ${body.passiveOnly ? 'passive-only：自然会话不能单独确认模型身份' : '包含固定探针'} · ${esc(best.reason || '')}</div>
+      <div class="eq-section"><h3>协议分层</h3>
+        <div class="faint small">transport family：${esc(protocol.left && protocol.left.transportFamilyId || '—')} · variant：${esc(protocol.left && protocol.left.transportVariantId || '—')} · same family=${protocol.sameFamily} · same variant=${protocol.sameVariant}</div>
+        <div class="faint small">同类协议只说明传输形态一致，不能显示为模型相同。</div>
+      </div>
       <div class="eq-section"><h3>证据</h3>${(best.comparison && best.comparison.contributions || []).slice(0, 5).map((item) => `<div class="faint small">${esc(item.key)} z=${item.z} · 权重 ${item.weight}</div>`).join('') || '<div class="empty">无可比特征</div>'}</div>
-      <div class="faint small">质量代理只反映行为偏移，不代表语义质量或模型身份。</div>
+      <div class="faint small">质量代理只反映行为偏移，不代表语义质量或模型身份；没有固定重复探针时不会输出 MoE 专家结论。</div>
     `;
     if (tone === 'bad') $('official-result').classList.add('is-bad'); else $('official-result').classList.remove('is-bad');
   } catch (error) {

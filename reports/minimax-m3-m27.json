@@ -1,0 +1,894 @@
+{
+  "schema": "model-fingerprint-hard-negative/v1",
+  "generatedAt": "2026-11-14T13:29:40.088Z",
+  "models": [
+    {
+      "key": "minimax-cn/MiniMax-M3",
+      "label": "官方 MiniMax M3",
+      "observations": 1189,
+      "sessions": 19,
+      "excluded": 0
+    },
+    {
+      "key": "minimax-cn/MiniMax-M2.7",
+      "label": "官方 MiniMax M2.7",
+      "observations": 105,
+      "sessions": 5,
+      "excluded": 1
+    }
+  ],
+  "quality": {
+    "MiniMax-M3": {
+      "total": 1189,
+      "usableForBaseline": 1189,
+      "usableForIdentity": 1189,
+      "excluded": 0,
+      "samplesTruncated": false,
+      "reasons": [],
+      "samples": []
+    },
+    "MiniMax-M2.7": {
+      "total": 106,
+      "usableForBaseline": 105,
+      "usableForIdentity": 105,
+      "excluded": 1,
+      "samplesTruncated": false,
+      "reasons": [
+        {
+          "reason": "protocol-fields-missing",
+          "count": 1
+        },
+        {
+          "reason": "behavior-fields-missing",
+          "count": 1
+        },
+        {
+          "reason": "usage-missing",
+          "count": 1
+        },
+        {
+          "reason": "replay-missing",
+          "count": 1
+        },
+        {
+          "reason": "reasoning-only-no-response",
+          "count": 1
+        }
+      ],
+      "samples": [
+        {
+          "id": "752a7d48-574b-44cb-a572-60ade02fa907:784",
+          "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+          "turn": 2,
+          "step": 54,
+          "time": 1793272000138,
+          "fingerprint": "fp_bb2f3030e807",
+          "quality": {
+            "qualityVersion": 1,
+            "completeProtocol": false,
+            "completeBehavior": false,
+            "canonicalSource": true,
+            "routeConsistent": true,
+            "usableForIdentity": false,
+            "usableForBaseline": false,
+            "exclusionReasons": [
+              "protocol-fields-missing",
+              "behavior-fields-missing",
+              "usage-missing",
+              "replay-missing",
+              "reasoning-only-no-response"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "protocol": {
+    "MiniMax-M3": {
+      "fingerprints": [
+        {
+          "id": "fp_8e17c9bd6670",
+          "count": 1189
+        }
+      ],
+      "families": [
+        {
+          "id": "tf_c174f6b98cd4",
+          "count": 1189
+        }
+      ],
+      "variants": [
+        {
+          "id": "tv_b90db42afd41",
+          "count": 1189
+        }
+      ],
+      "apis": [
+        {
+          "id": "anthropic-messages",
+          "count": 1189
+        }
+      ]
+    },
+    "MiniMax-M2.7": {
+      "fingerprints": [
+        {
+          "id": "fp_8e17c9bd6670",
+          "count": 105
+        }
+      ],
+      "families": [
+        {
+          "id": "tf_c174f6b98cd4",
+          "count": 105
+        }
+      ],
+      "variants": [
+        {
+          "id": "tv_b90db42afd41",
+          "count": 103
+        },
+        {
+          "id": "tv_ee201d4d1fd9",
+          "count": 1
+        },
+        {
+          "id": "tv_d6578c603319",
+          "count": 1
+        }
+      ],
+      "apis": [
+        {
+          "id": "anthropic-messages",
+          "count": 105
+        }
+      ]
+    }
+  },
+  "rawProtocol": {
+    "MiniMax-M3": {
+      "fingerprints": [
+        {
+          "id": "fp_8e17c9bd6670",
+          "count": 1189
+        }
+      ],
+      "families": [
+        {
+          "id": "tf_c174f6b98cd4",
+          "count": 1189
+        }
+      ],
+      "variants": [
+        {
+          "id": "tv_b90db42afd41",
+          "count": 1189
+        }
+      ],
+      "apis": [
+        {
+          "id": "anthropic-messages",
+          "count": 1189
+        }
+      ]
+    },
+    "MiniMax-M2.7": {
+      "fingerprints": [
+        {
+          "id": "fp_8e17c9bd6670",
+          "count": 105
+        },
+        {
+          "id": "fp_bb2f3030e807",
+          "count": 1
+        }
+      ],
+      "families": [
+        {
+          "id": "tf_c174f6b98cd4",
+          "count": 105
+        },
+        {
+          "id": "tf_14a1c8f7ba71",
+          "count": 1
+        }
+      ],
+      "variants": [
+        {
+          "id": "tv_b90db42afd41",
+          "count": 103
+        },
+        {
+          "id": "tv_18c8fca5addb",
+          "count": 1
+        },
+        {
+          "id": "tv_ee201d4d1fd9",
+          "count": 1
+        },
+        {
+          "id": "tv_d6578c603319",
+          "count": 1
+        }
+      ],
+      "apis": [
+        {
+          "id": "anthropic-messages",
+          "count": 105
+        },
+        {
+          "id": "-",
+          "count": 1
+        }
+      ]
+    }
+  },
+  "transportLayers": {
+    "familyA": "tf_c174f6b98cd4",
+    "familyB": "tf_c174f6b98cd4",
+    "sameFamily": true,
+    "variantA": "tv_b90db42afd41",
+    "variantB": "tv_b90db42afd41",
+    "sameMajorVariant": true,
+    "variantBShare": 0.981,
+    "behaviorProfileIdA": "bp_785a16f3f2c0",
+    "behaviorProfileIdB": "bp_ea019c5480f2",
+    "sameBehaviorProfile": false
+  },
+  "behavior": {
+    "MiniMax-M3": {
+      "tokensPerChar": {
+        "median": 0.361,
+        "mad": 0.059,
+        "samples": 1189,
+        "coverage": 1
+      },
+      "jsonSpacing": {
+        "median": 0,
+        "mad": 0,
+        "samples": 221,
+        "coverage": 0.186
+      },
+      "reasoningRatio": {
+        "median": 0,
+        "mad": 0,
+        "samples": 1189,
+        "coverage": 1
+      },
+      "charsPerChunk": {
+        "median": 36.85,
+        "mad": 22.96,
+        "samples": 1189,
+        "coverage": 1
+      },
+      "escapedUnicode": {
+        "median": 0,
+        "mad": 0,
+        "samples": 1139,
+        "coverage": 0.958
+      },
+      "asciiRatio": {
+        "median": 1,
+        "mad": 0,
+        "samples": 646,
+        "coverage": 0.543
+      },
+      "cjkRatio": {
+        "median": 0,
+        "mad": 0,
+        "samples": 646,
+        "coverage": 0.543
+      },
+      "punctuationRatio": {
+        "median": 0.032,
+        "mad": 0.011,
+        "samples": 646,
+        "coverage": 0.543
+      },
+      "markdownPerK": {
+        "median": 0,
+        "mad": 0,
+        "samples": 646,
+        "coverage": 0.543
+      },
+      "newlineRatio": {
+        "median": 0,
+        "mad": 0,
+        "samples": 646,
+        "coverage": 0.543
+      }
+    },
+    "MiniMax-M2.7": {
+      "tokensPerChar": {
+        "median": 0.295,
+        "mad": 0.034,
+        "samples": 105,
+        "coverage": 1
+      },
+      "jsonSpacing": {
+        "median": 0,
+        "mad": 0,
+        "samples": 5,
+        "coverage": 0.048
+      },
+      "reasoningRatio": {
+        "median": 0.809,
+        "mad": 0.119,
+        "samples": 105,
+        "coverage": 1
+      },
+      "charsPerChunk": {
+        "median": 49.38,
+        "mad": 7.5,
+        "samples": 105,
+        "coverage": 1
+      },
+      "escapedUnicode": {
+        "median": 0,
+        "mad": 0,
+        "samples": 94,
+        "coverage": 0.895
+      },
+      "asciiRatio": {
+        "median": 0.23,
+        "mad": 0.23,
+        "samples": 12,
+        "coverage": 0.114
+      },
+      "cjkRatio": {
+        "median": 0.65,
+        "mad": 0.185,
+        "samples": 12,
+        "coverage": 0.114
+      },
+      "punctuationRatio": {
+        "median": 0.085,
+        "mad": 0.02,
+        "samples": 12,
+        "coverage": 0.114
+      },
+      "markdownPerK": {
+        "median": 0,
+        "mad": 0,
+        "samples": 12,
+        "coverage": 0.114
+      },
+      "newlineRatio": {
+        "median": 0.024,
+        "mad": 0.006,
+        "samples": 12,
+        "coverage": 0.114
+      }
+    }
+  },
+  "directDistance": {
+    "distance": 1.688,
+    "coverage": 1,
+    "contributions": [
+      {
+        "key": "reasoningRatio",
+        "z": 6,
+        "weight": 0.18,
+        "a": 0,
+        "b": 0.809
+      },
+      {
+        "key": "tokensPerChar",
+        "z": 0.95,
+        "weight": 0.36,
+        "a": 0.361,
+        "b": 0.295
+      },
+      {
+        "key": "asciiRatio",
+        "z": 4.51,
+        "weight": 0.02,
+        "a": 1,
+        "b": 0.23
+      },
+      {
+        "key": "charsPerChunk",
+        "z": 0.55,
+        "weight": 0.16,
+        "a": 36.85,
+        "b": 49.38
+      },
+      {
+        "key": "cjkRatio",
+        "z": 4.75,
+        "weight": 0.01,
+        "a": 0,
+        "b": 0.65
+      }
+    ],
+    "selfDistance": {
+      "MiniMax-M3": 0.53,
+      "MiniMax-M2.7": 0.746
+    },
+    "ratioToSelf": {
+      "MiniMax-M3": 3.185,
+      "MiniMax-M2.7": 2.263
+    }
+  },
+  "sessionHeldOut": {
+    "unit": "session",
+    "method": "leave-one-session-out; each training profile excludes the held-out session",
+    "folds": 24,
+    "leakage": false,
+    "records": [
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "session-669c7477-b4be-4491-8c9c-445cf1e82866",
+        "testSamples": 370,
+        "sameDistance": 0.475,
+        "otherDistance": 1.736,
+        "margin": 1.261,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "f1fcc889-1a92-41c0-858a-191579b3c995",
+        "testSamples": 1,
+        "sameDistance": 3.538,
+        "otherDistance": 5.691,
+        "margin": 2.153,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "c40a7b36-d8e1-41a3-914a-a18d94e9d7b6",
+        "testSamples": 61,
+        "sameDistance": 0.112,
+        "otherDistance": 1.723,
+        "margin": 1.611,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "e2d97cbf-53ad-4465-9e35-1397c2ee5bde",
+        "testSamples": 67,
+        "sameDistance": 0.184,
+        "otherDistance": 1.69,
+        "margin": 1.506,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "268f040b-0981-47a1-8396-0e58d5defa8c",
+        "testSamples": 17,
+        "sameDistance": 0.05,
+        "otherDistance": 1.754,
+        "margin": 1.704,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "d9b14388-2806-4fc7-a267-971eb30d1f5b",
+        "testSamples": 114,
+        "sameDistance": 1.329,
+        "otherDistance": 2.573,
+        "margin": 1.244,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "87ab9d10-d13c-4d30-b56c-2482f3dbe1f8",
+        "testSamples": 37,
+        "sameDistance": 1.092,
+        "otherDistance": 2.863,
+        "margin": 1.771,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "04bea96a-55e7-42d0-aed7-c8e530b501e3",
+        "testSamples": 18,
+        "sameDistance": 0.958,
+        "otherDistance": 2.893,
+        "margin": 1.935,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "8d872ea4-832a-44d9-9483-994b400dc48d",
+        "testSamples": 102,
+        "sameDistance": 0.62,
+        "otherDistance": 2.149,
+        "margin": 1.529,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "4e4df46e-b8da-4fd3-9403-3d9af050ec34",
+        "testSamples": 50,
+        "sameDistance": 0.602,
+        "otherDistance": 1.894,
+        "margin": 1.292,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "08249cbf-b1b5-450b-902d-bda24f326fb9",
+        "testSamples": 56,
+        "sameDistance": 1.402,
+        "otherDistance": 2.949,
+        "margin": 1.547,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "41b3fc3b-a789-43ba-bf5f-b86da1cc9223",
+        "testSamples": 64,
+        "sameDistance": 0.301,
+        "otherDistance": 2.359,
+        "margin": 2.058,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "33b85c89-3b9c-4ca2-9e1d-c4743db25da9",
+        "testSamples": 56,
+        "sameDistance": 0.245,
+        "otherDistance": 2.379,
+        "margin": 2.134,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "8deeed8f-77ae-462b-b91e-7c898eda9a4c",
+        "testSamples": 42,
+        "sameDistance": 0.338,
+        "otherDistance": 2.575,
+        "margin": 2.237,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "6fb39571-682d-445c-ad37-12e8504024b4",
+        "testSamples": 52,
+        "sameDistance": 0.26,
+        "otherDistance": 2.51,
+        "margin": 2.25,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "7e72d5bc-c98b-4e21-ad9d-72214255647a",
+        "testSamples": 63,
+        "sameDistance": 0.236,
+        "otherDistance": 2.481,
+        "margin": 2.245,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "bc9bbf6e-d229-4129-a11e-1141a05c9342",
+        "testSamples": 1,
+        "sameDistance": 3.621,
+        "otherDistance": 5.646,
+        "margin": 2.025,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+        "testSamples": 17,
+        "sameDistance": 2.601,
+        "otherDistance": 5.261,
+        "margin": 2.66,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M3",
+        "sessionId": "0f9d5c0d-a55d-48a8-888c-64ad0796ce0f",
+        "testSamples": 1,
+        "sameDistance": 3.543,
+        "otherDistance": 5.599,
+        "margin": 2.056,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M2.7",
+        "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+        "testSamples": 61,
+        "sameDistance": 2.389,
+        "otherDistance": 2.995,
+        "margin": 0.606,
+        "correct": true,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M2.7",
+        "sessionId": "89b29a97-136f-49a4-abcc-68175bb9460b",
+        "testSamples": 3,
+        "sameDistance": 5.442,
+        "otherDistance": 3.381,
+        "margin": -2.061,
+        "correct": false,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M2.7",
+        "sessionId": "fb3a702d-b49e-4a80-bf7e-5cf05e51d31f",
+        "testSamples": 1,
+        "sameDistance": 5.6,
+        "otherDistance": 4.575,
+        "margin": -1.025,
+        "correct": false,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M2.7",
+        "sessionId": "74e9b039-aaea-80fb-2f32-751578897fef",
+        "testSamples": 1,
+        "sameDistance": 5.679,
+        "otherDistance": 3.447,
+        "margin": -2.232,
+        "correct": false,
+        "uncertain": false
+      },
+      {
+        "model": "MiniMax-M2.7",
+        "sessionId": "session-cd925444-8a2e-4fb1-bad2-72977cf0e092",
+        "testSamples": 39,
+        "sameDistance": 2.367,
+        "otherDistance": 0.577,
+        "margin": -1.79,
+        "correct": false,
+        "uncertain": false
+      }
+    ],
+    "sameDistance": {
+      "samples": 24,
+      "min": 0.05,
+      "p25": 0.291,
+      "median": 1.025,
+      "p75": 2.835,
+      "max": 5.679,
+      "mean": 1.791
+    },
+    "crossDistance": {
+      "samples": 24,
+      "min": 0.577,
+      "p25": 2.085,
+      "median": 2.574,
+      "p75": 3.398,
+      "max": 5.691,
+      "mean": 2.988
+    },
+    "correct": 20,
+    "misclassified": 4,
+    "uncertain": 0,
+    "auc": {
+      "auc": 0.724,
+      "pairs": 48,
+      "bootstrap": {
+        "auc": 0.724,
+        "lower": 0.606,
+        "upper": 0.852,
+        "reps": 2000,
+        "unit": "session"
+      }
+    }
+  },
+  "pairDistances": {
+    "sameModelAcrossSessions": {
+      "MiniMax-M3": {
+        "samples": 171,
+        "min": 0.065,
+        "p25": 0.568,
+        "median": 1.583,
+        "p75": 3.492,
+        "max": 4.463,
+        "mean": 2.002
+      },
+      "MiniMax-M2.7": {
+        "samples": 10,
+        "min": 1.719,
+        "p25": 2.492,
+        "median": 3.752,
+        "p75": 5.383,
+        "max": 5.857,
+        "mean": 3.813
+      }
+    },
+    "crossModel": {
+      "models": [
+        "MiniMax-M3",
+        "MiniMax-M2.7"
+      ],
+      "samples": 95,
+      "min": 0.518,
+      "p25": 2.109,
+      "median": 3.75,
+      "p75": 4.417,
+      "max": 5.85,
+      "mean": 3.432
+    }
+  },
+  "timeHeldOut": {
+    "unit": "time-window",
+    "windows": 4,
+    "folds": [
+      {
+        "window": 0,
+        "testSessions": 5,
+        "testSamples": 516,
+        "m3": 0.265,
+        "m27": null,
+        "cross": 1.757,
+        "m3ToM27": 1.757
+      },
+      {
+        "window": 1,
+        "testSessions": 6,
+        "testSamples": 377,
+        "m3": 1.401,
+        "m27": null,
+        "cross": 2.59,
+        "m3ToM27": 2.59
+      },
+      {
+        "window": 2,
+        "testSessions": 6,
+        "testSamples": 338,
+        "m3": 0.249,
+        "m27": 2.388,
+        "cross": 0.68,
+        "m3ToM27": 0.68,
+        "m27ToM3": 2.873
+      },
+      {
+        "window": 3,
+        "testSessions": 6,
+        "testSamples": 63,
+        "m3": 2.627,
+        "m27": 2.388,
+        "cross": 5.804,
+        "m3ToM27": 5.804,
+        "m27ToM3": 0.514
+      }
+    ]
+  },
+  "fpr": {
+    "0.01": {
+      "threshold": 0.518,
+      "recall": 0.375,
+      "actualFpr": 0.011,
+      "fprUnit": "cross-model session pair"
+    },
+    "0.05": {
+      "threshold": 0.721,
+      "recall": 0.458,
+      "actualFpr": 0.053,
+      "fprUnit": "cross-model session pair"
+    }
+  },
+  "ablation": {
+    "fullAuc": 0.724,
+    "features": [
+      {
+        "omitted": "tokensPerChar",
+        "auc": 0.823,
+        "delta": 0.099
+      },
+      {
+        "omitted": "jsonSpacing",
+        "auc": 0.762,
+        "delta": 0.038
+      },
+      {
+        "omitted": "reasoningRatio",
+        "auc": 0.628,
+        "delta": -0.096
+      },
+      {
+        "omitted": "charsPerChunk",
+        "auc": 0.722,
+        "delta": -0.002
+      },
+      {
+        "omitted": "escapedUnicode",
+        "auc": 0.731,
+        "delta": 0.007
+      },
+      {
+        "omitted": "asciiRatio",
+        "auc": 0.731,
+        "delta": 0.007
+      },
+      {
+        "omitted": "cjkRatio",
+        "auc": 0.726,
+        "delta": 0.002
+      },
+      {
+        "omitted": "punctuationRatio",
+        "auc": 0.724,
+        "delta": 0
+      },
+      {
+        "omitted": "markdownPerK",
+        "auc": 0.726,
+        "delta": 0.002
+      },
+      {
+        "omitted": "newlineRatio",
+        "auc": 0.724,
+        "delta": 0
+      }
+    ]
+  },
+  "anomalies": [
+    {
+      "id": "752a7d48-574b-44cb-a572-60ade02fa907:784",
+      "sessionId": "752a7d48-574b-44cb-a572-60ade02fa907",
+      "turn": 2,
+      "step": 54,
+      "time": 1793272000138,
+      "fingerprint": "fp_bb2f3030e807",
+      "protocol": {
+        "api": "-",
+        "adapter": "-",
+        "wireProvider": "-",
+        "responseId": "none",
+        "replay": "none"
+      },
+      "quality": {
+        "qualityVersion": 1,
+        "completeProtocol": false,
+        "completeBehavior": false,
+        "canonicalSource": true,
+        "routeConsistent": true,
+        "usableForIdentity": false,
+        "usableForBaseline": false,
+        "exclusionReasons": [
+          "protocol-fields-missing",
+          "behavior-fields-missing",
+          "usage-missing",
+          "replay-missing",
+          "reasoning-only-no-response"
+        ]
+      },
+      "analysis": {
+        "likelyCause": "incomplete-reasoning-only-response-or-missing-replay",
+        "routeSwitchObserved": false,
+        "neighboringModels": [
+          {
+            "model": "MiniMax-M2.7",
+            "fingerprint": "fp_8e17c9bd6670"
+          },
+          {
+            "model": "MiniMax-M2.7",
+            "fingerprint": "fp_8e17c9bd6670"
+          }
+        ],
+        "rawRetained": true
+      }
+    }
+  ],
+  "limitations": [
+    "MiniMax-M2.7 only has 5 sessions; bootstrap CIs and FPR estimates are unstable.",
+    "Session-held-out bootstrap resamples sessions; it does not make individual observations independent.",
+    "Passive natural-chat behavior cannot establish model identity without fixed repeated probes."
+  ]
+}

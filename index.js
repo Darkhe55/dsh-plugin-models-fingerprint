@@ -13,11 +13,15 @@ import { fileURLToPath } from 'node:url'
 import { buildReport, buildTurns, fingerprintLabel, protocolLabel, shortId } from './lib/summary.mjs'
 import { buildSessionView, buildTurnWindow } from './lib/session-view.mjs'
 import { listSessionTurns, normalizeTurnIndex, turnIndexFromObservations } from './lib/turn-index.mjs'
-import { analyzeDegradation, buildCalibration, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity, SIMILARITY_VERSION } from './lib/similarity.mjs'
+import { analyzeDegradation, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity, SIMILARITY_VERSION } from './lib/similarity.mjs'
 import { buildEquivalence } from './lib/equivalence.mjs'
 import { runProbeSuite } from './lib/probe.mjs'
 import { SessionScanner, defaultSessionRoots, discoverProfileRoots } from './lib/scan.mjs'
-import { FingerprintStore } from './lib/store.mjs'
+import { DATA_VERSION, FingerprintStore } from './lib/store.mjs'
+import { artifactContext, ensureOfficialArtifacts } from './lib/lifecycle.mjs'
+import { EVIDENCE_LEVELS, normalizeConfirmedAt } from './lib/official.mjs'
+import { assessModelIdentity, compareProtocol } from './lib/identity.mjs'
+import { qualityForRows } from './lib/quality.mjs'
 
 export const inject = ['webServer', 'tools', 'sessions', 'llm']
 
@@ -324,15 +328,36 @@ export function apply(ctx) {
 
   const officialModelsNow = () => normalizeOfficialModels(store ? store.officialModels() : [])
   const allObservationsNow = () => (scanner ? [...scanner.observations.values()] : [])
-  const refreshOfficialProfiles = (models = officialModelsNow()) => {
+  const artifactContextNow = () => artifactContext({
+    dataVersion: DATA_VERSION,
+    scannerGeneration: scanner ? scanner.generation : null,
+    observationRevision: scanner ? scanner.version : 0,
+    similarityVersion: SIMILARITY_VERSION,
+  })
+  const refreshOfficialArtifacts = (models = officialModelsNow(), options = {}) => {
     const observations = allObservationsNow()
+    const context = artifactContextNow()
     const result = []
     for (const model of models) {
-      const baseline = buildOfficialProfile(observations, model, { minSamples: model.minSamples })
-      store.saveOfficialBaseline(baseline)
-      const calibration = buildCalibration(observations, model)
-      store.saveCalibration(model.key, calibration)
-      result.push({ baseline, calibration })
+      const ensured = ensureOfficialArtifacts({
+        model,
+        observations,
+        existingBaseline: store.officialBaseline(model.key),
+        existingCalibration: store.calibrationFor(model.key),
+        context,
+        force: options.force === true,
+      })
+      if (ensured.baseline.rebuilt && !ensured.baseline.stale && ensured.baseline.artifact) {
+        store.saveOfficialBaseline(ensured.baseline.artifact)
+      } else if (ensured.baseline.stale) {
+        store.markOfficialArtifactsStale(model.key, ensured.baseline.reasons, ensured.baseline.error, 'baseline')
+      }
+      if (ensured.calibration.rebuilt && !ensured.calibration.stale && ensured.calibration.artifact) {
+        store.saveCalibration(model.key, ensured.calibration.artifact)
+      } else if (ensured.calibration.stale) {
+        store.markOfficialArtifactsStale(model.key, ensured.calibration.reasons, ensured.calibration.error, 'calibration')
+      }
+      result.push(ensured)
     }
     return result
   }
@@ -397,7 +422,11 @@ export function apply(ctx) {
           }
           await store.flush(scanner)
           store.markMigrated()
-          ctx.logger?.info?.(`model-fingerprint: migration complete, ${scanner.observations.size} observation(s)`)
+          // Canonical rebuild invalidates every derived baseline/calibration.
+          // Rebuild them now instead of serving pre-migration artifacts.
+          refreshOfficialArtifacts()
+          await store.flush(scanner)
+          ctx.logger?.info?.(`model-fingerprint: migration complete, ${scanner.observations.size} observation(s), derived official artifacts refreshed`)
         }).catch((error) => ctx.logger?.warn?.(`model-fingerprint: migration failed: ${error && error.message ? error.message : String(error)}`))
       }
       if (disposed) {
@@ -643,42 +672,66 @@ export function apply(ctx) {
   route('/api/official-models', async (req, res) => {
     if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
     await init()
+    const baselineView = (model, ensured) => {
+      const baseline = ensured.baseline.artifact
+      const calibration = ensured.calibration.artifact
+      return {
+        key: model.key,
+        label: model.label,
+        evidenceLevel: model.evidenceLevel,
+        samples: baseline ? baseline.samples : 0,
+        sessions: baseline ? baseline.sessions : 0,
+        excludedSamples: ensured.excludedSamples,
+        ready: Boolean(baseline && baseline.ready),
+        minSamples: model.minSamples,
+        fingerprints: baseline ? baseline.fingerprints : [],
+        firstTime: baseline ? baseline.firstTime : null,
+        lastTime: baseline ? baseline.lastTime : null,
+        dataVersion: baseline ? baseline.dataVersion : null,
+        similarityVersion: baseline ? baseline.similarityVersion : null,
+        featureSchemaVersion: baseline ? baseline.featureSchemaVersion : null,
+        qualityVersion: baseline ? baseline.qualityVersion : null,
+        scannerGeneration: baseline ? baseline.scannerGeneration : null,
+        observationRevision: baseline ? baseline.observationRevision : null,
+        sourceDigest: baseline ? baseline.sourceDigest : null,
+        generatedAt: baseline ? baseline.generatedAt : null,
+        stale: Boolean(ensured.baseline.stale || ensured.calibration.stale),
+        staleReasons: ensured.baseline.stale ? ensured.baseline.reasons : ensured.calibration.reasons,
+        rebuilt: Boolean(ensured.baseline.rebuilt),
+        calibrated: Boolean(calibration && calibration.calibrated),
+        calibrationReason: calibration ? calibration.reason : 'calibration unavailable',
+      }
+    }
     if (req.method === 'GET' || req.method === 'HEAD') {
       const models = officialModelsNow()
+      const ensured = refreshOfficialArtifacts(models)
+      if (ensured.some((item) => item.baseline.rebuilt || item.calibration.rebuilt || item.baseline.stale || item.calibration.stale)) await store.flush(scanner)
       return json(res, 200, {
         models,
-        baselines: models.map((model) => {
-          const baseline = store.officialBaseline(model.key)
-          return baseline ? {
-            key: baseline.key,
-            label: baseline.label,
-            samples: baseline.samples,
-            ready: baseline.ready,
-            minSamples: baseline.minSamples,
-            fingerprints: baseline.fingerprints,
-            firstTime: baseline.firstTime,
-            lastTime: baseline.lastTime,
-          } : null
-        }).filter(Boolean),
+        evidenceLevels: EVIDENCE_LEVELS,
+        baselines: models.map((model, index) => baselineView(model, ensured[index])),
       })
     }
     if (req.method !== 'POST') return json(res, 405, { error: 'GET or POST only' })
     if (!mutationAllowed(req, res)) return
     const body = await readJson(req)
-    const models = normalizeOfficialModels(body && body.models)
+    if (!body || !Array.isArray(body.models)) return json(res, 400, { error: 'models array is required' })
+    for (const input of body.models) {
+      if (input && input.evidenceLevel !== undefined && !EVIDENCE_LEVELS.includes(String(input.evidenceLevel))) {
+        return json(res, 400, { error: 'invalid evidenceLevel', allowed: EVIDENCE_LEVELS })
+      }
+      if (input && input.confirmedAt && !normalizeConfirmedAt(input.confirmedAt)) {
+        return json(res, 400, { error: 'invalid confirmedAt' })
+      }
+    }
+    const models = normalizeOfficialModels(body.models)
     store.setOfficialModels(models)
-    const profiles = refreshOfficialProfiles(models)
+    const ensured = refreshOfficialArtifacts(models, { force: true })
     await store.flush(scanner)
     return json(res, 200, {
       ok: true,
       models,
-      baselines: profiles.map(({ baseline, calibration: value }) => ({
-        key: baseline.key,
-        samples: baseline.samples,
-        ready: baseline.ready,
-        calibrated: value.calibrated,
-        calibrationReason: value.reason,
-      })),
+      baselines: models.map((model, index) => baselineView(model, ensured[index])),
     })
   })
 
@@ -698,26 +751,56 @@ export function apply(ctx) {
     const probes = store.probes().filter((row) => row && row.behavior)
     const probeRows = probes.filter((row) => row.provider === provider && row.model === model)
     const passiveRows = observations.filter((row) => row.provider === provider && row.model === model && row.behavior)
+    const ensured = refreshOfficialArtifacts(models)
     const results = []
-    for (const official of models) {
+    for (const [index, official] of models.entries()) {
       const officialProbes = probes.filter((row) => row.provider === official.provider && row.model === official.model)
+      const officialPassive = observations.filter((row) => row.provider === official.provider && row.model === official.model && row.behavior)
       const useProbes = probeRows.length >= 2 && officialProbes.length >= 2
       const rows = useProbes ? probeRows : passiveRows
       const baseline = useProbes
         ? buildOfficialProfile(officialProbes, official, { minSamples: 2 })
-        : (store.officialBaseline(official.key) || buildOfficialProfile(observations, official, { minSamples: official.minSamples }))
-      let calibration = useProbes ? null : store.calibrationFor(official.key)
-      if (!useProbes && (!calibration || !Number.isFinite(calibration.auc) || calibration.version !== SIMILARITY_VERSION)) {
-        calibration = buildCalibration(observations, official)
-        store.saveCalibration(official.key, calibration)
-      }
-      const score = scoreSimilarity(rows, baseline, calibration)
+        : ensured[index].baseline.artifact
+      const calibration = useProbes ? null : ensured[index].calibration.artifact
+      const targetRow = (useProbes ? probeRows[0] : passiveRows[0]) || null
+      const officialRow = (useProbes ? officialProbes[0] : officialPassive[0]) || null
+      const protocol = targetRow && officialRow
+        ? compareProtocol(targetRow, officialRow)
+        : { sameFingerprint: false, sameExact: false, sameFamily: false, sameVariant: false, left: null, right: null }
+      const score = scoreSimilarity(rows, baseline, calibration, {
+        source: useProbes ? 'fixed-probe' : 'passive',
+        evidenceLevel: official.evidenceLevel,
+        protocolConfidence: protocol.sameVariant ? 1 : protocol.sameFamily ? 0.55 : 0,
+      })
+      const identity = assessModelIdentity({
+        protocol,
+        behaviorSimilarity: score.behaviorSimilarity,
+        behaviorDistance: score.evidence ? score.evidence.distance : null,
+        evidenceLevel: official.evidenceLevel,
+        source: useProbes ? 'fixed-probe' : 'passive',
+      })
       results.push({
         officialKey: official.key,
         officialLabel: official.label,
+        evidenceLevel: official.evidenceLevel,
+        evidenceSource: official.evidenceSource,
         source: useProbes ? 'fixed-probe' : 'passive',
         probeSamples: probeRows.length,
         ...score,
+        protocolConfidence: identity.protocolConfidence,
+        behaviorSimilarity: identity.behaviorSimilarity,
+        modelIdentityConfidence: identity.modelIdentityConfidence,
+        modelIdentityStatus: identity.status,
+        modelIdentityCeiling: identity.ceiling,
+        passiveOnly: identity.passiveOnly,
+        layers: {
+          protocol,
+          transport: protocol.left,
+          behaviorProfileId: protocol.left && protocol.left.behaviorProfileId,
+        },
+        quality: qualityForRows(rows),
+        baselineStale: Boolean(ensured[index].baseline.stale),
+        baselineStaleReasons: ensured[index].baseline.reasons,
         degradation: analyzeDegradation(rows, baseline),
       })
     }
@@ -731,7 +814,12 @@ export function apply(ctx) {
       source: results[0] ? results[0].source : 'passive',
       officialModels: models.length,
       calibrated: Boolean(results[0] && results[0].calibrated),
-      behaviorSimilarity: results[0] ? results[0].similarity : null,
+      behaviorSimilarity: results[0] ? results[0].behaviorSimilarity : null,
+      protocolConfidence: results[0] ? results[0].protocolConfidence : null,
+      modelIdentityConfidence: results[0] ? results[0].modelIdentityConfidence : null,
+      modelIdentityStatus: results[0] ? results[0].modelIdentityStatus : 'no-data',
+      evidenceLevel: results[0] ? results[0].evidenceLevel : 'unknown',
+      passiveOnly: results[0] ? results[0].passiveOnly : true,
       calibratedScore: results[0] ? results[0].calibratedScore : null,
       score: results[0] ? results[0].score : null,
       verdict: results[0] ? results[0].verdict : 'no-data',

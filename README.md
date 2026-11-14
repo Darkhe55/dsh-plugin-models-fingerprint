@@ -114,16 +114,39 @@ FP-xxxx
 1. 填写官方 `provider`；
 2. 填写官方 `model`；
 3. 可选标签和最少样本数；
-4. 点击 **保存官方基线**。
+4. 记录明确的 `evidenceLevel`、`evidenceSource` 和 `confirmedAt`；
+5. 点击 **保存官方基线**。
+
+官方身份只来自持久化显式配置，不根据 `provider` 名称推断。支持等级：
+
+```text
+user-confirmed-official-api
+official-provider-route
+verified-deployment
+claimed-only
+unknown
+```
 
 基线需要足够历史样本才会进入 `ready`。每个官方 API 应建立自己的基线，不要把两个网关当成同一个基线。
+
+派生基线/校准会记录：
+
+```text
+similarityVersion, dataVersion, scannerGeneration, observationRevision,
+sourceDigest, generatedAt, samples, sessions, firstTime, lastTime,
+featureSchemaVersion, qualityVersion, stale, staleReasons
+```
+
+`sourceDigest` 覆盖官方配置、route key、可用观测数、session 数、首末时间、协议指纹分布、feature schema 和 dataVersion。dataVersion、feature schema、similarity 版本、官方配置或源数据变化时，旧对象会被识别为 stale 并重建；重建失败时保留最后一个有效对象，但明确返回 `stale: true`。删除官方来源会同时删除对应基线和校准。
 
 ### 读取结果
 
 面板显示：
 
 - **行为相似度**；
-- 是否已校准；
+- `protocolConfidence`、`behaviorSimilarity`、`modelIdentityConfidence` 三层证据；
+- 协议层：`transportFamilyId`、`transportVariantId`、`behaviorProfileId`；
+- 是否 `passiveOnly`；
 - 判定：`likely-same-behavior` / `ambiguous` / `likely-different-behavior`；
 - 距离；
 - 质量代理：`stable` / `watch` / `degrading` / `insufficient`；
@@ -132,6 +155,10 @@ FP-xxxx
 
 解释：
 
+- `fp_...` 仍表示 transport/protocol fingerprint，不代表模型身份；
+- 相同 `fp` 只能说明协议形态一致，不能显示为“模型相同”；
+- `modelIdentityConfidence` 在 passive-only 时上限为 `0.45`，固定重复探针上限为 `0.85`；
+- 自然会话行为相似度高，只能标为 `behavior-similar-passive-only`；距离大时标为 `possible-different-model-insufficient-evidence`；
 - 高分只表示**行为分布更接近官方基线**；
 - 低分表示行为分布不同，不等于模型被替换；
 - 未校准时只显示分数，不显示可比较的百分比；
@@ -161,7 +188,7 @@ FP-xxxx
 → 写入 state.json.zst
 ```
 
-旧版状态升级为 v2 时，会先保留 `state.json.zst.pre-semantic-v2`，再从规范日志重建观测和轮次索引；标签、探针、官方基线不重建。
+旧版状态升级为 v2 时，会先保留 `state.json.zst.pre-semantic-v2`，再从规范日志重建观测和轮次索引；标签、探针保留，旧官方基线/校准因 source digest 和 dataVersion 失效，迁移完成后自动从规范观测重建。
 
 手动触发：
 
@@ -189,6 +216,17 @@ model_fingerprint action=backfill
 - 运行前需要确认；
 - 探针会真实调用供应商模型，产生费用；
 - 固定探针结果优先于跨任务被动历史。
+
+### 离线困难负样本与探针计划
+
+```bash
+npm run benchmark:minimax   # M3 vs M2.7，session-held-out、AUC、FPR、消融
+npm run benchmark:official  # 官方来源证据、质量门和基线摘要
+npm run probe:plan          # 只生成 6 类 × 5 prompt × 10 次 × 2 窗口的计划
+npm run probe:import -- path/to/probe-results.json  # 离线校验导入，不调用模型
+```
+
+`probe:plan` 不调用任何模型，只写 `reports/minimax-probe-plan.json`；真实采集仍需显式 `confirm=true`。离线结果用 `probe:import` 校验后进入 `reports/probe-import-audit.json`。`benchmark:minimax` 写 `reports/minimax-m3-m27.json` / `.md`，`benchmark:official` 写 `reports/official-audit.json`。报告明确禁止在无固定重复探针时声称识别出 MoE 专家。
 
 ---
 
@@ -523,8 +561,17 @@ lib/scan.mjs             文件发现、增量扫描、live、补算
 lib/summary.mjs          指纹族/路由/会话/逐轮/提示
 lib/equivalence.mjs      行为画像与距离
 lib/similarity.mjs      官方基线、校准、行为相似度、漂移代理
+lib/official.mjs        官方证据等级、配置摘要、source digest、freshness
+lib/quality.mjs         协议/行为质量门与排除原因
+lib/identity.mjs        transport family/variant、behavior profile、身份置信度上限
+lib/lifecycle.mjs       stale 基线/校准重建与失败保留
+lib/benchmark.mjs       session/time held-out、AUC、bootstrap、消融
+lib/probe-plan.mjs      6 类固定探针定义与离线结果校验
 lib/probe.mjs            固定探针
 lib/store.mjs            zstd 状态读写
+scripts/benchmark-*.mjs  离线困难负样本 / 官方来源审计
+scripts/probe-plan.mjs   仅生成探针计划，不调用模型
+reports/                 生成的 MiniMax 报告、官方审计、探针计划
 public/dashboard.html    面板
 public/widget.js         兜底开关
 test/                    单元与端到端测试

@@ -218,26 +218,45 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   const similarityBody = await requestRoute('/api/similarity', '?provider=provider-a&model=claimed-a')
   assert.equal(similarityBody.error, 'no official model configured')
 
-  const officialPost = await new Promise((resolve, reject) => {
-    const payload = JSON.stringify({ models: [{ provider: 'provider-a', model: 'claimed-a', minSamples: 3 }] })
-    const req = {
-      method: 'POST',
-      url: '/model-fingerprint/api/official-models',
-      headers: { host: '127.0.0.1:5538', 'content-type': 'application/json', 'x-mf-token': token },
-      async *[Symbol.asyncIterator]() { yield Buffer.from(payload) },
-    }
-    const res = {
-      headersSent: false,
-      writeHead() { this.headersSent = true },
-      end(body) { resolve(JSON.parse(String(body))) },
-    }
-    Promise.resolve(routes.get('/model-fingerprint/api/official-models')(req, res)).catch(reject)
+  const officialPostRaw = await requestRaw('/api/official-models', {
+    method: 'POST',
+    headers: { origin: 'http://127.0.0.1:5538', 'content-type': 'application/json', 'x-mf-token': token },
+    body: JSON.stringify({
+      models: [{
+        provider: 'provider-a',
+        model: 'claimed-a',
+        label: 'Claimed A',
+        evidenceLevel: 'user-confirmed-official-api',
+        evidenceSource: 'test-fixture',
+        confirmedAt: '2026-11-14',
+        minSamples: 3,
+      }],
+    }),
   })
+  const officialPost = JSON.parse(officialPostRaw.body)
+  assert.equal(officialPostRaw.status, 200)
   assert.equal(officialPost.ok, true)
   assert.equal(officialPost.models[0].key, 'provider-a/claimed-a')
+  assert.equal(officialPost.models[0].evidenceLevel, 'user-confirmed-official-api')
+  assert.equal(officialPost.models[0].evidenceSource, 'test-fixture')
+  assert.equal(officialPost.models[0].confirmedAt, '2026-11-14T00:00:00.000Z')
+  assert.equal(Array.isArray(officialPost.baselines), true)
+
+  const invalidEvidence = await requestRaw('/api/official-models', {
+    method: 'POST',
+    headers: { origin: 'http://127.0.0.1:5538', 'content-type': 'application/json', 'x-mf-token': token },
+    body: JSON.stringify({ models: [{ provider: 'provider-a', model: 'claimed-a', evidenceLevel: 'provider-name-looks-official' }] }),
+  })
+  assert.equal(invalidEvidence.status, 400)
+  const officialAfter = await requestRoute('/api/official-models', '')
+  assert.equal(officialAfter.models[0].evidenceLevel, 'user-confirmed-official-api')
   const similarityAfter = await requestRoute('/api/similarity', '?provider=provider-a&model=claimed-a')
   assert.equal(similarityAfter.provider, 'provider-a')
   assert.equal(similarityAfter.calibrated, false)
+  assert.equal(similarityAfter.passiveOnly, true)
+  assert.ok(similarityAfter.modelIdentityConfidence <= 0.45)
+  assert.equal(typeof similarityAfter.protocolConfidence, 'number')
+  assert.equal(typeof similarityAfter.best.layers.protocol, 'object')
 
   const fingerprintId = jsonBody.latest.fingerprint.id
   const labelResult = await registeredTool.execute({ action: 'label', fingerprintId, label: 'actual-model', note: 'test' }, {})
@@ -260,6 +279,18 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   const probeSimilarity = await requestRoute('/api/similarity', '?provider=provider-a&model=claimed-a')
   assert.equal(probeSimilarity.source, 'fixed-probe')
   assert.ok(probeSimilarity.probeSamples >= 2)
+  assert.equal(probeSimilarity.passiveOnly, false)
+  assert.ok(probeSimilarity.modelIdentityConfidence <= 0.85)
+
+  const removed = await requestRaw('/api/official-models', {
+    method: 'POST',
+    headers: { origin: 'http://127.0.0.1:5538', 'content-type': 'application/json', 'x-mf-token': token },
+    body: JSON.stringify({ models: [] }),
+  })
+  assert.equal(removed.status, 200)
+  const removedBody = JSON.parse(removed.body)
+  assert.equal(removedBody.models.length, 0)
+  assert.equal(removedBody.baselines.length, 0)
 
   for (const dispose of effects) dispose()
 })
