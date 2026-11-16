@@ -229,7 +229,9 @@ GET /model-fingerprint/api/drift    # 仅会话级漂移诊断
 
 所有漂移结果都是探索性信号，不会进入模型身份判定。
 
-journal 会持续增长；关闭 DSH 后可离线压缩成新的只读 checkpoint：
+journal 超过 64 MiB 或 100,000 条记录时，`persistence.compaction.recommended` 变为 true，诊断页会提示需要 checkpoint；不会自动在主线程执行全量压缩。
+
+关闭 DSH 后可离线压缩成新的只读 checkpoint：
 
 ```powershell
 npm run compact:state -- --home "$env:USERPROFILE\.dsh"

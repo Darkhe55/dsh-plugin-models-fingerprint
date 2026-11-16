@@ -109,18 +109,14 @@ test('buildTurns makes one detection per turn and compares the previous turn', (
   assert.equal(turns[0].stepList[0].fingerprint, 'fp_bbbbbbbbbbbb')
 })
 
-test('a sustained behavior shift produces a change-point cue', () => {
+test('a sustained cross-session behavior shift produces a session-level cue', () => {
   const rows = []
-  for (let index = 0; index < 6; index += 1) {
-    const row = observation({ time: 100 + index, id: 's1:a' + index })
-    row.behavior.tokensPerChar = 0.3
-    rows.push(row)
-  }
-  for (let index = 0; index < 6; index += 1) {
-    const row = observation({ time: 200 + index, id: 's1:b' + index })
-    row.behavior.tokensPerChar = 0.8
+  for (let session = 0; session < 12; session += 1) {
+    const row = observation({ time: 100 + session, id: 's' + session + ':1', sessionId: 's' + session })
+    row.behavior.tokensPerChar = session < 6 ? 0.3 : 0.8
     rows.push(row)
   }
   const report = buildReport(scannerFor(rows), {}, { limit: 50 })
-  assert.ok(report.alerts.some((alert) => alert.kind === 'behavior-change-point'))
+  assert.ok(report.alerts.some((alert) => alert.kind === 'session-behavior-change'))
+  assert.equal(report.drift.unit, 'underlying-session')
 })

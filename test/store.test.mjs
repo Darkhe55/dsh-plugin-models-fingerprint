@@ -73,6 +73,19 @@ test('changes during an active write are acknowledged only after a merged pass',
   assert.deepEqual(Object.keys(reloaded.state.observations).sort(), ['s:1', 's:2'])
 })
 
+test('journal growth recommends offline compaction without doing a full write', async () => {
+  const home = await fs.mkdtemp(path.join(os.tmpdir(), 'mf-store-compact-'))
+  const store = new FingerprintStore({ home })
+  store.compactionBytes = 1
+  await store.load()
+  const scanner = new SessionScanner({ roots: [] })
+  scanner.addObservation({ id: 's:1', sessionId: 's', seq: 1, time: 1, fingerprint: 'fp_aaaaaaaaaaaa' })
+  await store.save(scanner, 'compaction-signal')
+  assert.equal(store.stats().compaction.recommended, true)
+  assert.equal(store.stats().compaction.reasons.includes('journal-bytes'), true)
+  assert.equal(scanner.hasPendingChanges(), false)
+})
+
 test('a torn journal tail is ignored and truncated before the next append', async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), 'mf-store-torn-'))
   const store = new FingerprintStore({ home })

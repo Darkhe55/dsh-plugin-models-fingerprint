@@ -620,6 +620,7 @@ function renderPersistence(persistence) {
     ['RSS', Math.round((persistence.rss || 0) / 1024 / 1024) + ' MiB'],
     ['retry', persistence.retryCount || 0],
     ['journal', persistence.journalRecords || 0],
+    ['compact', persistence.compaction && persistence.compaction.recommended ? '建议离线压缩' : '不需要'],
   ];
   $('persistence-content').innerHTML = `<div class="grid-4">${rows.map(([label, value]) => `<div class="turn-metric">${esc(label)}<b>${esc(value == null ? '—' : value)}</b></div>`).join('')}</div>`;
 }
