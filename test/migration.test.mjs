@@ -4,6 +4,7 @@ import { promises as fs } from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 import { zstdCompressSync } from 'node:zlib'
+import { FingerprintStore } from '../lib/store.mjs'
 
 test('init migrates a mixed-version state from canonical logs and keeps a backup', async () => {
   const home = await fs.mkdtemp(path.join(os.tmpdir(), 'mf-migration-'))
@@ -106,4 +107,8 @@ test('init migrates a mixed-version state from canonical logs and keeps a backup
   assert.equal(migratedBaseline.stale, false)
   const backups = (await fs.readdir(root)).filter((name) => name.startsWith('state.json.zst.pre-semantic-v'))
   assert.equal(backups.length, 1)
+  const reloaded = new FingerprintStore({ home })
+  await reloaded.load()
+  assert.equal(Object.keys(reloaded.state.observations).length, 1, 'journal reset prevents legacy duplicates from returning')
+  assert.equal(reloaded.state.observations['s:1-old'], undefined)
 })

@@ -169,15 +169,15 @@ featureSchemaVersion, qualityVersion, stale, staleReasons
 
 ---
 
-## 自动补算与存盘
+## 补算与存盘
 
-插件会从 DSH 会话日志补回状态中缺失的轮次观测。
+正常启动只增量扫描新增或变化的日志，不会无条件重扫全部历史。需要修复缺失轮次时，可显式运行全量补算。
 
 触发时机：
 
-- DSH 启动并完成初次扫描后；
-- 打开或关闭左侧指纹开关时；
-- 手动调用 API 或工具时。
+- 旧版数据迁移时，规范日志会扫描一次；
+- 手动调用 API 或工具时执行全量补算；
+- 打开或关闭左侧指纹开关不会触发全量补算。
 
 补算流程：
 
@@ -187,10 +187,55 @@ featureSchemaVersion, qualityVersion, stale, staleReasons
 → 重新解析规范日志
 → 按语义键去重（session/turn/step/time/model/fingerprint/protocol）
 → 重建该会话 Turn Index
-→ 写入 state.json.zst
+→ 追加带校验的 journal-v3 增量记录
 ```
 
-旧版状态升级为 v2 时，会先保留 `state.json.zst.pre-semantic-v2`，再从规范日志重建观测和轮次索引；标签、探针保留，旧官方基线/校准因 source digest 和 dataVersion 失效，迁移完成后自动从规范观测重建。
+旧版状态升级为 v2 时，会先保留带时间戳的 `state.json.zst.pre-semantic-v2-*` 备份，再从规范日志重建观测和轮次索引；重建结果通过 journal reset 原子覆盖旧基线，不原地改写备份。标签、探针保留，旧官方基线/校准因 source digest 和 dataVersion 失效，迁移完成后自动从规范观测重建。
+
+存储布局：
+
+```text
+model-fingerprint/
+  state.json.zst                 # 旧/只读基线，不再逐次全量覆盖
+  journal-v3/
+    manifest.json                # formatVersion / base / active journal
+    journal-000001.jsonl         # 带 CRC 的追加记录
+  state.json.zst.pre-semantic-*  # 迁移回滚点
+```
+
+保存状态机：
+
+```text
+clean → dirty → scheduled → writing
+                         ↘ dirtyWhileWriting → writing（最多补一次）
+writing → failed → 指数退避重试
+flush/shutdown → closed（有上限超时）
+```
+
+普通新增 observation 只追加 journal，不复制历史、不重建全量 Turn Index、不在主线程压缩全量状态。journal 最后一条未完整写入的记录会在下次启动或追加前被忽略并截断；磁盘失败不会 ack scanner 的待写变更。单次保存超过 500 ms、变更收集超过 100 ms 会写诊断警告；待写变更超过 20,000 条时标记 backpressure，并暂停新的历史补算。
+
+诊断接口：
+
+```text
+GET /model-fingerprint/api/status   # 包含 drift 与 persistence 指标
+GET /model-fingerprint/api/drift    # 仅会话级漂移诊断
+```
+
+面板的 **漂移诊断** 页显示：
+
+- 会话级行为变化点；
+- 相邻 session 的路由/指纹跳变；
+- 当前持久化状态、revision、save 耗时、队列、RSS、journal 记录数。
+
+所有漂移结果都是探索性信号，不会进入模型身份判定。
+
+journal 会持续增长；关闭 DSH 后可离线压缩成新的只读 checkpoint：
+
+```powershell
+npm run compact:state -- --home "$env:USERPROFILE\.dsh"
+```
+
+脚本在新进程/新文件中完成读取、压缩和校验，失败时恢复旧 manifest；不会修改旧 checkpoint 或旧 journal。运行前请先备份状态目录。
 
 手动触发：
 
@@ -284,7 +329,7 @@ npm run probe:import -- path/to/probe-results.json  # 离线校验导入，不�
 
 ## 数据与隐私
 
-- 状态文件：`%USERPROFILE%\.dsh\model-fingerprint\state.json.zst`，或 `$DSH_HOME/model-fingerprint/state.json.zst`；
+- 状态目录：`%USERPROFILE%\.dsh\model-fingerprint`，或 `$DSH_HOME/model-fingerprint`；旧 `state.json.zst` 作为只读基线，新变化保存在 `journal-v3`；
 - 只保存协议形状、指标、哈希、会话 ID、时间；
 - 不保存提示词或回复正文；
 - 固定探针只保存内置 prompt 的结果指标；
@@ -515,7 +560,19 @@ npm publish --dry-run
 npm test
 npm run check
 npm run build
+node scripts/persistence-bench.mjs 1000,65000,100000,250000
 ```
+
+隔离持久化压测（不会启动 DSH，也不需要真实状态）：
+
+```text
+1k:    save ~19 ms,   max block ~0 ms,       RSS ~49 MiB
+65k:   save ~0.6–4.3 s, max block 17–25 ms,  RSS ~177 MiB
+100k:  save ~0.9–1.5 s, max block ~16 ms,    RSS ~272 MiB
+250k:  save ~1.5–2.2 s, max block 12–21 ms,  RSS ~412–442 MiB
+```
+
+这些是合成、单进程隔离数据；真实机器、磁盘和杀毒软件会影响总耗时。关键是最大事件循环阻塞保持在几十毫秒，而不是总耗时。
 
 测试覆盖：
 
@@ -527,6 +584,9 @@ npm run build
 - 状态文件 v2 迁移与备份；
 - 轮次数值降序、唯一性断言与分页无重复；
 - live 事件去重；
+- journal 增量追加、torn tail 截断、失败不 ack、写入期间合并；
+- 65k 观测增量保存不调用全量 serialize；
+- session 级漂移与路由跳变；
 - 状态文件读写与标签/探针持久化；
 - 路由变化、别名、标签提示；
 - 行为变化点；
@@ -570,7 +630,8 @@ lib/lifecycle.mjs       stale 基线/校准重建与失败保留
 lib/benchmark.mjs       session/time held-out、AUC、bootstrap、消融
 lib/probe-plan.mjs      6 类固定探针定义与离线结果校验
 lib/probe.mjs            固定探针
-lib/store.mjs            zstd 状态读写
+lib/store.mjs            只读 zstd 基线与增量持久化状态机
+lib/journal.mjs          校验式追加日志、manifest 与崩溃恢复
 scripts/benchmark-*.mjs  离线困难负样本 / 官方来源审计
 scripts/probe-plan.mjs   仅生成探针计划，不调用模型
 reports/                 生成的 MiniMax 报告、官方审计、探针计划

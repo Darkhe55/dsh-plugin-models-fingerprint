@@ -1115,28 +1115,7 @@ window.__ModuleLoader__.load({
       try { window.localStorage.setItem('dsh.mf.rail', railOn ? '1' : '0') } catch { /* private mode */ }
       publishRail()
       emit()
-      if (changed) requestBackfill()
-    }
-    let backfillRunning = false
-    const requestBackfill = () => {
-      if (backfillRunning) return
-      const token = window.__dshModelFingerprintToken
-      if (!token) return
-      backfillRunning = true
-      fetch(apiUrl('/model-fingerprint/api/backfill'), {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-mf-token': token },
-        body: '{}',
-        cache: 'no-store',
-      })
-        .then((response) => {
-          if (!response.ok) throw new Error('backfill HTTP ' + response.status)
-          return response.json()
-        })
-        .catch((error) => {
-          lastFetchError = error && error.message ? error.message : String(error)
-        })
-        .finally(() => { backfillRunning = false })
+      void changed
     }
     const setRailSession = (sessionId) => {
       railSessionId = sessionId || null

@@ -84,6 +84,7 @@
   .stat .v { font-size: 24px; line-height: 1.2; font-weight: 700; margin-top: 4px; letter-spacing: -.03em; }
   .stat .n { color: var(--faint); font-size: 11px; margin-top: 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(300px, .9fr); gap: 16px; margin-bottom: 18px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
   .card {
     background: var(--panel); border: 1px solid var(--line); border-radius: 16px; box-shadow: var(--shadow); min-width: 0;
   }
@@ -203,7 +204,7 @@
   .split { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
   .refresh { appearance: none; border: 1px solid var(--line); background: var(--panel); color: var(--muted); border-radius: 8px; padding: 5px 9px; cursor: pointer; font-size: 12px; }
   .refresh:hover { border-color: var(--accent); color: var(--accent); }
-  @media (max-width: 980px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } }
+  @media (max-width: 980px) { .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .grid { grid-template-columns: 1fr; } .grid-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
   @media (max-width: 560px) { .wrap { padding: 18px 14px 48px; } .top { flex-direction: column; } .pills { justify-content: flex-start; } .stat .v { font-size: 20px; } }
 </style>
 </head>
@@ -246,6 +247,7 @@
       <button class="tab" data-tab="official" type="button">官方相似度</button>
       <button class="tab" data-tab="routes" type="button">声称模型</button>
       <button class="tab" data-tab="sessions" type="button">历史会话</button>
+      <button class="tab" data-tab="drift" type="button">漂移诊断</button>
       <button class="tab" data-tab="method" type="button">方法与边界</button>
     </div>
     <div id="panel-turns">
@@ -333,6 +335,18 @@
         <tbody id="session-body"></tbody>
       </table></div>
     </div>
+    <div id="panel-drift" hidden>
+      <div class="toolbar">
+        <div class="muted small">会话级变化点 · 独立单位是底层 session · 只作探索性告警，不判定模型身份</div>
+        <span class="faint small" id="drift-stats"></span>
+      </div>
+      <div class="card-b" id="drift-content"><div class="empty">暂无漂移诊断。</div></div>
+      <div class="toolbar" style="margin-top:12px">
+        <div class="muted small">持久化状态 · 仅诊断指标，不包含 prompt 或回复正文</div>
+        <span class="faint small" id="persistence-status"></span>
+      </div>
+      <div class="card-b" id="persistence-content"><div class="empty">等待持久化指标。</div></div>
+    </div>
     <div id="panel-method" class="method" hidden>
       <div>
         <h3>它到底在看什么</h3>
@@ -349,6 +363,7 @@
           <li>同一声称模型的历史响应，协议指纹是否稳定；何时换了指纹。</li>
           <li>两个不同的声称名称是否共享同一指纹（可能是别名、网关重命名或同一上游）。</li>
           <li>本次行为统计是否显著偏离该指纹的历史基线；某路由是否长期存在多个指纹。</li>
+          <li>漂移诊断页用底层 session 作为独立单位，报告会话级行为变化点和相邻会话的路由/指纹跳变；这些只是探索性告警，不是模型身份证明。</li>
           <li>你可以给指纹写“人工标签”，之后名称与标签不一致会被标出。</li>
         </ul>
       </div>
@@ -438,7 +453,8 @@ function renderStats(data) {
 function renderScan(data) {
   const scan = data.scan || {};
   let tone = 'good', text = '实时监控中';
-  if (scan.scanning) { tone = 'warn'; text = '正在扫描历史 ' + (scan.queue || 0) + ' 个待处理'; }
+  if (scan.backpressure) { tone = 'warn'; text = '持久化背压：暂停新的历史补算，等待 journal 批次落盘'; }
+  else if (scan.scanning) { tone = 'warn'; text = '正在扫描历史 ' + (scan.queue || 0) + ' 个待处理'; }
   else if (scan.lastError) { tone = 'bad'; text = '扫描有错误'; }
   else if (scan.discovered && scan.cachedFiles < scan.discovered) { tone = 'warn'; text = '已载入 ' + scan.cachedFiles + '/' + scan.discovered + ' 个会话'; }
   else if (scan.discovered) { text = '已载入 ' + scan.cachedFiles + ' 个会话'; }
@@ -559,6 +575,53 @@ function renderSessions(data) {
       <td class="n">${relTime(s.lastSeen)}</td>
     </tr>
   `).join('') : '<tr><td colspan="5"><div class="empty">暂无会话</div></td></tr>';
+}
+
+function renderDrift(data) {
+  const drift = data.drift || {};
+  const points = drift.changePoints || [];
+  const transitions = drift.routeTransitions || [];
+  $('drift-stats').textContent = `${fmtNum(drift.sessions || 0)} 个 session · ${fmtNum(drift.observations || 0)} 条观测 · ${drift.status || 'unknown'}`;
+  const status = drift.status === 'drift' ? '<span class="chip bad">检测到变化</span>'
+    : drift.status === 'stable' ? '<span class="chip">稳定</span>'
+      : '<span class="chip warn">样本不足</span>';
+  const pointHtml = points.length ? points.map((point) => `
+    <div class="eq-card" style="margin-bottom:8px">
+      <strong>${esc(point.field)}</strong> ${status}
+      <span class="faint">score ${esc(point.score)} · effect ${esc(point.effect)}</span>
+      <div class="subline">${esc(point.before)} → ${esc(point.after)} · ${point.sessionsBefore}/${point.sessionsAfter} sessions · ${relTime(point.time)}</div>
+    </div>`).join('') : '<div class="empty">没有达到阈值的会话级变化点。</div>';
+  const transitionHtml = transitions.length ? transitions.slice(-8).map((item) => `
+    <div class="subline">${esc(item.type)} · ${esc(item.from)} → ${esc(item.to)} · ${relTime(item.time)}</div>`).join('') : '<div class="faint">没有相邻会话的路由/指纹跳变。</div>';
+  $('drift-content').innerHTML = `
+    <div class="toolbar"><div class="muted small">方法：${esc(drift.method || '-')} · 独立单位：${esc(drift.unit || '-')} · 最小 session：${esc(drift.minimumSessions || '-')}</div>${status}</div>
+    ${pointHtml}
+    <div class="eq-card"><strong>路由/指纹跳变</strong>${transitionHtml}</div>
+    <div class="faint small" style="margin-top:8px">${esc(drift.note || '探索性信号，不构成模型身份结论。')}</div>`;
+}
+
+function renderPersistence(persistence) {
+  if (!persistence) {
+    $('persistence-status').textContent = '不可用';
+    $('persistence-content').innerHTML = '<div class="empty">当前宿主没有返回持久化指标。</div>';
+    return;
+  }
+  const state = persistence.status || 'unknown';
+  const chip = state === 'clean' ? 'chip' : state === 'failed' ? 'chip bad' : 'chip warn';
+  $('persistence-status').innerHTML = `<span class="${chip}">${esc(state)}</span>`;
+  const rows = [
+    ['saveReason', persistence.saveReason],
+    ['revision', `${persistence.persistedRevision || 0} / ${persistence.revision || 0}`],
+    ['pending', persistence.pendingCount],
+    ['queue', persistence.queueLength],
+    ['save', persistence.saveDurationMs + ' ms'],
+    ['serialize', persistence.serializeDurationMs + ' ms'],
+    ['raw/stored', `${persistence.rawBytes || 0} / ${persistence.storedBytes || 0}`],
+    ['RSS', Math.round((persistence.rss || 0) / 1024 / 1024) + ' MiB'],
+    ['retry', persistence.retryCount || 0],
+    ['journal', persistence.journalRecords || 0],
+  ];
+  $('persistence-content').innerHTML = `<div class="grid-4">${rows.map(([label, value]) => `<div class="turn-metric">${esc(label)}<b>${esc(value == null ? '—' : value)}</b></div>`).join('')}</div>`;
 }
 
 function populateTurnSessions(data) {
@@ -887,6 +950,8 @@ function render(data) {
   renderFingerprints(data);
   renderRoutes(data);
   renderSessions(data);
+  renderDrift(data);
+  renderPersistence(data.persistence);
   populateTurnSessions(data);
   populateOfficialRoutes(data);
   if (state.tab === 'turns' && !state.turns) loadTurns();
@@ -932,7 +997,7 @@ async function saveLabel(id) {
 }
 
 function activateTab(tab) {
-  const names = ['turns', 'fingerprints', 'equivalence', 'official', 'routes', 'sessions', 'method'];
+  const names = ['turns', 'fingerprints', 'equivalence', 'official', 'routes', 'sessions', 'drift', 'method'];
   if (!names.includes(tab)) tab = 'turns';
   state.tab = tab;
   for (const item of document.querySelectorAll('.tab')) item.classList.toggle('on', item.dataset.tab === tab);

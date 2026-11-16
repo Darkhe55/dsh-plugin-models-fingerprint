@@ -95,6 +95,7 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   assert.ok(routes.has('/model-fingerprint/api/official-models'))
   assert.ok(routes.has('/model-fingerprint/api/similarity'))
   assert.ok(routes.has('/model-fingerprint/api/backfill'))
+  assert.ok(routes.has('/model-fingerprint/api/drift'))
   const injectedIndex = indexTap('<html><body></body></html>')
   assert.match(injectedIndex, /__dshModelFingerprintApiBase="http:\/\/127\.0\.0\.1:5538"/)
   assert.match(injectedIndex, /__dshModelFingerprintToken="[a-f0-9]+"/)
@@ -126,6 +127,8 @@ test('plugin registers routes/tool and serves a report end to end', async () => 
   })
   assert.equal(jsonBody.stats.observations, 1)
   assert.equal(jsonBody.latest.observation.model, 'claimed-a')
+  assert.equal(jsonBody.drift.unit, 'underlying-session')
+  assert.ok(jsonBody.persistence && typeof jsonBody.persistence.status === 'string')
 
   let sessionViewBody = null
   await new Promise((resolve, reject) => {

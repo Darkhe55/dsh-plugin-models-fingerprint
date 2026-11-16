@@ -51,11 +51,23 @@ test('report separates claimed names from fingerprints and flags a route shift',
   assert.equal(report.stats.routes, 2)
   assert.equal(report.latest.assessment.verdict, 'changed')
   assert.equal(report.latest.assessment.confidence > 0.2, true)
+  assert.equal(report.drift.unit, 'underlying-session')
+  assert.equal(report.drift.status, 'insufficient-sessions')
   assert.ok(report.alerts.some((alert) => alert.kind === 'fingerprint-shift'))
   assert.ok(report.alerts.some((alert) => alert.kind === 'alias-collision'))
   const fp = report.fingerprints.find((item) => item.id === 'fp_aaaaaaaaaaaa')
   assert.deepEqual(fp.names.map((item) => item.name), ['m', 'm2'])
   assert.equal(fp.status, 'alias', 'the same fingerprint appears under two claimed names/routes')
+})
+
+test('a legacy observation without routeKey does not crash the report', () => {
+  const row = observation({ time: 100, id: 's1:1' })
+  delete row.routeKey
+  delete row.protocol
+  const report = buildReport(scannerFor([row]), {}, { limit: 50 })
+  assert.equal(report.stats.observations, 1)
+  assert.equal(report.routes[0].routeKey, 'p/m')
+  assert.equal(report.fingerprints[0].protocol.api, undefined)
 })
 
 test('a stable route with enough samples is assessed as consistent', () => {

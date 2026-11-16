@@ -159,3 +159,43 @@ test('backfill reparses a log and restores observations missing from in-memory s
   assert.equal(scanner.status().backfill.added, 1)
   scanner.stop()
 })
+
+test('incremental persistence acknowledgement never drops a newer replacement', () => {
+  const scanner = new SessionScanner({ roots: [] })
+  const first = { id: 's:1', sessionId: 's', seq: 1, time: 1, turn: 1, step: 1, fingerprint: 'fp_a', protocol: {} }
+  scanner.addObservation(first)
+  const checkedOut = scanner.checkoutChanges()
+  scanner.addObservation({ ...first, time: 2, fingerprint: 'fp_b' })
+  scanner.ackChanges(checkedOut.token)
+  assert.equal(scanner.hasPendingChanges(), true)
+  const next = scanner.checkoutChanges()
+  assert.equal(next.observations.length, 1)
+  assert.equal(next.observations[0].fingerprint, 'fp_b')
+  scanner.ackChanges(next.token)
+  scanner.removeObservation('s:1')
+  const removed = scanner.checkoutChanges()
+  assert.deepEqual(removed.deleted, ['s:1'])
+  scanner.stop()
+})
+
+test('pending journal changes expose backpressure and clear after acknowledgement', () => {
+  const scanner = new SessionScanner({ roots: [] })
+  for (let index = 0; index < 20001; index += 1) {
+    scanner.addObservation({ id: 'bp:' + index, sessionId: 'bp', seq: index, time: index + 1, fingerprint: 'fp_a' })
+  }
+  assert.equal(scanner.backpressure, true)
+  const delta = scanner.checkoutChanges()
+  scanner.ackChanges(delta.token)
+  assert.equal(scanner.backpressure, false)
+  assert.equal(scanner.hasPendingChanges(), false)
+  scanner.stop()
+})
+
+test('normal startup does not launch an unconditional full-history backfill', async () => {
+  const scanner = new SessionScanner({ roots: [] })
+  scanner.backfillMissing = async () => { throw new Error('automatic backfill is forbidden') }
+  scanner.start()
+  await scanner.ready
+  assert.equal(scanner.lastError, null)
+  scanner.stop()
+})

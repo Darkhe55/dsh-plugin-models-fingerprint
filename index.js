@@ -15,6 +15,7 @@ import { buildSessionView, buildTurnWindow } from './lib/session-view.mjs'
 import { listSessionTurns, normalizeTurnIndex, turnIndexFromObservations } from './lib/turn-index.mjs'
 import { analyzeDegradation, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity, SIMILARITY_VERSION } from './lib/similarity.mjs'
 import { buildEquivalence } from './lib/equivalence.mjs'
+import { buildDriftReport } from './lib/drift.mjs'
 import { runProbeSuite } from './lib/probe.mjs'
 import { SessionScanner, defaultSessionRoots, discoverProfileRoots } from './lib/scan.mjs'
 import { DATA_VERSION, FingerprintStore } from './lib/store.mjs'
@@ -395,6 +396,7 @@ export function apply(ctx) {
         const backup = await store.backupMigration()
         ctx.logger?.info?.(`model-fingerprint: migrating state from canonical logs${backup ? ' (backup: ' + backup + ')' : ''}`)
       }
+      const previousObservations = Object.keys(state.observations || {}).length
       const roots = defaultSessionRoots(DSH_HOME)
       roots.push(...await discoverProfileRoots(DSH_HOME))
       scanner = new SessionScanner({
@@ -407,12 +409,14 @@ export function apply(ctx) {
         onChange: migrating ? () => {} : () => store.scheduleSave(scanner),
         logger: ctx.logger,
       })
+      // Scanner now owns the historical objects. Do not retain a second full
+      // observation dictionary in the store for the lifetime of DSH.
+      store.releaseLargeState()
       scanner.onBackfill = migrating ? null : async () => {
         await store.flush(scanner)
       }
       scanner.start()
       if (migrating) {
-        const previousObservations = Object.keys(state.observations || {}).length
         scanner.ready.then(async () => {
           if (scanner.lastError) {
             throw new Error('canonical scan failed: ' + scanner.lastError)
@@ -420,8 +424,8 @@ export function apply(ctx) {
           if (previousObservations > 0 && scanner.discovered === 0) {
             throw new Error('canonical session logs are unavailable; keeping the previous state and backup')
           }
-          await store.flush(scanner)
           store.markMigrated()
+          await store.flush(scanner)
           // Canonical rebuild invalidates every derived baseline/calibration.
           // Rebuild them now instead of serving pre-migration artifacts.
           refreshOfficialArtifacts()
@@ -558,7 +562,16 @@ export function apply(ctx) {
     await init()
     const url = new URL(req.url || '/', 'http://local')
     const report = reportNow(Math.min(500, Number(url.searchParams.get('limit')) || 200))
-    return json(res, 200, report)
+    return json(res, 200, {
+      ...report,
+      persistence: store && typeof store.stats === 'function' ? store.stats() : null,
+    })
+  })
+  route('/api/drift', async (req, res) => {
+    if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
+    if (req.method !== 'GET' && req.method !== 'HEAD') return json(res, 405, { error: 'GET only' })
+    await init()
+    return json(res, 200, buildDriftReport([...scanner.observations.values()]))
   })
   route('/api/session-view', async (req, res) => {
     if (!originAllowed(req)) return json(res, 403, { error: 'origin not allowed' })
@@ -997,7 +1010,7 @@ export function apply(ctx) {
     disposed = true
     if (saveTimer) clearInterval(saveTimer)
     if (scanner) scanner.stop()
-    if (store && scanner) store.flush(scanner).catch(() => {})
+    if (store && scanner) store.close(scanner).catch(() => {})
     for (const dispose of disposers.splice(0)) {
       try { dispose() } catch { /* best effort */ }
     }
