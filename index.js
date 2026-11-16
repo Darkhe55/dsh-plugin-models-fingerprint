@@ -595,11 +595,9 @@ export function apply(ctx) {
     const sessionId = url.searchParams.get('id') || (report.latest && report.latest.observation && report.latest.observation.sessionId)
     if (!sessionId) return json(res, 404, { error: 'no session id' })
     const session = (report.sessions || []).find((item) => item.id === sessionId) || null
-    const sessionRows = scanner.observationsForSession(sessionId)
-    const rows = sessionRows
-      .slice()
-      .sort((left, right) => right.time - left.time)
-      .slice(0, Math.min(300, Number(url.searchParams.get('limit')) || 300))
+    const rows = scanner.sessionWindow(sessionId, {
+      limit: Math.min(300, Number(url.searchParams.get('limit')) || 300),
+    })
     const turns = turnsForSession(sessionId)
     const limit = Math.min(500, Math.max(1, Number(url.searchParams.get('limit')) || 200))
     const before = Number(url.searchParams.get('before'))

@@ -191,6 +191,21 @@ test('pending journal changes expose backpressure and clear after acknowledgemen
   scanner.stop()
 })
 
+test('session window materializes only the requested newest rows', () => {
+  const scanner = new SessionScanner({ roots: [] })
+  for (let index = 0; index < 1000; index += 1) {
+    scanner.addObservation({ id: 'window:' + index, sessionId: 'window', seq: index, time: index + 1, fingerprint: 'fp_a' })
+  }
+  const rows = scanner.sessionWindow('window', { limit: 25 })
+  assert.equal(rows.length, 25)
+  assert.equal(rows[0].seq, 999)
+  assert.equal(rows[24].seq, 975)
+  const older = scanner.sessionWindow('window', { limit: 10, before: 900 })
+  assert.equal(older.length, 10)
+  assert.equal(older[0].seq, 898)
+  scanner.stop()
+})
+
 test('normal startup does not launch an unconditional full-history backfill', async () => {
   const scanner = new SessionScanner({ roots: [] })
   scanner.backfillMissing = async () => { throw new Error('automatic backfill is forbidden') }
