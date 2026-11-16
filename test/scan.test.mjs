@@ -206,6 +206,18 @@ test('session window materializes only the requested newest rows', () => {
   scanner.stop()
 })
 
+test('history admission stops at the configured hot limit without dropping data', () => {
+  const scanner = new SessionScanner({ roots: [], maxHotObservations: 2 })
+  scanner.addObservation({ id: 'limit:1', sessionId: 'limit', seq: 1, time: 1, fingerprint: 'fp_a' })
+  scanner.addObservation({ id: 'limit:2', sessionId: 'limit', seq: 2, time: 2, fingerprint: 'fp_a' })
+  assert.equal(scanner.status().history.reached, true)
+  assert.equal(scanner.observations.size, 2)
+  assert.equal(scanner.observations.has('limit:1'), true)
+  scanner.resumeHistory()
+  assert.equal(scanner.status().history.reached, true)
+  scanner.stop()
+})
+
 test('normal startup does not launch an unconditional full-history backfill', async () => {
   const scanner = new SessionScanner({ roots: [] })
   scanner.backfillMissing = async () => { throw new Error('automatic backfill is forbidden') }

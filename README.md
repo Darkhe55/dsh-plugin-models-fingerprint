@@ -208,6 +208,7 @@ model-fingerprint/
 - `sessionWindow()` 只物化请求的最新 N 条会话行，session-view 不再先复制整会话；
 - 完整 observation 仍驻留内存；报告分组索引是**懒构建**的，只在打开面板/调用报告时创建；
 - 不做静默淘汰，也不会为了降低内存删除旧观测；
+- `maxHotObservations` 默认 500,000；达到上限时暂停新的历史队列扫描并报告 `history.reached/paused`，不删除、不丢已有数据；
 - 250k 合成观测约 394–451 MiB RSS；
 - 真正的按 session 冷热分层需要持久化层支持按 session 查询并保留完整可回退副本，当前没有把半成品 eviction 接入生产路径。`historyMode`/冷存储属于下一阶段，不应以“限制条数”冒充完成。
 
