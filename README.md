@@ -229,6 +229,14 @@ GET /model-fingerprint/api/drift    # 仅会话级漂移诊断
 
 所有漂移结果都是探索性信号，不会进入模型身份判定。
 
+报告聚合使用增量索引：fingerprint / route / session 的摘要只在所属分组变化时失效。65k 真实副本实测：
+
+```text
+首次构建：约 0.50 s
+无变化的后续构建：约 16 ms
+新增一条 observation 后：约 55 ms
+```
+
 journal 超过 64 MiB 或 100,000 条记录时，`persistence.compaction.recommended` 变为 true，诊断页会提示需要 checkpoint；不会自动在主线程执行全量压缩。
 
 关闭 DSH 后可离线压缩成新的只读 checkpoint：
@@ -569,9 +577,9 @@ node scripts/persistence-bench.mjs 1000,65000,100000,250000
 
 ```text
 1k:    save ~19 ms,   max block ~0 ms,       RSS ~49 MiB
-65k:   save ~0.6–4.3 s, max block 17–25 ms,  RSS ~177 MiB
+65k:   save ~0.6–4.3 s, max block 13–25 ms,  RSS ~177–183 MiB
 100k:  save ~0.9–1.5 s, max block ~16 ms,    RSS ~272 MiB
-250k:  save ~1.5–2.2 s, max block 12–21 ms,  RSS ~412–442 MiB
+250k:  save ~1.5–1.7 s, max block 11–39 ms,  RSS ~394–451 MiB
 ```
 
 这些是合成、单进程隔离数据；真实机器、磁盘和杀毒软件会影响总耗时。关键是最大事件循环阻塞保持在几十毫秒，而不是总耗时。
