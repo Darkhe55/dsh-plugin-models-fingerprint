@@ -439,6 +439,19 @@ export function apply(ctx) {
         return
       }
       initialized = true
+      // Warm the report index after startup so the first dashboard request
+      // does not pay the cold grouping cost. This is best-effort and never
+      // blocks initialization or persistence.
+      const warm = setTimeout(() => {
+        if (disposed || !scanner) return
+        try {
+          reportNow(300)
+          scanner.ensureReportIndex?.()
+        } catch (error) {
+          ctx.logger?.warn?.(`model-fingerprint: report warmup failed (${error && error.message ? error.message : String(error)})`)
+        }
+      }, 25)
+      warm.unref?.()
       ctx.logger?.info?.(`model-fingerprint: monitoring ${scanner.roots.length} session root(s), ${scanner.observations.size} historical observation(s)`)
     })().catch((error) => {
       initializing = undefined
