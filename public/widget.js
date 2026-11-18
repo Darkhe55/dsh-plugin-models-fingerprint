@@ -458,10 +458,9 @@
       }
     }
     if (!flow || !railTurns.length) {
-      var status = el('div', 'mf-rail-status', railTurns.length ? '逐轮指纹：定位中…' : '逐轮指纹：已开启，等待会话…')
-      status.title = '点击打开完整逐轮面板'
-      status.addEventListener('click', openFullPanel)
-      layer.appendChild(status)
+      // No chat flow or no observed turns: keep the whole rail hidden on
+      // plugin, automation, settings and other non-conversation pages.
+      layer.style.display = 'none'
       return
     }
     var domTurns = []

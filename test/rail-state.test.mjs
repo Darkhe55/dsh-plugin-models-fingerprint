@@ -4,13 +4,21 @@ import { promises as fs } from 'node:fs'
 
 async function loadRailState() {
   const source = await fs.readFile(new URL('../client/rail-state.js', import.meta.url), 'utf8')
-  return new Function(source + '\nreturn { deriveRailTargets, validateRailTargets, layoutMiddleCards, chooseRailMapping, railJumpDetected, RailSnapshotTracker }')()
+  return new Function(source + '\nreturn { railVisibility, deriveRailTargets, validateRailTargets, layoutMiddleCards, chooseRailMapping, railJumpDetected, RailSnapshotTracker }')()
 }
 
 const turn = (turn, id = 's:turn:' + turn) => ({ id, turn, verdictLabel: 'test' })
 const row = (domTurn, top, bottom) => ({ domTurn, top, bottom, segments: [{ top: Math.max(0, top), bottom: Math.min(500, bottom) }] })
 const snapshot = (rows) => ({ rows })
 const viewport = { clipTop: 0, clipBottom: 500 }
+
+test('rail is hidden without a chat flow or visible conversation rows', async () => {
+  const { railVisibility } = await loadRailState()
+  assert.equal(railVisibility({ on: true, flow: null, rows: [row(1, 0, 100)] }), false)
+  assert.equal(railVisibility({ on: true, flow: {}, rows: [] }), false)
+  assert.equal(railVisibility({ on: false, flow: {}, rows: [row(1, 0, 100)] }), false)
+  assert.equal(railVisibility({ on: true, flow: {}, rows: [row(1, 0, 100)] }), true)
+})
 
 test('a recycled DOM node cannot keep its old turn identity', async () => {
   const { deriveRailTargets } = await loadRailState()

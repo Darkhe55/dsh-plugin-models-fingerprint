@@ -341,6 +341,14 @@ window.__ModuleLoader__.load({
     const RAIL_BOTTOM_ENTER = 18
     const RAIL_BOTTOM_LEAVE = 30
 
+    /**
+     * The rail is a conversation attachment, never a page-level decoration.
+     * No flow or no visible conversation rows means no rail/status/cards.
+     */
+    function railVisibility({ on = false, flow = null, rows = [] } = {}) {
+      return Boolean(on && flow && Array.isArray(rows) && rows.length > 0)
+    }
+
     function railTurnNumber(value) {
       const number = Number(value)
       return Number.isFinite(number) ? number : null
@@ -1387,6 +1395,8 @@ window.__ModuleLoader__.load({
       const [clip, setClip] = React.useState({ top: 0, bottom: 0 })
       const [flowReady, setFlowReady] = React.useState(true)
       const [rightbarOpen, setRightbarOpen] = React.useState(false)
+      const [railEligible, setRailEligible] = React.useState(false)
+      const railEligibleRef = React.useRef(false)
       const railRef = React.useRef(null)
       const placeholderRef = React.useRef(null)
       const cardRefs = React.useRef(new Map())
@@ -1431,6 +1441,32 @@ window.__ModuleLoader__.load({
         setTurns(list)
       }
 
+      const markRailEligible = (next) => {
+        if (railEligibleRef.current === next) return
+        railEligibleRef.current = next
+        setRailEligible(next)
+      }
+
+      const clearRailView = () => {
+        if (!railEligibleRef.current
+          && turnsRef.current.length === 0
+          && renderTurnsRef.current.length === 0
+          && visual.current.size === 0) return
+        turnsKey.current = ''
+        applyTurns([])
+        setRenderTurns([])
+        renderTurnsRef.current = []
+        cardRefs.current.clear()
+        visual.current.clear()
+        committed.current.clear()
+        absent.current.clear()
+        exiting.current.clear()
+        placeholderPosition.current = { right: 0, top: -9999, visible: false }
+        setFlowReady(false)
+        setHasMore(false)
+        hasMoreRef.current = false
+      }
+
       React.useEffect(() => {
         const latest = turns.length
           ? turns.slice().sort((left, right) => Number(right.turn) - Number(left.turn))[0]
@@ -1442,6 +1478,8 @@ window.__ModuleLoader__.load({
         const targetSession = sessionId || null
         if (loadedSessionRef.current !== targetSession) {
           loadedSessionRef.current = targetSession
+          markRailEligible(false)
+          clearRailView()
           turnsKey.current = ''
           turnWindow.current.reset()
           hasMoreRef.current = false
@@ -1619,7 +1657,8 @@ window.__ModuleLoader__.load({
       React.useEffect(() => {
         if (!on) {
           railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'off' }
-          setFlowReady(false)
+          markRailEligible(false)
+          clearRailView()
           return undefined
         }
         let raf = 0
@@ -2102,7 +2141,9 @@ window.__ModuleLoader__.load({
             return
           }
           if (!snapshot.rows.length) {
-            retainVisual('waiting-for-dom')
+            markRailEligible(false)
+            clearRailView()
+            railDebug = { ...railDebug, flow: true, flowTurns: 0, turns: 0, cards: 0, reason: 'empty-conversation', eligible: false }
             return
           }
           const tracked = tracker.current.observe(snapshot.signature, performance.now())
@@ -2125,6 +2166,7 @@ window.__ModuleLoader__.load({
           setCompact((value) => value === geometry.current.compact ? value : geometry.current.compact)
           setClip((value) => Math.abs(value.top - geometry.current.clipTop) < 1 && Math.abs(value.bottom - geometry.current.clipBottom) < 1 ? value : { top: geometry.current.clipTop, bottom: geometry.current.clipBottom })
           setFlowReady(true)
+          markRailEligible(railVisibility({ on, flow: true, rows: snapshot.rows }))
           const atBottom = geometry.current.scrollContainer
             ? geometry.current.scrollContainer.scrollTop + geometry.current.scrollContainer.clientHeight >= geometry.current.scrollContainer.scrollHeight - 8
             : false
@@ -2216,9 +2258,9 @@ window.__ModuleLoader__.load({
           const flow = adapter.getFlow()
           if (!flow) {
             geometry.current = { ...geometry.current, ready: false }
-            retainVisual('no-flow')
-            setFlowReady(false)
-            railDebug = { ...railDebug, flow: false, reason: 'no-flow', turns: turnsRef.current.length, cards: visual.current.size }
+            markRailEligible(false)
+            clearRailView()
+            railDebug = { ...railDebug, flow: false, reason: 'no-flow', turns: 0, cards: 0, eligible: false }
             return
           }
           if (mapping.current.flowIdentity && mapping.current.flowIdentity !== flow) {
@@ -2373,7 +2415,9 @@ window.__ModuleLoader__.load({
         scheduleRef.current?.(false)
       }, [turns, on])
 
-      if (!on) return null
+      // No conversation flow/visible messages means no rail at all. This keeps
+      // cards off plugin, automation, settings, and other non-chat pages.
+      if (!on || !railEligible) return null
       const clipPath = clip.top > 0
         ? 'inset(' + Math.round(clip.top) + 'px 0 0 0)'
         : undefined

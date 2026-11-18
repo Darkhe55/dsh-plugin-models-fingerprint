@@ -3,6 +3,14 @@
     const RAIL_BOTTOM_ENTER = 18
     const RAIL_BOTTOM_LEAVE = 30
 
+    /**
+     * The rail is a conversation attachment, never a page-level decoration.
+     * No flow or no visible conversation rows means no rail/status/cards.
+     */
+    function railVisibility({ on = false, flow = null, rows = [] } = {}) {
+      return Boolean(on && flow && Array.isArray(rows) && rows.length > 0)
+    }
+
     function railTurnNumber(value) {
       const number = Number(value)
       return Number.isFinite(number) ? number : null
