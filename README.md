@@ -1,4 +1,4 @@
-# DSH 模型指纹监控
+# 模型指纹识别器
 
 在 DSH 里观察每个模型路由的**协议形状**和**行为特征**，回答：
 
@@ -9,6 +9,21 @@
 - 最近的行为是否出现了持续漂移？
 
 > 指纹是证据，不是模型身份证明。黑盒 API 无法被“证明”为某个具体模型；请结合账单、接口文档、人工抽检和人工标签使用。
+
+## 市场显示名与本地化
+
+DSH 插件市场读取 `locale/<lang>.json` 中的 `meta.title` / `meta.description`。当前提供联合国六种工作语言：
+
+```text
+zh  模型指纹识别器
+en  Model fingerprint identifier
+fr  Identificateur d’empreintes de modèles
+ru  Идентификатор отпечатков моделей
+es  Identificador de huellas de modelos
+ar  مُعرّف بصمات النماذج
+```
+
+包通过 `exports["./locale/*.json"]` 暴露本地化资源。
 
 ---
 
@@ -526,14 +541,14 @@ git push --follow-tags
 或者手动指定标签：
 
 ```powershell
-npm version 0.2.1
+npm version 0.2.2
 git push --follow-tags
 ```
 
 `npm version` 会：
 
 - 更新 `package.json` 版本；
-- 创建 `v0.2.1` 提交和 tag；
+- 创建 `v0.2.2` 提交和 tag；
 - 推送 tag 后触发发布。
 
 如果只是普通代码提交：

@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-model-fingerprint",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "description": "Evidence-based model fingerprint monitor for DSH: matches historical session protocol signatures and behavior against claimed model names.",
   "keywords": [
     "dsh",
@@ -18,7 +18,8 @@
   "main": "index.js",
   "exports": {
     ".": "./index.js",
-    "./client": "./client.js"
+    "./client": "./client.js",
+    "./locale/*.json": "./locale/*.json"
   },
   "engines": {
     "dsh": ">=0.2.2-rc.1 <0.3.0"
@@ -40,7 +41,7 @@
     }
   },
   "scripts": {
-    "test": "node test/client-build.test.mjs && node test/core.test.mjs && node test/scan.test.mjs && node test/data-integrity.test.mjs && node test/summary.test.mjs && node test/report-index.test.mjs && node test/session-view.test.mjs && node test/turn-index.test.mjs && node test/high-load.test.mjs && node test/similarity.test.mjs && node test/client-geometry.test.mjs && node test/rail-state.test.mjs && node test/rail-stress.test.mjs && node test/turn-registry.test.mjs && node test/turn-window-requests.test.mjs && node test/animator.test.mjs && node test/scroll-scheduler.test.mjs && node test/rebind-scheduler.test.mjs && node test/token.test.mjs && node test/turn-requests.test.mjs && node test/equivalence.test.mjs && node test/probe.test.mjs && node test/store.test.mjs && node test/persistence-stress.test.mjs && node test/persistence-scale.test.mjs && node test/persistence-crash.test.mjs && node test/drift.test.mjs && node test/migration.test.mjs && node test/official-lifecycle.test.mjs && node test/plugin.test.mjs",
+    "test": "node test/client-build.test.mjs && node test/locale.test.mjs && node test/core.test.mjs && node test/scan.test.mjs && node test/data-integrity.test.mjs && node test/summary.test.mjs && node test/report-index.test.mjs && node test/session-view.test.mjs && node test/turn-index.test.mjs && node test/high-load.test.mjs && node test/similarity.test.mjs && node test/client-geometry.test.mjs && node test/rail-state.test.mjs && node test/rail-stress.test.mjs && node test/turn-registry.test.mjs && node test/turn-window-requests.test.mjs && node test/animator.test.mjs && node test/scroll-scheduler.test.mjs && node test/rebind-scheduler.test.mjs && node test/token.test.mjs && node test/turn-requests.test.mjs && node test/equivalence.test.mjs && node test/probe.test.mjs && node test/store.test.mjs && node test/persistence-stress.test.mjs && node test/persistence-scale.test.mjs && node test/persistence-crash.test.mjs && node test/drift.test.mjs && node test/migration.test.mjs && node test/official-lifecycle.test.mjs && node test/plugin.test.mjs",
     "build": "node scripts/build-client.mjs",
     "prepublishOnly": "npm run build && npm test",
     "benchmark:minimax": "node scripts/benchmark-minimax.mjs",
@@ -58,6 +59,7 @@
     "scripts/",
     "lib/",
     "public/",
+    "locale/*.json",
     "cordis.patch.yml",
     "README.md"
   ]
