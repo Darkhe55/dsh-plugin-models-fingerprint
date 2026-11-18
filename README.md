@@ -516,8 +516,6 @@ git push --follow-tags
 
 ### 发布新版本
 
-### 发布新版本
-
 只在准备发版时执行：
 
 ```powershell
@@ -528,14 +526,14 @@ git push --follow-tags
 或者手动指定标签：
 
 ```powershell
-npm version 0.2.0
+npm version 0.2.1
 git push --follow-tags
 ```
 
 `npm version` 会：
 
 - 更新 `package.json` 版本；
-- 创建 `v0.2.0` 提交和 tag；
+- 创建 `v0.2.1` 提交和 tag；
 - 推送 tag 后触发发布。
 
 如果只是普通代码提交：
