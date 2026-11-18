@@ -17,7 +17,15 @@ test('market metadata exposes the localized title and description in six UN lang
     assert.ok(locale.meta.title.trim().length > 0)
     assert.equal(typeof locale.meta.description, 'string')
     assert.match(locale.meta.description.trim(), /[.。]$/, language + ' description must end with a sentence period')
+    assert.equal(typeof locale.meta.detail, 'string')
+    const detail = await fs.readFile(path.join(root, locale.meta.detail), 'utf8')
+    assert.match(detail.trim(), /^!\[[^\]]+\]\(preview\.svg\)$/, language + ' detail must be one image line')
   }
   const zh = JSON.parse(await fs.readFile(path.join(root, 'locale', 'zh.json'), 'utf8'))
   assert.equal(zh.meta.title, '模型指纹识别器')
+  assert.ok(await fs.stat(path.join(root, 'docs', 'preview.svg')))
+  const readme = await fs.readFile(path.join(root, 'README.md'), 'utf8')
+  for (const heading of ['## What it does', '## Install', '## Quick start', '## Boundaries', '## Data and privacy', '## Development', '## License']) {
+    assert.ok(readme.includes(heading), 'README missing ' + heading)
+  }
 })

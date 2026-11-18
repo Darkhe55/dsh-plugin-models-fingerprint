@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "Identificador de huellas de modelos",
-    "description": "Identifica huellas de rutas de modelos a partir de las formas de protocolo y las estadísticas de comportamiento de las sesiones de DSH, con evidencia por turno, bases oficiales y diagnóstico de deriva. Las huellas son evidencia, no prueba de identidad del modelo."
+    "description": "Identifica huellas de rutas de modelos a partir de las formas de protocolo y las estadísticas de comportamiento de las sesiones de DSH, y señala desviaciones; las huellas son evidencia, no prueba de identidad del modelo.",
+    "detail": "docs/DETAIL.es.md"
   }
 }

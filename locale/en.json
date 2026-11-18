@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "Model fingerprint identifier",
-    "description": "Identifies model-route fingerprints from DSH session protocol shapes and behavior statistics, with per-turn evidence, official baselines, and drift diagnostics. Fingerprints are evidence, not proof of model identity."
+    "description": "Identifies model-route fingerprints from DSH session protocol shapes and behavior statistics, and flags drift; fingerprints are evidence, not proof of model identity.",
+    "detail": "docs/DETAIL.md"
   }
 }

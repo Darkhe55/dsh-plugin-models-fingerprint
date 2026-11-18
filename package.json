@@ -1,6 +1,6 @@
 {
   "name": "dsh-plugin-model-fingerprint",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Evidence-based model fingerprint monitor for DSH: matches historical session protocol signatures and behavior against claimed model names.",
   "keywords": [
     "dsh",
@@ -60,7 +60,11 @@
     "lib/",
     "public/",
     "locale/*.json",
+    "docs/DETAIL*.md",
+    "docs/preview.svg",
+    "docs/REFERENCE.zh.md",
     "cordis.patch.yml",
-    "README.md"
+    "README.md",
+    "README.zh.md"
   ]
 }

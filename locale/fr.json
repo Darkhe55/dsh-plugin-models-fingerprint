@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "Identificateur d’empreintes de modèles",
-    "description": "Identifie les empreintes des routes de modèles à partir des formes de protocole et des statistiques comportementales des sessions DSH, avec des preuves par tour, des bases officielles et des diagnostics de dérive. Les empreintes sont des preuves, pas une preuve d’identité du modèle."
+    "description": "Identifie les empreintes des routes de modèles à partir des formes de protocole et des statistiques comportementales des sessions DSH, et signale les dérives ; les empreintes sont des preuves, pas une preuve d’identité du modèle.",
+    "detail": "docs/DETAIL.fr.md"
   }
 }

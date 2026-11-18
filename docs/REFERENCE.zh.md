@@ -1,0 +1,686 @@
+# 模型指纹识别器：完整参考（中文）
+
+在 DSH 里观察每个模型路由的**协议形状**和**行为特征**，回答：
+
+- 这个声称模型，和它过去的表现一致吗？
+- 同一个名称后面有没有换过协议、adapter 或网关？
+- 两个不同路由是不是行为相近？
+- 某个第三方模型与官方基线的行为相似度是多少？
+- 最近的行为是否出现了持续漂移？
+
+> 指纹是证据，不是模型身份证明。黑盒 API 无法被“证明”为某个具体模型；请结合账单、接口文档、人工抽检和人工标签使用。
+
+## 市场显示名与本地化
+
+DSH 插件市场读取 `locale/<lang>.json` 中的 `meta.title` / `meta.description`。当前提供联合国六种工作语言：
+
+```text
+zh  模型指纹识别器
+en  Model fingerprint identifier
+fr  Identificateur d’empreintes de modèles
+ru  Идентификатор отпечатков моделей
+es  Identificador de huellas de modelos
+ar  مُعرّف بصمات النماذج
+```
+
+包通过 `exports["./locale/*.json"]` 暴露本地化资源。
+
+---
+
+## 快速开始
+
+### 方式 A：从 npm 安装
+
+包发布后：
+
+```powershell
+dsh plugin --profile desktop add dsh-plugin-model-fingerprint
+```
+
+如果 `dsh` 不在 PATH，请使用 DSH 安装目录里的 CLI。
+
+### 方式 B：从本地目录安装
+
+```powershell
+git clone https://github.com/Darkhe55/dsh-plugin-models-fingerprint.git
+dsh plugin --profile desktop add "C:\path\to\dsh-plugin-models-fingerprint"
+```
+
+也可以使用 DSH 的 **Plugins → Add plugin**，或 `plugin_manager install_bundle`，目标指向这个目录。
+
+### 方式 C：开发调试
+
+```powershell
+npm install
+npm run build
+npm test
+npm run check
+```
+
+然后按方式 B 安装本地目录。
+
+安装或更新后：
+
+1. 完全退出并重开 DSH；
+2. 刷新 Web 页面；
+3. 插件会出现在输入框上方的 dock。
+
+---
+
+## 30 秒上手
+
+1. 打开输入框上方的 **在会话消息旁显示指纹情况**；
+2. 左侧会出现每轮对话的卡片；
+3. 点击卡片，或点击 dock 的 **面板**；
+4. 在面板里查看逐轮检测、指纹族、模型等价性和官方相似度；
+5. 需要官方基线时，到 **官方相似度** 页配置 provider/model。
+
+开关打开或关闭时，会触发一次历史补算并存盘。
+
+---
+
+## 界面说明
+
+### 输入框上方 dock
+
+- **在会话消息旁显示指纹情况**：控制左侧逐轮卡片，不打开面板；
+- **面板**：打开完整逐轮检测浮层。
+
+### 左侧逐轮卡片
+
+每轮一张卡片，显示：
+
+```text
+第 N 轮
+FP-xxxx
+一致 / 变化 / 多指纹 / 代际 / 基线
+主要声称模型
+```
+
+- 中间卡片跟随消息的可见区域；
+- 顶部/底部卡片使用固定槽位；
+- 窄窗口退化为紧凑标记；
+- 点击卡片打开面板。
+
+### 面板页签
+
+| 页签 | 用途 |
+|---|---|
+| 逐轮检测 | 每轮指纹、协议、行为变化和步骤明细 |
+| 指纹族 | 每个协议指纹的样本、名称、标签 |
+| 模型等价性 | 不同路由的行为距离和同名模型对比 |
+| 官方相似度 | 第三方路由与官方基线的行为相似度 |
+| 声称模型 | 一个名称下出现过哪些指纹 |
+| 历史会话 | 每个会话的模型、指纹和样本数 |
+| 方法与边界 | 能推断什么、不能推断什么 |
+
+---
+
+## 官方相似度
+
+用于回答：
+
+> 这个第三方路由的输出行为，与指定官方模型的行为基线有多接近？
+
+### 配置官方基线
+
+打开 **官方相似度**：
+
+1. 填写官方 `provider`；
+2. 填写官方 `model`；
+3. 可选标签和最少样本数；
+4. 记录明确的 `evidenceLevel`、`evidenceSource` 和 `confirmedAt`；
+5. 点击 **保存官方基线**。
+
+官方身份只来自持久化显式配置，不根据 `provider` 名称推断。支持等级：
+
+```text
+user-confirmed-official-api
+official-provider-route
+verified-deployment
+claimed-only
+unknown
+```
+
+基线需要足够历史样本才会进入 `ready`。每个官方 API 应建立自己的基线，不要把两个网关当成同一个基线。
+
+派生基线/校准会记录：
+
+```text
+similarityVersion, dataVersion, scannerGeneration, observationRevision,
+sourceDigest, generatedAt, samples, sessions, firstTime, lastTime,
+featureSchemaVersion, qualityVersion, stale, staleReasons
+```
+
+`sourceDigest` 覆盖官方配置、route key、规范化观测 ID、provider/model/route、session、time、fingerprint、质量状态、protocol 和全部参与 profile/calibration 的行为值；计算前按稳定顺序排序。进程唯一的 `scannerGeneration` 只用于前端历史窗口隔离，不再作为持久化统计缓存的失效依据。dataVersion、feature schema、qualityVersion、similarity 版本、官方配置、有效行为输入或校准负样本变化时，旧对象会失效并重建；重建失败时保留最后一个有效对象，但明确返回 `stale: true`。删除官方来源会同时删除对应基线和校准。
+
+旧 adapter 缺少 `responseId`/`replay` 的观测可以进入 `behavior-only-legacy` 行为统计，但不能进入协议身份验证，也不能提升 `modelIdentityConfidence`。
+
+### 读取结果
+
+面板显示：
+
+- **行为相似度**；
+- `protocolConfidence`、`behaviorSimilarity`、`modelIdentityConfidence` 三层证据；
+- 协议层：`transportFamilyId`、`transportVariantId`、`behaviorProfileId`；
+- 是否 `passiveOnly`；
+- 判定：`likely-same-behavior` / `ambiguous` / `likely-different-behavior`；
+- 距离；
+- 质量代理：`stable` / `watch` / `degrading` / `insufficient`；
+- AUC、分离度、正负样本数；
+- 主要特征贡献。
+
+解释：
+
+- `fp_...` 仍表示 transport/protocol fingerprint，不代表模型身份；
+- 相同 `fp` 只能说明协议形态一致，不能显示为“模型相同”；
+- `modelIdentityConfidence` 在 passive-only 时上限为 `0.45`，固定重复探针上限为 `0.85`；
+- 自然会话行为相似度高，只能标为 `behavior-similar-passive-only`；距离大时标为 `possible-different-model-insufficient-evidence`；
+- 高分只表示**行为分布更接近官方基线**；
+- 低分表示行为分布不同，不等于模型被替换；
+- 未校准时只显示分数，不显示可比较的百分比；
+- 内容特征（CJK、Markdown、换行等）权重很低，避免把任务差异误判成模型差异；
+- 质量代理不是语义质量评分。
+
+---
+
+## 补算与存盘
+
+正常启动只增量扫描新增或变化的日志，不会无条件重扫全部历史。需要修复缺失轮次时，可显式运行全量补算。
+
+触发时机：
+
+- 旧版数据迁移时，规范日志会扫描一次；
+- 手动调用 API 或工具时执行全量补算；
+- 打开或关闭左侧指纹开关不会触发全量补算。
+
+补算流程：
+
+```text
+发现会话目录
+→ 只选最高版本日志（v4 > v3 > v2 > 无版本；损坏才回退）
+→ 重新解析规范日志
+→ 按语义键去重（session/turn/step/time/model/fingerprint/protocol）
+→ 重建该会话 Turn Index
+→ 追加带校验的 journal-v3 增量记录
+```
+
+旧版状态升级为 v2 时，会先保留带时间戳的 `state.json.zst.pre-semantic-v2-*` 备份，再从规范日志重建观测和轮次索引；重建结果通过 journal reset 原子覆盖旧基线，不原地改写备份。标签、探针保留，旧官方基线/校准因 source digest 和 dataVersion 失效，迁移完成后自动从规范观测重建。
+
+存储布局：
+
+```text
+model-fingerprint/
+  state.json.zst                 # 旧/只读基线，不再逐次全量覆盖
+  journal-v3/
+    manifest.json                # formatVersion / base / active journal
+    journal-000001.jsonl         # 带 CRC 的追加记录
+  state.json.zst.pre-semantic-*  # 迁移回滚点
+```
+
+历史内存边界（当前实现）：
+
+- `sessionWindow()` 只物化请求的最新 N 条会话行，session-view 不再先复制整会话；
+- 完整 observation 仍驻留内存；报告分组索引是**懒构建**的，只在打开面板/调用报告时创建；
+- 不做静默淘汰，也不会为了降低内存删除旧观测；
+- `maxHotObservations` 默认 500,000；达到上限时暂停新的历史队列扫描并报告 `history.reached/paused`，不删除、不丢已有数据；
+- 250k 合成观测约 394–451 MiB RSS；
+- 真正的按 session 冷热分层需要持久化层支持按 session 查询并保留完整可回退副本，当前没有把半成品 eviction 接入生产路径。`historyMode`/冷存储属于下一阶段，不应以“限制条数”冒充完成。
+
+保存状态机：
+
+```text
+clean → dirty → scheduled → writing
+                         ↘ dirtyWhileWriting → writing（最多补一次）
+writing → failed → 指数退避重试
+flush/shutdown → closed（有上限超时）
+```
+
+普通新增 observation 只追加 journal，不复制历史、不重建全量 Turn Index、不在主线程压缩全量状态。journal 最后一条未完整写入的记录会在下次启动或追加前被忽略并截断；磁盘失败不会 ack scanner 的待写变更。单次保存超过 500 ms、变更收集超过 100 ms 会写诊断警告；待写变更超过 20,000 条时标记 backpressure，并暂停新的历史补算。
+
+诊断接口：
+
+```text
+GET /model-fingerprint/api/status   # 包含 drift 与 persistence 指标
+GET /model-fingerprint/api/drift    # 仅会话级漂移诊断
+```
+
+面板的 **漂移诊断** 页显示：
+
+- 会话级行为变化点；
+- 相邻 session 的路由/指纹跳变；
+- 当前持久化状态、revision、save 耗时、队列、RSS、journal 记录数。
+
+所有漂移结果都是探索性信号，不会进入模型身份判定。
+
+报告聚合使用增量索引：fingerprint / route / session 的摘要只在所属分组变化时失效。65k 真实副本实测：
+
+```text
+首次构建：约 0.50 s
+无变化的后续构建：约 16 ms
+新增一条 observation 后：约 55 ms
+```
+
+journal 超过 64 MiB 或 100,000 条记录时，`persistence.compaction.recommended` 变为 true，诊断页会提示需要 checkpoint；不会自动在主线程执行全量压缩。
+
+关闭 DSH 后可离线压缩成新的只读 checkpoint：
+
+```powershell
+npm run compact:state -- --home "$env:USERPROFILE\.dsh"
+```
+
+脚本在新进程/新文件中完成读取、压缩和校验，失败时恢复旧 manifest；不会修改旧 checkpoint 或旧 journal。运行前请先备份状态目录。
+
+手动触发：
+
+```text
+POST /model-fingerprint/api/backfill
+```
+
+需要 token；也可以通过模型工具：
+
+```text
+model_fingerprint action=backfill
+```
+
+已删除的日志文件无法从磁盘补回；状态中已有的历史观测会保留。
+
+---
+
+## 固定探针（可选，会产生 token）
+
+被动历史会受任务结构影响。需要更强证据时，在 **模型等价性** 页底部运行固定探针。
+
+- 6 个固定 prompt：baseline、英文、中文、代码、emoji、工具调用；
+- 可选重复 1–3 次；
+- 每次输出 token 很小；
+- 运行前需要确认；
+- 探针会真实调用供应商模型，产生费用；
+- 固定探针结果优先于跨任务被动历史。
+
+### 离线困难负样本与探针计划
+
+```bash
+npm run benchmark:minimax   # M3 vs M2.7，rolling-origin、nested FPR、session-paired verification AUC、探索性消融
+npm run benchmark:official  # 官方来源证据、质量门和基线摘要
+npm run probe:plan          # 只生成 6 类 × 5 prompt × 10 次 × 2 窗口的计划
+npm run probe:import -- path/to/probe-results.json  # 离线校验导入，不调用模型
+```
+
+`probe:plan` 不调用任何模型，只写 `reports/minimax-probe-plan.json`；真实采集仍需显式 `confirm=true`。离线结果用 `probe:import` 校验后进入 `reports/probe-import-audit.json`。`benchmark:minimax` 写 `reports/minimax-m3-m27.json` / `.md`，`benchmark:official` 写 `reports/official-audit.json`。时间验证使用严格 rolling-origin，FPR 使用 nested session-level 阈值，AUC 明确为 session-paired verification AUC。FPR 报告区分 verification trial 与唯一底层 session cluster，正式上界使用单侧 95% Clopper–Pearson；session-block bootstrap 仅作探索性不确定性指标。报告明确禁止在无固定重复探针时声称识别出 MoE 专家。
+
+---
+
+## 模型工具
+
+工具名：`model_fingerprint`
+
+| action | 作用 |
+|---|---|
+| `status` | 最近响应、统计、证据提示 |
+| `session` | 指定会话的指纹摘要 |
+| `fingerprints` | 按样本数列出指纹族 |
+| `equivalence` | 跨路由行为距离 |
+| `probe` | 运行固定探针，必须 `confirm: true`，消耗 token |
+| `label` | 写入/删除人工标签 |
+| `scan` | 重新发现会话文件 |
+| `backfill` | 补算缺失轮次并落盘 |
+
+示例：
+
+```text
+帮我看看最近一次实际调用和声称名称是否一致
+→ model_fingerprint { action: "status" }
+
+这个会话里出现过哪些指纹？
+→ model_fingerprint { action: "session", sessionId: "session-..." }
+
+把缺失的历史轮次补回来
+→ model_fingerprint { action: "backfill" }
+```
+
+---
+
+## 判定与边界
+
+常见判定：
+
+| 判定 | 含义 |
+|---|---|
+| `consistent` | 指纹与历史一致 |
+| `unverified` | 样本太少 |
+| `changed` | 同 API/adapter 下响应 ID 形状变化 |
+| `generation` | adapter 或 wire API 变化 |
+| `mixed` | 同一路由存在多个指纹 |
+| `alias` | 同一指纹出现多个名称 |
+| `label-mismatch` | 名称与人工标签不一致 |
+| `behavior-drift` | 行为指标偏离历史基线 |
+| `behavior-change-point` | 时间序列出现持续变化点 |
+
+置信度是证据强度，最高 90%，不是模型身份概率。
+
+---
+
+## 数据与隐私
+
+- 状态目录：`%USERPROFILE%\.dsh\model-fingerprint`，或 `$DSH_HOME/model-fingerprint`；旧 `state.json.zst` 作为只读基线，新变化保存在 `journal-v3`；
+- 只保存协议形状、指标、哈希、会话 ID、时间；
+- 不保存提示词或回复正文；
+- 固定探针只保存内置 prompt 的结果指标；
+- 历史日志只读，不修改 `~/.dsh/sessions`；
+- 面板与 API 仅绑定本机 DSH Web 服务；
+- 修改状态、运行探针、补算需要 token；
+- 重置：停止 DSH 后删除 `model-fingerprint` 目录。
+
+---
+
+## 性能
+
+- 启动后台扫描，按文件大小/修改时间增量处理；
+- 追加日志只解析新帧；
+- 补算单独串行执行，不并发重扫；
+- 客户端窗口上限 2000 轮；活动/退出/占位卡片按可见轮次生成，单帧只做一次快照和一次写入；
+- 100,000 轮 turn index 分页约 20ms；
+- 100,000 条观测构造单会话轮次约 168ms；
+- 报告按 scanner 版本、标签和 limit 缓存；
+- 可见轮次通过 `/api/turn-window` 一次批量取得，单批最多 32 轮；
+- 旧 generation、旧 session、旧 revision 响应丢弃；相同可见窗口请求去重。
+
+---
+
+## 官方扩展点与轨道适配器
+
+当前运行版本为 DSH `0.2.2-rc.3`。可用的正式扩展点：
+
+- `conversation.chat.turnTail`：已完成轮次的 list Slot，owner 提供 `TurnLocation` 和 closing `seq`；
+- `conversation.chat.node`：按 Node kind 替换/扩展 Chat 行渲染，但不能直接装饰已存在的每个轮次；
+- `data-chat-turn`、`data-chat-flow-kind`、`data-chat-group-part`、`data-chat-node-key`：Chat 暴露的稳定 DOM 属性；
+- `data-slot="conversation.chat.flow"`：Chat flow 容器。
+
+没有公开的 visible-turn、scroll、history-pagination 或 per-turn decoration hook。因此：
+
+1. 用 `conversation.chat.turnTail` 注册零布局 probe，获得已完成轮次的官方挂载/卸载生命周期与轮次号；
+2. 用 `VisibleTurnAdapter` 封装 DOM 兼容读取；轨道组件不直接 querySelector 官方 Chat 子树；
+3. 每轮只选择一个 canonical anchor（最终 assistant/message，其次最后一个非工具 assistant-step，最后才回退轮次容器）；
+4. 只读取当前帧的 anchor rect，不跨帧保存节点；
+5. 右侧侧边栏展开时，通过 `ctx.sidebarRight.isExpanded()` 或稳定的 `[data-sidebar-right-open]` 状态自动隐藏轨道卡片，收起后恢复；不会销毁卡片状态，也不会与右侧面板争抢空间；
+6. 消息列宽度或水平位置变化时，统一通过轨道根节点 CSS 变量 `--mf-rail-right` 更新水平锚点，大小卡片和占位卡同时生效；ResizeObserver 监听 flow、父列和 document，另有 300ms 布局兜底探测，避免只有 React 重新渲染时才移动；
+7. compact 锚点使用实际 56px 卡片宽度，不再保留 full 卡片 176px 的空白带，避免小卡片与侧栏/消息边界之间始终空出一大段距离。
+
+---
+
+## 轨道 API
+
+`GET /model-fingerprint/api/turn-window?id=<sessionId>&turns=80,81,82`
+
+返回：
+
+```js
+{
+  sessionId,
+  revision,
+  generation,
+  turns: [
+    { turn: 80, status: 'observed', data: Turn },
+    { turn: 81, status: 'no-data', data: null, index: TurnIndexRow },
+    { turn: 82, status: 'missing', data: null }
+  ]
+}
+```
+
+`observed` 显示正常指纹卡；`no-data` 显示“无模型指纹数据”；`missing`/请求中显示“指纹数据加载中”。负缓存按 session + generation + turn + revision 生效。
+
+---
+
+## 兼容性
+
+已在：
+
+```text
+@deepseek-ai/dsh 0.2.2-rc.3
+Windows Desktop / Web
+```
+
+验证：
+
+- Host：`webServer`、`tools`、`sessions`、`llm`；
+- Client：`shell.overlay`、`conversation.composer.dock`；
+- `ctx.webServer.getOrigin()`；
+- 逐轮卡片、官方相似度面板、固定探针、查询 API。
+
+`0.2.2-rc.1` → `0.2.2-rc.3` 的升级指南中与本插件相关的是 macOS overlay 的窗口拖拽区域；Windows/Web 不受影响。
+
+`engines.dsh`：
+
+```text
+>=0.2.2-rc.1 <0.3.0
+```
+
+---
+
+## 发布到 npm
+
+本仓库使用 **tag 触发发布**，普通 `git push` 不会发布，也不会自动升版本。
+
+### 工作流
+
+文件：
+
+```text
+.github/workflows/publish.yml
+```
+
+触发条件：
+
+- 推送 `v*` 标签；
+- 手动运行 `workflow_dispatch`，但仍要求从版本标签运行。
+
+工作流会：
+
+1. 检查 tag 与 `package.json.version` 完全一致；
+2. 查询 npm 上该版本是否已存在，存在则跳过；
+3. `npm run build && npm test && npm run check`；
+4. `npm publish --access public --provenance`。
+
+### 一次性配置：Trusted Publisher
+
+在 npm 包设置页配置 **Trusted Publisher → GitHub Actions**：
+
+```text
+Organization/user: Darkhe55
+Repository:        dsh-plugin-models-fingerprint
+Workflow filename: publish.yml
+Environment:       （留空）
+```
+
+工作流使用 GitHub OIDC：
+
+```yaml
+permissions:
+  id-token: write
+```
+
+因此发布不再需要长期 `NPM_TOKEN` secret。GitHub Actions 会用 OIDC 换取一次性的 npm 发布凭证。
+
+要求：
+
+- 仓库为 public；
+- workflow 文件名必须是 `publish.yml`；
+- npm 包已存在于 registry；
+- runner 使用支持 Trusted Publishing 的 npm 版本。
+
+### 首次 OIDC 发布
+
+`0.1.0` 已通过 token 完成首次发布；Trusted Publisher 从下一个版本开始使用。
+
+```powershell
+npm version patch
+git push --follow-tags
+```
+
+例如当前是 `0.1.0`，会创建 `v0.1.1`。推送标签后 GitHub Actions 会自动构建、测试并通过 OIDC 发布。
+
+如果 OIDC 发布失败，检查：
+
+1. npm Trusted Publisher 的仓库名和 workflow 文件名是否完全一致；
+2. workflow 是否包含 `id-token: write`；
+3. 是否仍错误配置了 `NODE_AUTH_TOKEN`；
+4. npm 上该版本是否已经存在。
+
+旧的 `NPM_TOKEN` 可以继续保留作应急，但 Trusted Publisher 工作流不会读取它；确认 OIDC 稳定后建议在 GitHub Secrets 中删除。
+
+### 发布新版本
+
+只在准备发版时执行：
+
+```powershell
+npm version patch
+git push --follow-tags
+```
+
+或者手动指定标签：
+
+```powershell
+npm version 0.2.3
+git push --follow-tags
+```
+
+`npm version` 会：
+
+- 更新 `package.json` 版本；
+- 创建 `v0.2.3` 提交和 tag；
+- 推送 tag 后触发发布。
+
+如果只是普通代码提交：
+
+```powershell
+git add .
+git commit -m "..."
+git push
+```
+
+不会触发 npm 发布。
+
+### 验证
+
+```powershell
+npm view dsh-plugin-model-fingerprint version
+```
+
+### 用户安装
+
+```powershell
+dsh plugin --profile desktop add dsh-plugin-model-fingerprint
+```
+
+发布前需确认包名未被占用。若使用 scoped 包名，命令相应改为 `@scope/name`。
+
+### 本地手动检查
+
+```powershell
+npm pack --dry-run
+npm publish --dry-run
+```
+
+`npm publish --dry-run` 会执行 `prepublishOnly` 的构建与测试，但不会真正上传。
+
+---
+
+## 开发
+
+```powershell
+npm test
+npm run check
+npm run build
+node scripts/persistence-bench.mjs 1000,65000,100000,250000
+```
+
+隔离持久化压测（不会启动 DSH，也不需要真实状态）：
+
+```text
+1k:    save ~19 ms,   max block ~0 ms,       RSS ~49 MiB
+65k:   save ~0.6–4.3 s, max block 13–25 ms,  RSS ~177–183 MiB
+100k:  save ~0.9–1.5 s, max block ~16 ms,    RSS ~272 MiB
+250k:  save ~1.5–1.7 s, max block 11–39 ms,  RSS ~394–451 MiB
+```
+
+这些是合成、单进程隔离数据；真实机器、磁盘和杀毒软件会影响总耗时。关键是最大事件循环阻塞保持在几十毫秒，而不是总耗时。
+
+测试覆盖：
+
+- 指纹与声称名称解耦；
+- wire API 变化产生新指纹；
+- zstd 追加帧增量扫描；
+- 同一会话多版本日志只扫描最高版本，损坏时回退；
+- 语义去重、替换/删除后的 Turn Index 重建；
+- 状态文件 v2 迁移与备份；
+- 轮次数值降序、唯一性断言与分页无重复；
+- live 事件去重；
+- journal 增量追加、torn tail 截断、失败不 ack、写入期间合并；
+- 65k 观测增量保存不调用全量 serialize；
+- session 级漂移与路由跳变；
+- 状态文件读写与标签/探针持久化；
+- 路由变化、别名、标签提示；
+- 行为变化点；
+- 行为距离和同名模型分组；
+- 固定探针；
+- 插件路由、工具、标签、探针、补算端到端；
+- 客户端几何与用户气泡排除；
+- 单轮 canonical anchor 选择和多段范围移除；
+- 可见轮次批量接口 observed/no-data/missing；
+- 虚拟 DOM 节点复用、786/785/784/783 故障序列、跳转恢复；
+- 防碰撞布局与折叠 ID；
+- 官方 turnTail 生命周期登记；
+- 1,000 次节点复用、500 次历史 prepend、乱序延迟响应；
+- FLIP 起点与最短动画时长。
+
+---
+
+## 文件结构
+
+```text
+index.js                 Host 入口：路由、工具、live 订阅、探针、补算
+client.js                构建后的 Client 入口
+client/                  Client 源码模块
+client/rail-state.js     每帧目标推导、canonical anchor、防碰撞布局、跳转稳定性
+client/visible-turn-adapter.js 官方 Chat DOM 快照与 flow/生命周期适配
+client/turn-registry.js  官方 turnTail probe 的挂载/卸载登记
+client/scroll-scheduler.js 滚动 follow / settle 调度
+client/rebind-scheduler.js 大跨度跳转后的有界 DOM 重绑
+client/turn-requests.js  单轮补取、代际与 revision 防护
+client/turn-window-requests.js 可见轮次批量请求、去重、AbortController
+scripts/build-client.mjs Client 构建脚本
+lib/core.mjs             观测提取、指纹哈希、行为统计
+lib/scan.mjs             文件发现、增量扫描、live、补算
+lib/summary.mjs          指纹族/路由/会话/逐轮/提示
+lib/equivalence.mjs      行为画像与距离
+lib/similarity.mjs      官方基线、校准、行为相似度、漂移代理
+lib/official.mjs        官方证据等级、配置摘要、source digest、freshness
+lib/quality.mjs         协议/行为质量门与排除原因
+lib/identity.mjs        transport family/variant、behavior profile、身份置信度上限
+lib/lifecycle.mjs       stale 基线/校准重建与失败保留
+lib/benchmark.mjs       session/time held-out、AUC、bootstrap、消融
+lib/probe-plan.mjs      6 类固定探针定义与离线结果校验
+lib/probe.mjs            固定探针
+lib/store.mjs            只读 zstd 基线与增量持久化状态机
+lib/journal.mjs          校验式追加日志、manifest 与崩溃恢复
+scripts/benchmark-*.mjs  离线困难负样本 / 官方来源审计
+scripts/probe-plan.mjs   仅生成探针计划，不调用模型
+reports/                 生成的 MiniMax 报告、官方审计、探针计划
+public/dashboard.html    面板
+public/widget.js         兜底开关
+test/                    单元与端到端测试
+```
+
+---
+
+## 已知限制
+
+- 会话日志格式变化可能导致字段缺失；
+- DSH/适配器/网关升级会改变协议指纹，可能标记为 `generation`；
+- 同一 API 外壳下不同模型可能共享指纹；
+- 被动行为受任务影响，跨供应商结论优先使用固定探针；
+- 行为相似度不是模型身份概率；
+- 质量代理不是语义质量评分；
+- 只监控本机 DSH sessions 目录；
+- 远程 Web 模式读取的是运行 DSH 的机器上的日志。
