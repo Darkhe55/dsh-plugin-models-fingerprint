@@ -349,6 +349,30 @@ window.__ModuleLoader__.load({
       return Boolean(on && flow && Array.isArray(rows) && rows.length > 0)
     }
 
+    /**
+     * Hiding the rail is a hit-testing change, not only a paint change: an
+     * opacity-0 overlay still receives clicks at its last card positions, and
+     * every card re-enables pointer-events on itself.
+     */
+    function railHidden({ canvasOpen = false, rightbarOpen = false } = {}) {
+      return Boolean(canvasOpen || rightbarOpen)
+    }
+
+    /** Cards, placeholders and the status pill are clickable only while shown. */
+    function railCardPointerEvents({ hidden = false, visible = false } = {}) {
+      return hidden || !visible ? 'none' : 'auto'
+    }
+
+    /** The layer keeps its fade but must stop hit-testing while hidden. */
+    function railLayerChrome({ hidden = false } = {}) {
+      return {
+        opacity: hidden ? 0 : 1,
+        visibility: hidden ? 'hidden' : 'visible',
+        // The visibility flip waits for the fade-out; children are gated instantly.
+        transition: hidden ? 'opacity 160ms ease, visibility 0s linear 160ms' : 'opacity 160ms ease',
+      }
+    }
+
     function railTurnNumber(value) {
       const number = Number(value)
       return Number.isFinite(number) ? number : null
@@ -1095,7 +1119,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-14-4'
+    const CLIENT_BUILD = '2026-11-21-1'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1427,6 +1451,7 @@ window.__ModuleLoader__.load({
       const recoveryEvent = React.useRef(null)
       const scrollDirection = React.useRef(1)
       const rightbarOpenRef = React.useRef(false)
+      const hiddenRef = React.useRef(false)
       const placeholderPosition = React.useRef({ right: 0, top: -9999, visible: false })
 
       const applyTurns = (next) => {
@@ -1967,7 +1992,7 @@ window.__ModuleLoader__.load({
               absent.current.delete(id)
             }
             setStyle(node, 'zIndex', target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2')
-            setStyle(node, 'pointerEvents', 'auto')
+            setStyle(node, 'pointerEvents', hiddenRef.current ? 'none' : 'auto')
             setStyle(node, 'filter', target.zone === 'middle' ? 'none' : 'grayscale(.45) saturate(.65)')
             setStyle(node, 'boxShadow', target.zone === 'middle' ? '0 4px 12px rgba(16,24,40,.10)' : '0 1px 4px rgba(16,24,40,.06)')
             setStyle(node, 'borderColor', target.zone === 'middle' ? 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))' : 'rgba(20,30,45,.08)')
@@ -2418,6 +2443,10 @@ window.__ModuleLoader__.load({
       // No conversation flow/visible messages means no rail at all. This keeps
       // cards off plugin, automation, settings, and other non-chat pages.
       if (!on || !railEligible) return null
+      const hidden = railHidden({ canvasOpen, rightbarOpen })
+      // applyTargets re-asserts pointer-events on every card; keep the hidden
+      // state where a scheduled frame can see it.
+      hiddenRef.current = hidden
       const clipPath = clip.top > 0
         ? 'inset(' + Math.round(clip.top) + 'px 0 0 0)'
         : undefined
@@ -2438,7 +2467,7 @@ window.__ModuleLoader__.load({
             left: 'auto',
             right: 'var(--mf-rail-right, ' + String(geometry.current.right || 0) + 'px)',
             top: 0,
-            pointerEvents: position.visible ? 'auto' : 'none',
+            pointerEvents: railCardPointerEvents({ hidden, visible: position.visible }),
             cursor: 'pointer',
             transform: 'translate3d(0,' + position.top + 'px,0)',
             opacity: Number.isFinite(position.opacity) ? position.opacity : (position.visible ? 1 : 0),
@@ -2512,7 +2541,7 @@ window.__ModuleLoader__.load({
           top: 0,
           width: compact ? 56 : 176,
           boxSizing: 'border-box',
-          pointerEvents: placeholderPosition.current.visible ? 'auto' : 'none',
+          pointerEvents: railCardPointerEvents({ hidden, visible: placeholderPosition.current.visible }),
           cursor: 'pointer',
           padding: compact ? '3px 4px' : '6px 8px 7px',
           borderRadius: compact ? 999 : 10,
@@ -2545,7 +2574,7 @@ window.__ModuleLoader__.load({
             position: 'absolute',
             left: Math.max(8, geometry.current.left || 8),
             bottom: 96,
-            pointerEvents: 'auto',
+            pointerEvents: railCardPointerEvents({ hidden, visible: true }),
             cursor: 'pointer',
             padding: '5px 9px',
             borderRadius: 999,
@@ -2569,8 +2598,7 @@ window.__ModuleLoader__.load({
           overflow: 'hidden',
           '--mf-rail-right': String(geometry.current.right || 0) + 'px',
           clipPath,
-          opacity: canvasOpen || rightbarOpen ? 0 : 1,
-          transition: 'opacity 160ms ease',
+          ...railLayerChrome({ hidden }),
         },
       }, children)
     }

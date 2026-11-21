@@ -41,6 +41,7 @@
       const recoveryEvent = React.useRef(null)
       const scrollDirection = React.useRef(1)
       const rightbarOpenRef = React.useRef(false)
+      const hiddenRef = React.useRef(false)
       const placeholderPosition = React.useRef({ right: 0, top: -9999, visible: false })
 
       const applyTurns = (next) => {
@@ -581,7 +582,7 @@
               absent.current.delete(id)
             }
             setStyle(node, 'zIndex', target.zone === 'top' ? '3' : target.zone === 'bottom' ? '1' : '2')
-            setStyle(node, 'pointerEvents', 'auto')
+            setStyle(node, 'pointerEvents', hiddenRef.current ? 'none' : 'auto')
             setStyle(node, 'filter', target.zone === 'middle' ? 'none' : 'grayscale(.45) saturate(.65)')
             setStyle(node, 'boxShadow', target.zone === 'middle' ? '0 4px 12px rgba(16,24,40,.10)' : '0 1px 4px rgba(16,24,40,.06)')
             setStyle(node, 'borderColor', target.zone === 'middle' ? 'var(--dsw-alias-border-l1, rgba(20,30,45,.14))' : 'rgba(20,30,45,.08)')
@@ -1032,6 +1033,10 @@
       // No conversation flow/visible messages means no rail at all. This keeps
       // cards off plugin, automation, settings, and other non-chat pages.
       if (!on || !railEligible) return null
+      const hidden = railHidden({ canvasOpen, rightbarOpen })
+      // applyTargets re-asserts pointer-events on every card; keep the hidden
+      // state where a scheduled frame can see it.
+      hiddenRef.current = hidden
       const clipPath = clip.top > 0
         ? 'inset(' + Math.round(clip.top) + 'px 0 0 0)'
         : undefined
@@ -1052,7 +1057,7 @@
             left: 'auto',
             right: 'var(--mf-rail-right, ' + String(geometry.current.right || 0) + 'px)',
             top: 0,
-            pointerEvents: position.visible ? 'auto' : 'none',
+            pointerEvents: railCardPointerEvents({ hidden, visible: position.visible }),
             cursor: 'pointer',
             transform: 'translate3d(0,' + position.top + 'px,0)',
             opacity: Number.isFinite(position.opacity) ? position.opacity : (position.visible ? 1 : 0),
@@ -1126,7 +1131,7 @@
           top: 0,
           width: compact ? 56 : 176,
           boxSizing: 'border-box',
-          pointerEvents: placeholderPosition.current.visible ? 'auto' : 'none',
+          pointerEvents: railCardPointerEvents({ hidden, visible: placeholderPosition.current.visible }),
           cursor: 'pointer',
           padding: compact ? '3px 4px' : '6px 8px 7px',
           borderRadius: compact ? 999 : 10,
@@ -1159,7 +1164,7 @@
             position: 'absolute',
             left: Math.max(8, geometry.current.left || 8),
             bottom: 96,
-            pointerEvents: 'auto',
+            pointerEvents: railCardPointerEvents({ hidden, visible: true }),
             cursor: 'pointer',
             padding: '5px 9px',
             borderRadius: 999,
@@ -1183,8 +1188,7 @@
           overflow: 'hidden',
           '--mf-rail-right': String(geometry.current.right || 0) + 'px',
           clipPath,
-          opacity: canvasOpen || rightbarOpen ? 0 : 1,
-          transition: 'opacity 160ms ease',
+          ...railLayerChrome({ hidden }),
         },
       }, children)
     }

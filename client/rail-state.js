@@ -11,6 +11,30 @@
       return Boolean(on && flow && Array.isArray(rows) && rows.length > 0)
     }
 
+    /**
+     * Hiding the rail is a hit-testing change, not only a paint change: an
+     * opacity-0 overlay still receives clicks at its last card positions, and
+     * every card re-enables pointer-events on itself.
+     */
+    function railHidden({ canvasOpen = false, rightbarOpen = false } = {}) {
+      return Boolean(canvasOpen || rightbarOpen)
+    }
+
+    /** Cards, placeholders and the status pill are clickable only while shown. */
+    function railCardPointerEvents({ hidden = false, visible = false } = {}) {
+      return hidden || !visible ? 'none' : 'auto'
+    }
+
+    /** The layer keeps its fade but must stop hit-testing while hidden. */
+    function railLayerChrome({ hidden = false } = {}) {
+      return {
+        opacity: hidden ? 0 : 1,
+        visibility: hidden ? 'hidden' : 'visible',
+        // The visibility flip waits for the fade-out; children are gated instantly.
+        transition: hidden ? 'opacity 160ms ease, visibility 0s linear 160ms' : 'opacity 160ms ease',
+      }
+    }
+
     function railTurnNumber(value) {
       const number = Number(value)
       return Number.isFinite(number) ? number : null
