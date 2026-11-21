@@ -4,7 +4,7 @@ import { promises as fs } from 'node:fs'
 
 async function loadRailState() {
   const source = await fs.readFile(new URL('../client/rail-state.js', import.meta.url), 'utf8')
-  return new Function(source + '\nreturn { railVisibility, deriveRailTargets, validateRailTargets, layoutMiddleCards, chooseRailMapping, railJumpDetected, RailSnapshotTracker }')()
+  return new Function(source + '\nreturn { railVisibility, railHidden, railCardPointerEvents, railLayerChrome, deriveRailTargets, validateRailTargets, layoutMiddleCards, chooseRailMapping, railJumpDetected, RailSnapshotTracker }')()
 }
 
 const turn = (turn, id = 's:turn:' + turn) => ({ id, turn, verdictLabel: 'test' })
@@ -106,6 +106,32 @@ test('ambiguous offsets keep the previous offset instead of the first candidate'
   assert.equal(threeRows.confidence, 0)
   const confirmed = chooseRailMapping([110, 111, 112], [210, 211, 212], { offset: 100, confidence: 1 })
   assert.equal(confirmed.offset, 100, 'an already confirmed offset remains usable when direct evidence is absent')
+})
+
+test('opening the canvas or the right sidebar hides the rail', async () => {
+  const { railHidden } = await loadRailState()
+  assert.equal(railHidden({ canvasOpen: false, rightbarOpen: false }), false)
+  assert.equal(railHidden({ canvasOpen: true, rightbarOpen: false }), true)
+  assert.equal(railHidden({ canvasOpen: false, rightbarOpen: true }), true)
+  assert.equal(railHidden({}), false)
+})
+
+test('a hidden rail leaves hit-testing instead of only fading out', async () => {
+  const { railCardPointerEvents, railLayerChrome } = await loadRailState()
+  const shown = railLayerChrome({ hidden: false })
+  assert.equal(shown.opacity, 1)
+  assert.equal(shown.visibility, 'visible')
+  const hidden = railLayerChrome({ hidden: true })
+  assert.equal(hidden.opacity, 0)
+  assert.equal(hidden.visibility, 'hidden')
+  // The fade stays, but the visibility flip waits for it while the cards are
+  // gated immediately, so an invisible card cannot swallow a click.
+  assert.match(hidden.transition, /opacity 160ms/)
+  assert.match(hidden.transition, /visibility 0s linear 160ms/)
+  assert.equal(railCardPointerEvents({ hidden: false, visible: true }), 'auto')
+  assert.equal(railCardPointerEvents({ hidden: false, visible: false }), 'none')
+  assert.equal(railCardPointerEvents({ hidden: true, visible: true }), 'none')
+  assert.equal(railCardPointerEvents({ hidden: true, visible: false }), 'none')
 })
 
 test('jump detection and stable-snapshot timeout are bounded but not permanent', async () => {
