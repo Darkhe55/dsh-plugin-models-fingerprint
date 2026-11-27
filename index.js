@@ -11,6 +11,8 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { buildReport, buildTurns, fingerprintLabel, protocolLabel, shortId } from './lib/summary.mjs'
+import { assistantTextFromEvent } from './lib/core.mjs'
+import { createProvenanceChannel } from './lib/provenance.mjs'
 import { buildSessionView, buildTurnWindow } from './lib/session-view.mjs'
 import { listSessionTurns, normalizeTurnIndex, turnIndexFromObservations } from './lib/turn-index.mjs'
 import { analyzeDegradation, buildOfficialProfile, normalizeOfficialModels, scoreSimilarity, SIMILARITY_VERSION } from './lib/similarity.mjs'
@@ -301,6 +303,10 @@ export function apply(ctx) {
   let initialized = false
   let initializing
   let saveTimer
+  // Opt-in and inert by default: only a configured detector is consulted, and
+  // only a positive answer is attached to a turn. It never feeds the
+  // fingerprint or verdict.
+  const provenance = createProvenanceChannel({ env: process.env, logger: ctx.logger })
   const reportCache = new Map()
   const turnCache = new Map()
   const turnsForSession = (sessionId) => {
@@ -412,6 +418,16 @@ export function apply(ctx) {
       // Scanner now owns the historical objects. Do not retain a second full
       // observation dictionary in the store for the lifetime of DSH.
       store.releaseLargeState()
+      scanner.onTurnText((observation, event) => {
+        provenance.observe({
+          observation,
+          text: assistantTextFromEvent(event),
+          attach: (record) => scanner.attachProvenance(observation.id, record),
+        })
+      })
+      if (provenance.config.enabled) {
+        ctx.logger?.info?.('model-fingerprint: watermark provenance channel enabled')
+      }
       scanner.onBackfill = migrating ? null : async () => {
         await store.flush(scanner)
       }
@@ -578,6 +594,7 @@ export function apply(ctx) {
     return json(res, 200, {
       ...report,
       persistence: store && typeof store.stats === 'function' ? store.stats() : null,
+      watermark: provenance.status(),
     })
   })
   route('/api/drift', async (req, res) => {
@@ -1019,6 +1036,7 @@ export function apply(ctx) {
 
   ctx.effect(() => () => {
     disposed = true
+    provenance.dispose()
     if (saveTimer) clearInterval(saveTimer)
     if (scanner) scanner.stop()
     if (store && scanner) store.close(scanner).catch(() => {})
