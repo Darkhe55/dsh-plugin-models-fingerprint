@@ -12,6 +12,7 @@ Fingerprints are **evidence**, not proof of model identity. This plugin does not
 - Shows a per-turn rail card with the current fingerprint and verdict.
 - Compares routes for behavioral equivalence and compares routes with configured official baselines.
 - Detects session-level behavior changes and route/fingerprint transitions.
+- Optional: with a configured official watermark detector, a turn shows provenance evidence only when a watermark is detected (off by default; never part of the fingerprint).
 - Keeps prompt and response text out of its local state.
 
 ## Install
@@ -57,6 +58,7 @@ Restart DSH after installation or upgrade.
 - Official identity requires explicit evidence and still remains an attribution, not cryptographic proof.
 - Passive behavior cannot identify MoE experts or guarantee a provider's routing.
 - FPR and confidence results can be “insufficient”; the plugin must not turn them into a positive claim.
+- A watermark is provenance evidence only: it is shown when detected, its absence proves nothing, and it never feeds the fingerprint or verdict.
 - No provider API is called unless you explicitly run a probe.
 
 ## Data and privacy

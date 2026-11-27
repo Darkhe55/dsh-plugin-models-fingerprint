@@ -361,6 +361,42 @@ npm run probe:import -- path/to/probe-results.json  # 离线校验导入，不�
 
 ---
 
+## 水印来源证据（可选）
+
+逐轮观测可以附带一个独立于指纹的 `provenance` 字段，用来记录"供应商水印检出"。它**不参与** `fp_...`、判定、相似度或基线，只作来源旁证。
+
+- 默认关闭：未配置检测器时不发请求、不写字段，rail 与面板不显示任何水印内容；
+- 只有检测器明确返回 `detected: true` 且带 `vendor` 或 `scheme` 时才写入；未检出、超时、报错、非 2xx、未配置都只计数，观测保持原样；
+- 检出时 rail 卡片标题和面板轮次卡显示"水印 · 供应商/方案/置信度"；
+- 水印可被改写、翻译、代理剥离或伪造；**未检出不代表不是 AI 生成**；
+- 正文只在检测请求期间存在于内存，不写入状态；检测器建议跑在本机。
+
+配置（环境变量，重启 DSH 生效）：
+
+| 变量 | 说明 |
+|---|---|
+| `DSH_MF_WATERMARK_ENDPOINT` | POST 检测地址；不设置即关闭 |
+| `DSH_MF_WATERMARK_TOKEN` | 可选 Bearer token |
+| `DSH_MF_WATERMARK_TIMEOUT_MS` | 超时毫秒，默认 5000 |
+| `DSH_MF_WATERMARK_MIN_CHARS` | 最短文本长度，默认 200 |
+
+检测器协议：
+
+```http
+POST <endpoint>
+content-type: application/json
+
+{ "text": "...", "provider": "deepseek", "model": "deepseek-chat", "turn": 3 }
+```
+
+```json
+{ "detected": true, "vendor": "OpenAI", "scheme": "textGrain", "confidence": 0.92, "score": 4.1, "threshold": 3 }
+```
+
+`GET /model-fingerprint/api/status` 的 `watermark` 字段给出 `enabled / pending / checked / detected / errors / lastReason`。
+
+---
+
 ## 数据与隐私
 
 - 状态目录：`%USERPROFILE%\.dsh\model-fingerprint`，或 `$DSH_HOME/model-fingerprint`；旧 `state.json.zst` 作为只读基线，新变化保存在 `journal-v3`；
