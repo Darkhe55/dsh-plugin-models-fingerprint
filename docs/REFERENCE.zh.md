@@ -700,6 +700,7 @@ lib/probe-plan.mjs      6 类固定探针定义与离线结果校验
 lib/probe.mjs            固定探针
 lib/store.mjs            只读 zstd 基线与增量持久化状态机
 lib/journal.mjs          校验式追加日志、manifest 与崩溃恢复
+lib/provenance.mjs       可选水印来源证据通道（默认关闭，仅检出时记录）
 scripts/benchmark-*.mjs  离线困难负样本 / 官方来源审计
 scripts/probe-plan.mjs   仅生成探针计划，不调用模型
 reports/                 生成的 MiniMax 报告、官方审计、探针计划
@@ -718,5 +719,6 @@ test/                    单元与端到端测试
 - 被动行为受任务影响，跨供应商结论优先使用固定探针；
 - 行为相似度不是模型身份概率；
 - 质量代理不是语义质量评分；
+- 水印检测依赖外部检测器，且检出与否都不代表模型身份；改写、翻译或代理中转会改变结果；
 - 只监控本机 DSH sessions 目录；
 - 远程 Web 模式读取的是运行 DSH 的机器上的日志。
