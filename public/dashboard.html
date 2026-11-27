@@ -186,6 +186,7 @@
   .chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); font-size: 11px; color: var(--muted); margin: 1px 3px 1px 0; white-space: nowrap; }
   .chip.hot { background: var(--accent-soft); color: var(--accent); border-color: transparent; }
   .chip.warn { background: var(--warn-soft); color: var(--warn); border-color: transparent; }
+  .chip.wm { background: var(--good-soft); color: var(--good); border-color: transparent; }
   .chip.bad { background: var(--bad-soft); color: var(--bad); border-color: transparent; }
   .subline { color: var(--faint); font-size: 11px; margin-top: 3px; }
   .empty { padding: 36px 16px; text-align: center; color: var(--muted); }
@@ -652,6 +653,16 @@ function turnDeltaText(delta) {
   return bits.length ? bits.join(' · ') : '<span class="faint">首轮无对照</span>';
 }
 
+function provenanceChip(provenance) {
+  if (!provenance || provenance.state !== 'detected') return '';
+  const clean = (value) => String(value == null ? '' : value).replace(/[<>"&]/g, '');
+  const label = [provenance.vendor, provenance.scheme].filter(Boolean).map(clean).join(' · ') || '已检出';
+  const confidence = Number(provenance.confidence);
+  const detail = ['水印来源证据', provenance.vendor, provenance.scheme, Number.isFinite(confidence) ? '置信度 ' + Math.round(confidence * 100) + '%' : null, provenance.detector]
+    .filter(Boolean).map(clean).join(' · ');
+  return `<span class="chip wm" title="${detail}">水印 · ${label}</span>`;
+}
+
 function renderTurns() {
   const turns = state.turns || [];
   const session = state.data && (state.data.sessions || []).find((item) => item.id === state.turnSessionId);
@@ -679,6 +690,7 @@ function renderTurns() {
       </div>`;
     }).join('');
     const mixed = turn.mixed ? `<span class="chip warn">本轮 ${turn.fingerprints.length} 个指纹</span>` : '';
+    const watermark = provenanceChip(turn.provenance);
     return `<div class="turn-card ${index === 0 ? 'latest' : ''}">
       <div class="turn-head">
         <div class="turn-title">
@@ -686,6 +698,7 @@ function renderTurns() {
           <span class="turn-verdict ${esc(turn.verdict)}">${esc(turn.verdictLabel)}</span>
           <span class="chip hot">FP-${esc(turn.primaryShort)}</span>
           ${mixed}
+          ${watermark}
         </div>
         <span class="turn-time">${fmtTime(turn.endTime)} · ${relTime(turn.endTime)}</span>
       </div>

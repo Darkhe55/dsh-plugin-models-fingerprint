@@ -1119,7 +1119,7 @@ window.__ModuleLoader__.load({
     let railDebug = { flow: false, flowTurns: 0, turns: 0, cards: 0, reason: 'init' }
     let lastFetchError = null
     let commandError = null
-    const CLIENT_BUILD = '2026-11-21-1'
+    const CLIENT_BUILD = '2026-11-27-1'
     try { railOn = window.localStorage.getItem('dsh.mf.rail') === '1' } catch { /* private mode */ }
     window.__dshModelFingerprintRailState = { on: railOn, sessionId: railSessionId }
     window.__dshModelFingerprintPanelOpen = open
@@ -1406,6 +1406,21 @@ window.__ModuleLoader__.load({
       mixed: '#d97706',
       generation: '#2f6fed',
       first: '#98a2b3',
+    }
+
+    /**
+     * Watermark provenance is a separate evidence axis and is rendered only
+     * when a detector returned a positive answer; a missing field means "no
+     * evidence was reported", never "not AI-generated".
+     */
+    const provenanceText = (provenance) => {
+      if (!provenance || provenance.state !== 'detected') return ''
+      const parts = []
+      if (provenance.vendor) parts.push(String(provenance.vendor))
+      if (provenance.scheme) parts.push(String(provenance.scheme))
+      const confidence = Number(provenance.confidence)
+      if (Number.isFinite(confidence)) parts.push(Math.round(confidence * 100) + '%')
+      return parts.join(' · ')
     }
 
     function TurnRailFast() {
@@ -2511,18 +2526,21 @@ window.__ModuleLoader__.load({
           base.style.fontSize = 10
           base.style.color = color
           base.title = '第 ' + turn.turn + ' 轮 · ' + turn.verdictLabel
+            + (provenanceText(turn.provenance) ? ' · 水印：' + provenanceText(turn.provenance) : '')
           return h('div', base, rangeEl, placeholder ? (turn.placeholderStatus === 'no-data' ? '—' : '…') : 'FP-' + String(turn.primaryShort || '').slice(0, 4))
         }
         base.style.width = 176
         base.style.padding = '6px 8px 7px'
-        base.title = placeholder ? '第 ' + turn.turn + ' 轮 · ' + turn.verdictLabel : '点击打开逐轮检测面板'
+        base.title = (placeholder ? '第 ' + turn.turn + ' 轮 · ' + turn.verdictLabel : '点击打开逐轮检测面板')
+          + (provenanceText(turn.provenance) ? ' · 水印：' + provenanceText(turn.provenance) : '')
         return h('div', base,
           rangeEl,
           h('div', { key: 'head', style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 5, fontSize: 10, color: 'var(--dsw-alias-label-tertiary, #667085)' } },
             h('span', null, '第 ' + turn.turn + ' 轮'),
-            h('span', null, placeholder
+            h('span', null, (placeholder
               ? (turn.placeholderStatus === 'no-data' ? '无数据' : '加载中')
-              : turn.verdict === 'same' ? '一致' : turn.verdict === 'changed' ? '变化' : turn.verdict === 'mixed' ? '多指纹' : turn.verdict === 'generation' ? '代际' : '基线'),
+              : turn.verdict === 'same' ? '一致' : turn.verdict === 'changed' ? '变化' : turn.verdict === 'mixed' ? '多指纹' : turn.verdict === 'generation' ? '代际' : '基线')
+              + (turn.provenance ? ' · 水印' : '')),
           ),
           h('div', { key: 'body', style: { marginTop: 1, fontFamily: placeholder ? 'inherit' : 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', fontSize: 12, fontWeight: 750, color } }, placeholder
             ? (turn.placeholderStatus === 'no-data' ? '无模型指纹数据' : '指纹数据加载中')
